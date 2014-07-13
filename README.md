@@ -3,7 +3,7 @@ OfficeConverter
 
 Convert Microsoft Office document to PDF (Office 2007 - 2013)
 
-- 2014-06-11 Version 1.0 Beta
+- 2014-07-13 Version 1.0 Beta
   - Work in progress... setting up new project
 
 
