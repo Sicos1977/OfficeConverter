@@ -3,8 +3,6 @@ OfficeConverter
 
 Convert Microsoft Office document to PDF (Office 2007 - 2013)
 
-Extracts embedded OLE objects from Word, Excel, PowerPoint and Open Office files without needing the original programs.
-
 - 2014-06-11 Version 1.0 Beta
   - Work in progress... setting up new project
 
