@@ -24,8 +24,6 @@ using OfficeConverter.Helpers;
 
 namespace OfficeConverter
 {
-
-
     public class Converter
     {
         #region CheckFileNameAndOutputFolder
@@ -185,6 +183,34 @@ namespace OfficeConverter
 
                 System.Runtime.InteropServices.Marshal.ReleaseComObject(ap);
             }
+        }
+        
+        /// <summary>
+        /// This will lock all form fields in a word document so that auto fill and date/time 
+        /// field don't get updated automaticly when converting
+        /// </summary>
+        private void LockOrUnlockWordDocumentFields()
+        {
+
+            /* document As word.document, LockField As Boolean
+            ' Als er geen fields gevonden worden mag deze stap worden overgeslagen
+            On Error Resume Next
+    
+            ' Header fields locken
+            For Each field In document.StoryRanges(wdPrimaryHeaderStory).Fields
+                field.Locked = LockField
+            Next
+    
+            ' Document fields locken
+            For Each field In document.Fields
+                field.Locked = LockField
+            Next
+
+            ' Footer fields locken
+            For Each field In document.StoryRanges(wdPrimaryFooterStory).Fields
+                field.Locked = LockField
+            Next
+             */
         }
     }
 }

@@ -1,0 +1,932 @@
+﻿'*******************************************************************************
+' Class         :  msOffice
+'
+' Orgineel door :  Kees van Spelde           Datum: 09-02-2008
+'
+' Omschrijving  :
+' Classe met daarin alle functies om een office document te verwerken
+'
+' Revisies      Datum           Door
+'
+' Commentaar:
+'
+'*******************************************************************************
+Option Explicit
+
+'Private Const cDUTCHLANGUAGE As Long = 1043
+
+'De benodigde programma's
+Private Const CPRG_WORD = "Word.Application"
+Private Const CPRG_EXCEL = "Excel.Application"
+Private Const CPRG_POWERPOINT = "Powerpoint.Application"
+Private Const CPRG_MODI_Document = "MODI.Document.1"
+Private Const CINT_MAX_PAGES = 5000 'We zetten geen Word en Excel documenten om die
+                                    'meer dan 5000 pagina's bevatten
+
+'--------------------------------------------------------------------------------
+' Sub: IsObjectNothing
+'
+' Omschrijving:
+' Controleert of het opgegeven object bestaat. Bestaat deze niet dan wordt het
+' object aangemaakt.
+'--------------------------------------------------------------------------------
+Private Sub IsObjectNothing(ByRef obj As Object, _
+                            programName As String, _
+                            Optional retryCounter As Integer = 0)
+
+    Dim name As String
+    Dim errorDescription As String
+    
+    Log "msOffice.IsObjectNothing() --> CreateObject(" & programName & ")"
+    
+    name = ""
+        
+    'Wanneer dit mislukt dan is er geen actieve instantie meer van het
+    'desbetreffende office object
+    On Error Resume Next
+    name = obj.name
+    
+    If name <> "" Then Exit Sub
+    
+    On Error GoTo ErrorHandler
+    
+    Set obj = CreateObject(programName)
+    
+    If UCase(obj.name) = "MICROSOFT POWERPOINT" Then
+        obj.Activate
+        obj.WindowState = ppWindowMinimized
+    Else
+        obj.Visible = False
+    End If
+    
+    Exit Sub
+    
+ErrorHandler:
+
+    Set obj = Nothing
+    
+    goStack.StoreError err
+    
+    errorDescription = UCase(err.Description)
+
+    If (InStr(errorDescription, "ACTIVEX COMPONENT CAN'T CREATE OBJECT") > 0 Or _
+       InStr(errorDescription, "PERMISSION DENIED") > 0 Or _
+       InStr(errorDescription, "OPDRACHT MISLUKT") > 0 Or _
+       InStr(errorDescription, "SERVER EXECUTION FAILED") > 0 Or _
+       InStr(errorDescription, "ACCESS DENIED") > 0 Or _
+       InStr(errorDescription, "THE REMOTE PROCEDURE CALL FAILED") > 0 Or _
+       InStr(errorDescription, "THE REMOTE SERVER MACHINE DOES NOT EXIST OR IS UNAVAILABLE") > 0 Or _
+       InStr(errorDescription, "OBJECT VARIABLE OR WITH BLOCK VARIABLE NOT SET") > 0) And _
+       retryCounter < giMaxRetries Then
+       
+        retryCounter = retryCounter + 1
+        Sleep (giRetryDelay * retryCounter + 1)
+        
+        IsObjectNothing obj, programName, retryCounter
+    
+    Else
+        
+        goStack.RaiseLastError
+
+    End If
+    
+End Sub
+
+'--------------------------------------------------------------------------------
+' Sub: IsModiDocumentNothing
+'
+' Omschrijving:
+' Controleert of het opgegeven MODI document bestaat. Bestaat deze niet dan wordt
+' het MODI document aangemaakt.
+'--------------------------------------------------------------------------------
+Private Sub IsModiDocumentNothing(ByRef obj As Object, Optional retryCounter As Integer = 0)
+
+    Dim errorDescription As String
+    
+    Log "msOffice.IsModiDocumentNothing()"
+    
+    'Wanneer dit mislukt dan is er geen actieve instantie meer van het
+    'desbetreffende office object
+    On Error GoTo ErrorHandler
+    If Not obj Is Nothing Then Exit Sub
+    
+    Set obj = CreateObject(CPRG_MODI_Document)
+    
+    Exit Sub
+    
+ErrorHandler:
+
+    Set obj = Nothing
+    
+    goStack.StoreError err
+    
+    errorDescription = UCase(err.Description)
+
+    If (InStr(errorDescription, "ACTIVEX COMPONENT CAN'T CREATE OBJECT") > 0 Or _
+       InStr(errorDescription, "PERMISSION DENIED") > 0 Or _
+       InStr(errorDescription, "OPDRACHT MISLUKT") > 0 Or _
+       InStr(errorDescription, "SERVER EXECUTION FAILED") > 0 Or _
+       InStr(errorDescription, "ACCESS DENIED") > 0 Or _
+       InStr(errorDescription, "THE REMOTE PROCEDURE CALL FAILED") > 0 Or _
+       InStr(errorDescription, "THE REMOTE SERVER MACHINE DOES NOT EXIST OR IS UNAVAILABLE") > 0 Or _
+       InStr(errorDescription, "OBJECT VARIABLE OR WITH BLOCK VARIABLE NOT SET") > 0) And _
+       retryCounter < giMaxRetries Then
+       
+        retryCounter = retryCounter + 1
+        Sleep (giRetryDelay * retryCounter + 1)
+        
+        IsModiDocumentNothing obj, retryCounter
+    
+    Else
+        
+        goStack.RaiseLastError
+
+    End If
+    
+End Sub
+
+'--------------------------------------------------------------------------------
+' Sub: LockWordDocumentFields
+'
+' Omschrijving:
+' Locked alle velden in een Word document zodat datum en auto fill in fields niet
+' aangepast worden
+'--------------------------------------------------------------------------------
+Private Sub LockOrUnlockWordDocumentFields(document As word.document, LockField As Boolean)
+
+    Dim field As word.field
+    
+    ' Als er geen fields gevonden worden mag deze stap worden overgeslagen
+    On Error Resume Next
+    
+    ' Header fields locken
+    For Each field In document.StoryRanges(wdPrimaryHeaderStory).Fields
+        field.Locked = LockField
+    Next
+    
+    ' Document fields locken
+    For Each field In document.Fields
+        field.Locked = LockField
+    Next
+
+    ' Footer fields locken
+    For Each field In document.StoryRanges(wdPrimaryFooterStory).Fields
+        field.Locked = LockField
+    Next
+
+End Sub
+
+'--------------------------------------------------------------------------------
+' Function: ConvertWord
+'
+' Omschrijving:
+' Zet een HTML, Text of Word document om naar PDF formaat
+'--------------------------------------------------------------------------------
+Public Function ConvertWord(inputFile As ConversionFile) As String
+
+    Dim document As word.document
+    Dim activePrinter As String
+    Dim ext As String
+    Dim word As word.Application
+    Dim outputFile As String
+    Dim tempFileName As String
+    Dim pages As Integer
+    
+    Log "msOffice.ConvertWord()"
+    
+    On Error GoTo ErrorHandler
+    
+    ext = UCase(ExtractFileExt(inputFile.fileName))
+    
+    ' Helaas worden er vanuit de Schadeservice afdeling Word documenten (.doc) als text documenten (.txt)
+    ' opgeslagen. Hierdoor wordt de conversie niet goed uitgevoerd als een Word document verkeerd is opgeslagen.
+    ' Daarom controleren we bij text bestanden of het toch niet een ander type document is
+    
+    If ext = extTXT Then
+        
+        ext = GetFileType(inputFile.fileName)
+        
+        ' Als het toch niet een text bestand is
+        If UCase(ext) <> extTXT Then
+        
+            ' Omdat de hele conversie laag puur naar de extensie van een bestand kijkt dienen we een kopie
+            ' van het bestand te maken met een correcte extensie.
+            tempFileName = GetTempFileName(ext)
+            FileCopy inputFile.fileName, tempFileName
+            inputFile.fileName = tempFileName
+        
+        End If
+    
+    End If
+   
+    outputFile = GetTempFileName(extPDF)
+    
+    IsObjectNothing word, CPRG_WORD
+    word.DisplayAlerts = wdAlertsNone
+
+    activePrinter = word.activePrinter
+    
+    Set document = OpenWordDocument(word, inputFile.fileName, False)
+    LockOrUnlockWordDocumentFields document, True
+    
+    'Controleren of het document niet teveel pagina's bevat
+    'Heel soms heb je documenten die wel de extensie .txt, .htm, .doc, .docx ... etc...
+    'bevatten die toch geen geldige word documenten zijn. Word laad deze dan wel in
+    'omdat die vind dat het wel goede documenten zijn. Echter zijn dit vaak binaire
+    'bestanden die daardoor vele duizenden pagina's bevatten. We voeren daarom een extra
+    'controle uit en breken het verwerken af als het document teveel pagina's bevat
+    'hiermee voorkomen we dat de conversie laag vast loopt.
+    pages = document.ComputeStatistics(wdStatisticPages)
+   
+    If pages > CINT_MAX_PAGES Then
+        err.Raise cErrorGeneral, "msOffice.ConvertWord()", _
+                                 "Het Word bestand '" & ExtractFileName(inputFile.fileName) & "' kan niet worden omgezet " & _
+                                 "omdat deze uit " & pages & " pagina's bestaat. Het document mag maximaal " & _
+                                 CINT_MAX_PAGES & " uit te printen pagina's bevatten."
+    End If
+        
+    
+    'We kunnen alleen de marges aanpassen als er geen protectie op een document zit
+    'en we passen alleen de marges aan als we een HTM(L) of MHT bestand hebben ingeladen. Er
+    'is anders de mogelijkheid dat er iets fout gaat bij het printen van sommige
+    'originele Word documenten die zelf al een andere kantlijn hebben ingesteld.
+    If document.ProtectionType = wdNoProtection And _
+      (ext = extHTM Or ext = extHTML Or ext = extMHT) Then
+        
+        'Pagina marges instellen op A4 formaat
+        'Boven 2.54 cm, link 3.18 cm, onder 2.54 cm en rechts 3.18 cm
+        
+        On Error Resume Next
+        
+        With document.PageSetup
+            .TopMargin = document.Application.CentimetersToPoints(2.54)
+            .LeftMargin = document.Application.CentimetersToPoints(3.18)
+            .BottomMargin = document.Application.CentimetersToPoints(2.54)
+            .RightMargin = document.Application.CentimetersToPoints(3.18)
+        End With
+        
+        On Error GoTo ErrorHandler
+        
+    End If
+
+    'PDF Printer activeren
+    'moPDFPrinter.Init outputFile
+    
+    'word.WordBasic.FilePrintSetup Printer:=gsAmyuniPrinterName, DoNotSetAsSysDefault:=1
+    
+    'Hiermee voorkomen we dat afbeeldingen (of dergelijke) met externe links, bijvoorbeeld
+    'een afbeelding die afkomstig is vanaf het internet (http://www.google.com/image/eenplaatje.jpg)
+    'er voor zorgt dat het document wacht totdat dit plaatje is opgehaald. Op de conversie server is
+    'dit namelijk niet mogelijk aangezien deze geen internet verbinding heeft. Onderstaand commando
+    'werkt echter niet op alle type documenten, daarom zetten we er een On Error Resume Next omheen
+    On Error Resume Next
+    word.Options.UpdateLinksAtPrint = False
+    On Error GoTo ErrorHandler
+    
+    'document.PrintOut False, False, , outputFile, , , , , , , True
+    
+    'word.WordBasic.FilePrintSetup Printer:=activePrinter, DoNotSetAsSysDefault:=1
+    
+    'KVS 2014-01-16 Printen vervangen door Save as PDF
+    document.ExportAsFixedFormat outputFile, wdExportFormatPDF, False, wdExportOptimizeForPrint
+        
+    'Word document sluiten
+    CloseWordDocument document
+    CloseWord word
+    
+    ConvertWord = outputFile
+    
+    Exit Function
+    
+ErrorHandler:
+
+    goStack.StoreError err
+    CloseWordDocument document
+    CloseWord word
+    goStack.RaiseLastError
+    
+End Function
+
+'--------------------------------------------------------------------------------
+' Function: OpenWordDocument
+'
+' Omschrijving:
+' Opent een Word document, wanneer deze niet meteen kan worden geopend dan wordt
+' er geprobeert deze in repair mode te openen. Wanneer dit ook mislukt wordt er
+' een foutmelding geraised.
+'--------------------------------------------------------------------------------
+Private Function OpenWordDocument(word As word.Application, inputFile As String, repairMode As Boolean) As word.document
+    
+    Log "msOffice.OpenWordDocument()"
+
+    On Error GoTo ErrorHandler
+    
+    'Eventuele aanwezig macro's in het document uitschakelen
+    word.WordBasic.DisableAutoMacros 1
+    
+    'Hiermee voorkomen we dat afbeeldingen (of dergelijke) met externe links, bijvoorbeeld
+    'een afbeelding die afkomstig is vanaf het internet (http://www.google.com/image/eenplaatje.jpg)
+    'er voor zorgt dat het document wacht totdat dit plaatje is opgehaald. Op de conversie server is
+    'dit namelijk niet mogelijk aangezien deze geen internet verbinding heeft
+    word.Options.UpdateLinksAtOpen = False
+    
+    'Hiermee onderdrukken we het scherm dat vraagt of we een document willen omzetten naar een ander
+    'formaat. Bijvoorbeeld een .odt document naar .doc
+    word.Options.ConfirmConversions = False
+    
+    'We slaan geen AutoRecover documenten op aangezien we aleen een conversie uitvoeren
+    word.Options.SaveInterval = 0
+    
+    'Word moet niet vragen om de normal.dot op te slaan als deze aangepast is
+    word.Options.SaveNormalPrompt = False
+    
+    'Word moet niet vragen om gewijzigde document properties op te slaan
+    word.Options.SavePropertiesPrompt = False
+    
+    'Word moet geen waarschuwing tonen wanneer we een document opslaan, printen of verzenden per E-mail
+    'wanneer deze commentaar of bijgehouden veranderingen bevat
+    word.Options.WarnBeforeSavingPrintingSendingMarkup = False
+    
+    'We proberen standaard altijd een document te openenen alsof het met een wachtwoord beveiligd is.
+    'Hiermee kunnen we detecteren of een document wachtwoord beveiligd is. Wanneer dit zo is dan genereerd
+    'het openen een 5408 error code (paswoord niet correct). Is het document niet paswoord beveiligd dan
+    'wordt het gewoon geopend ongeacht wat voor paswoord er ingevuld is.
+    
+    'Wanneer we een text bestand openen in Word dan forceren we Word om altijd TextEncoding te gebruiken
+    'bij het openen. Doen we dit niet en hebben we een Text E-mail met daarin wat EML code dan krijg je
+    'altijd een fout bij het openen van een document.
+    If UCase(ExtractFileExt(inputFile)) = extTXT Then
+        Set OpenWordDocument = word.Documents.Open(inputFile, False, True, False, "dummypassword", , , , , wdOpenFormatUnicodeText, , , repairMode, , True)
+    Else
+        Set OpenWordDocument = word.Documents.Open(inputFile, False, True, False, "dummypassword", , , , , , , , repairMode, , True)
+    End If
+
+    DoEvents
+
+    Exit Function
+
+ErrorHandler:
+    
+    '5408 betekent dat het document met een wachtwoord beveiligd is
+    If err.number = 5408 Then
+        
+        err.Raise cErrorGeneral, "msOffice.ConvertWord()", "Het Word bestand '" & _
+                                 ExtractFileName(inputFile) & "' kan niet worden omgezet omdat " & _
+                                 "deze met een wachtwoord is beveiligd."
+    
+    Else
+    
+        If repairMode Then
+    
+            err.Raise cErrorGeneral, "msOffice.ConvertWord()", "Het Word bestand '" & _
+                                     ExtractFileName(inputFile) & "' kan niet worden omgezet omdat " & _
+                                     "deze niet geopend kan worden."
+                
+        Else
+        
+            'Als we het document toch niet kunnen openen dan is het mogelijk corrupt en proberen we hem
+            'in reparatie mode te openen
+            Set OpenWordDocument = OpenWordDocument(word, inputFile, True)
+        End If
+    
+    End If
+    
+End Function
+
+'--------------------------------------------------------------------------------
+' Sub: CloseWordDocument
+'
+' Omschrijving:
+' Sluit een Word document
+'--------------------------------------------------------------------------------
+'Sluit een geopend word document
+Private Sub CloseWordDocument(document As word.document)
+    
+    On Error Resume Next
+    
+    Log "msOffice.CloseWordDocument()"
+    
+    If Not document Is Nothing Then
+        document.Saved = True
+        document.Close False
+        Set document = Nothing
+    End If
+    
+    DoEvents
+    
+End Sub
+
+'--------------------------------------------------------------------------------
+' Sub: CloseWord
+'
+' Omschrijving:
+' Sluit het Word object en schoon deze op
+'--------------------------------------------------------------------------------
+Public Sub CloseWord(word As word.Application)
+    
+    On Error Resume Next
+    
+    Log "msOffice.CloseWord()"
+    
+    'Sluit alle office instanties
+    If Not (word Is Nothing) Then
+        word.Quit False
+        Set word = Nothing
+    End If
+    
+    DoEvents
+
+End Sub
+
+'--------------------------------------------------------------------------------
+' Function: ConvertExcel
+'
+' Omschrijving:
+' Zet een Excel of CSV document om naar PDF formaat
+'--------------------------------------------------------------------------------
+Public Function ConvertExcel(inputFile As ConversionFile) As String
+
+    Dim workbook As excel.workbook
+    Dim excel As excel.Application
+    Dim outputFile As String
+    Dim pages As Integer
+    Dim worksheet As excel.worksheet
+    
+    Log "msOffice.ConvertExcel()"
+    
+    On Error GoTo ErrorHandler
+    
+    outputFile = GetTempFileName(extPDF)
+    
+    IsObjectNothing excel, CPRG_EXCEL
+    excel.DisplayAlerts = False
+
+    'Fix voor "Call rejected by callee" fout
+    excel.Interactive = False
+    excel.EnableEvents = False
+
+    Set workbook = OpenExcelWorkbook(excel, inputFile.fileName, False)
+    
+    pages = CountExcelWorkbookPages(workbook)
+    If pages > CINT_MAX_PAGES Then
+        err.Raise cErrorGeneral, "msOffice.ConvertExcel()", _
+                                 "Het Excel bestand '" & ExtractFileName(inputFile.fileName) & "' kan niet worden omgezet " & _
+                                 "omdat deze uit " & pages & " pagina's bestaat. Het Excel bestand mag maximaal " & _
+                                 CINT_MAX_PAGES & " uit te printen pagina's bevatten."
+    End If
+    
+    'KVS 20-03-2013 Oplossing voor printarea probleem toegevoegd
+    'KVS 27-04-2013 Oplossing gemaakt om alleen de gevulde cellen af te drukken
+'    For Each worksheet In workbook.Worksheets
+'        worksheet.PageSetup.PrintArea = GetWorksheetUsedRange(worksheet)
+'    Next
+    
+    'PDF Printer activeren en locken
+'    moPDFPrinter.Init outputFile
+'
+'    workbook.PrintOut , , , , gsAmyuniPrinterName, True, , outputFile
+
+    'KVS 2014-01-16 Printen vervangen door Save as PDF
+    workbook.ExportAsFixedFormat xlTypePDF, outputFile, , , True, , , False
+    
+    DoEvents
+    
+    'Workbook sluiten
+    CloseExcelWorkbook workbook
+    CloseExcel excel
+    
+    ConvertExcel = outputFile
+    
+    Exit Function
+    
+ErrorHandler:
+
+    goStack.StoreError err
+    CloseExcelWorkbook workbook
+    CloseExcel excel
+    goStack.RaiseLastError
+
+End Function
+
+'--------------------------------------------------------------------------------
+' Function: ConvertExcelColumnNumberToLetters
+'
+' Omschrijving:
+' Deze functie zet een Excel kolum nummer om naar zijn letter presentatie
+'--------------------------------------------------------------------------------
+Private Function ConvertExcelColumnNumberToLetters(ByVal number As Long, Optional letter As String = "") As String
+    
+    If number = 0 Then
+        ConvertExcelColumnNumberToLetters = letter
+    Else
+        letter = Chr(65 + (number - 1) Mod 26) & letter
+        number = (number - 1) \ 26
+        ConvertExcelColumnNumberToLetters = ConvertExcelColumnNumberToLetters(number, letter)
+    End If
+
+End Function
+
+'--------------------------------------------------------------------------------
+' Function: GetWorksheetUsedRange
+'
+' Omschrijving:
+' Deze functie geeft de range van cellen in een worksheet die gevuld zijn met
+' text
+'--------------------------------------------------------------------------------
+Private Function GetWorksheetUsedRange(worksheet As worksheet) As String
+
+    Dim column As Long
+    Dim lastColumn As Long
+    Dim firstColumn As Long
+    Dim row As Long
+    Dim firstRow As Long
+    Dim lastRow As Long
+
+    On Error GoTo ErrorHandler
+
+    'Als er afbeeldingen of grafieken op een Excel document staan dan kunnen we onderstaande
+    'functie niet gebruiken omdat er anders de kans is dat de afbeelding niet mee wordt afgedrukt
+
+    If worksheet.Shapes.count > 0 Then
+        GetWorksheetUsedRange = ""
+        Exit Function
+    End If
+    
+    If worksheet.Cells(1, 1) <> "" Then
+    
+        firstColumn = 1
+        firstRow = 1
+    
+    Else
+        
+        'Begin positie zoeken
+        firstColumn = worksheet.Cells.Find("", , , , xlByColumns).column
+        firstRow = worksheet.Cells.Find("*", , , , xlByColumns).row
+        
+        column = worksheet.Cells.Find("*", , , , xlByRows).column
+        row = worksheet.Cells.Find("*", , , , xlByRows).row
+        
+        If column < firstColumn Then firstColumn = column
+        If row < firstRow Then firstRow = row
+    
+    End If
+    
+    'Eind positie zoeken
+    lastColumn = worksheet.Cells.Find("*", , , , xlByColumns, xlPrevious).column
+    lastRow = worksheet.Cells.Find("*", , , , xlByColumns, xlPrevious).row
+    
+    column = worksheet.Cells.Find("*", , , , xlByRows, xlPrevious).column
+    row = worksheet.Cells.Find("*", , , , xlByRows, xlPrevious).row
+    
+    If column > lastColumn Then lastColumn = column
+    If row > lastRow Then lastRow = row
+    
+    GetWorksheetUsedRange = ConvertExcelColumnNumberToLetters(firstColumn) & firstRow & ":" & _
+                            ConvertExcelColumnNumberToLetters(lastColumn) & lastRow
+    
+    Exit Function
+
+ErrorHandler:
+    GetWorksheetUsedRange = ""
+End Function
+
+'--------------------------------------------------------------------------------
+' Function: CountWorkbookPages
+'
+' Omschrijving:
+' Deze functie berekent hoeveel pagina's een Workbook bevat als deze op A4
+' formaat zou worden uitgeprint
+'--------------------------------------------------------------------------------
+Private Function CountExcelWorkbookPages(workbook As excel.workbook) As Integer
+    
+    'Bepaal hoeveel pagina's er in het Excel bestand zitten
+    Dim vPageBreaks As Integer
+    Dim hPageBreaks As Integer
+
+    Dim count As Integer
+
+    On Error Resume Next
+
+    CountExcelWorkbookPages = 0
+    For count = 1 To workbook.Sheets.count
+        vPageBreaks = workbook.Sheets(count).vPageBreaks.count + 1
+        hPageBreaks = workbook.Sheets(count).hPageBreaks.count + 1
+        CountExcelWorkbookPages = CountExcelWorkbookPages + (vPageBreaks * hPageBreaks)
+    Next
+    
+End Function
+
+'--------------------------------------------------------------------------------
+' Function: CountLinesInFile
+'
+' Omschrijving:
+' Deze functie telt het aantal regels in een bestand
+'--------------------------------------------------------------------------------
+Private Function CountLinesInFile(inputFile As String) As Long
+
+    Dim FileNum As Integer
+    Dim Lines As Long
+    Dim line As String
+
+    Lines = 0
+
+    FileNum = FreeFile
+
+    Open inputFile For Input As FileNum
+
+    Do While Not EOF(FileNum)
+        Line Input #FileNum, line
+        Lines = Lines + 1
+    Loop
+
+    'Bestand sluiten
+    Close FileNum
+ 
+    CountLinesInFile = Lines
+
+End Function
+
+'--------------------------------------------------------------------------------
+' Function: GetCSVSeparator
+'
+' Omschrijving:
+' Deze functie bepaalt hoe de kolommen in een CSV bestand zijn gescheiden
+'--------------------------------------------------------------------------------
+Private Function GetCSVSeparator(inputFile As String)
+
+    Dim FileNum As Integer
+    Dim line As String
+
+    FileNum = FreeFile
+    line = ""
+
+    Open inputFile For Input As FileNum
+
+    If Not EOF(FileNum) Then
+        Line Input #FileNum, line
+    End If
+
+    'Bestand sluiten
+    Close FileNum
+ 
+    If InStr(line, ";") > 0 Then
+        GetCSVSeparator = ";"
+    ElseIf InStr(line, ",") > 0 Then
+        GetCSVSeparator = ","
+    ElseIf InStr(line, vbTab) > 0 Then
+        GetCSVSeparator = vbTab
+    ElseIf InStr(line, " ") > 0 Then
+        GetCSVSeparator = " "
+    Else
+        'anders default waarde
+        GetCSVSeparator = ";"
+    End If
+
+End Function
+
+'--------------------------------------------------------------------------------
+' Function: OpenExcelWorkbook
+'
+' Omschrijving:
+' Opent het Excel workbook
+'--------------------------------------------------------------------------------
+Private Function OpenExcelWorkbook(excel As excel.Application, inputFile As String, repairMode As Boolean) As excel.workbook
+    
+    Dim errDescription As String
+    Dim separator As String
+    
+    On Error GoTo ErrorHandler
+    
+    Log "msOffice.OpenExcelWorkbook()"
+    
+    excel.AskToUpdateLinks = False
+    
+    If UCase(ExtractFileExt(inputFile)) = extCSV Then
+        
+        'Tellen hoeveel regels er in het CSV bestand zitten want Excel kan niet meer dan
+        '65535 regels tegelijk verwerken
+        
+        If CountLinesInFile(inputFile) > 1000000 Then
+            err.Raise cErrorGeneral, "msOffice.OpenExcelWorkbook()", _
+                                     "Het CSV-bestand '" & ExtractFileName(inputFile) & "' kan niet worden omgezet " & _
+                                     "omdat deze uit meer dan 1000000 regels bestaat."
+        End If
+        
+        Select Case GetCSVSeparator(inputFile)
+        
+            Case ";"
+                excel.Workbooks.OpenText inputFile, , , , xlTextQualifierNone, , False, True, False, False
+                
+            Case ","
+                excel.Workbooks.OpenText inputFile, , , , xlTextQualifierNone, , False, False, True, False
+            
+            Case vbTab
+                excel.Workbooks.OpenText inputFile, , , , xlTextQualifierNone, , True, False, False, False
+            
+            Case " "
+                excel.Workbooks.OpenText inputFile, , , , xlTextQualifierNone, , False, False, False, True
+        
+            Case Else
+                excel.Workbooks.OpenText inputFile, , , , xlTextQualifierNone, , False, True, False, False
+        
+        End Select
+    
+        Set OpenExcelWorkbook = excel.ActiveWorkbook
+    
+    Else
+        If repairMode Then
+            Set OpenExcelWorkbook = excel.Workbooks.Open(inputFile, False, True, , "dummypassword", , True, , , False, False, , False, , xlRepairFile)
+        Else
+            Set OpenExcelWorkbook = excel.Workbooks.Open(inputFile, False, True, , , , True, , , False, False, , False)
+        End If
+
+    End If
+    
+    DoEvents
+    
+    Exit Function
+    
+ErrorHandler:
+    
+    If err.number = cErrorGeneral Then
+        err.Raise err.number, err.Source, err.Description
+    Else
+        errDescription = UCase(err.Description)
+
+        If InStr(errDescription, "PASSWORD") > 0 Or _
+           InStr(errDescription, "WACHTWOORD") > 0 Then
+        
+            err.Raise cErrorGeneral, "msOffice.ConvertExcel()", "Het Excel bestand '" & _
+                                     ExtractFileName(inputFile) & "' kan niet worden omgezet omdat " & _
+                                     "deze met een wachtwoord is beveiligd."
+        
+        Else
+        
+            If repairMode Then
+        
+                err.Raise cErrorGeneral, "msOffice.ConvertExcel()", "Het Excel bestand '" & _
+                                         ExtractFileName(inputFile) & "' kan niet worden omgezet omdat " & _
+                                         "deze niet geopend kan worden."
+                    
+            Else
+
+            
+                'Als we het document toch niet kunnen openen dan is het mogelijk corrupt en proberen we hem
+                'in reparatie mode te openen
+                Set OpenExcelWorkbook = OpenExcelWorkbook(excel, inputFile, True)
+            End If
+        
+        End If
+        
+    End If
+    
+End Function
+
+'--------------------------------------------------------------------------------
+' Sub: CloseExcelWorkbook
+'
+' Omschrijving:
+' Sluit het Excel workbook
+'--------------------------------------------------------------------------------
+Private Sub CloseExcelWorkbook(workbook As excel.workbook)
+    
+    On Error Resume Next
+    
+    Log "msOffice.CloseExcelWorkbook()"
+    
+    If Not workbook Is Nothing Then
+        workbook.Saved = True
+        workbook.Close False
+        Set workbook = Nothing
+    End If
+    
+    DoEvents
+    
+End Sub
+
+'--------------------------------------------------------------------------------
+' Sub: CloseExcel
+'
+' Omschrijving:
+' Sluit het Excel object en schoon deze op
+'--------------------------------------------------------------------------------
+Public Sub CloseExcel(excel As excel.Application)
+    
+    On Error Resume Next
+    
+    Log "msOffice.CloseExcel()"
+    
+    If Not (excel Is Nothing) Then
+        excel.Quit
+        Set excel = Nothing
+    End If
+    
+    DoEvents
+
+End Sub
+
+'--------------------------------------------------------------------------------
+' Function: ConvertPowerPoint
+'
+' Omschrijving:
+' Zet een Powerpoint bestand om naar PDF formaat
+'--------------------------------------------------------------------------------
+Public Function ConvertPowerPoint(inputFile As ConversionFile) As String
+
+    Dim activePrinter As String
+    Dim presentation As powerpoint.presentation
+    Dim powerpoint As powerpoint.Application
+    Dim outputFile As String
+    
+    Log "msOffice.ConvertPowerPoint()"
+    
+    On Error GoTo ErrorHandler
+
+    outputFile = GetTempFileName(extPDF)
+
+    IsObjectNothing powerpoint, CPRG_POWERPOINT
+    powerpoint.DisplayAlerts = ppAlertsNone
+    
+    'PDF Printer activeren
+    'moPDFPrinter.Init outputFile
+        
+    'activePrinter = powerpoint.activePrinter
+    Set presentation = powerpoint.Presentations.Open(inputFile.fileName, msoTrue, , False)
+    
+'    With presentation
+'        .PrintOptions.activePrinter = gsAmyuniPrinterName
+'        .PrintOptions.PrintInBackground = msoFalse
+'        .PrintOut , , outputFile
+'        .PrintOptions.activePrinter = activePrinter
+'    End With
+    'KVS 2014-01-16 Printen vervangen door Save as PDF
+    presentation.ExportAsFixedFormat outputFile, ppFixedFormatTypePDF, ppFixedFormatIntentPrint
+    
+    
+    DoEvents
+    
+    'Presentatie sluiten
+    ClosePowerPointPresentation presentation
+    ClosePowerPoint powerpoint
+    
+    ConvertPowerPoint = outputFile
+
+    Exit Function
+    
+ErrorHandler:
+
+    goStack.StoreError err
+    If activePrinter <> "" And Not (presentation Is Nothing) Then
+        presentation.PrintOptions.activePrinter = activePrinter
+    End If
+    
+    ClosePowerPointPresentation presentation
+    ClosePowerPoint powerpoint
+    
+    goStack.RaiseLastError
+
+End Function
+
+'--------------------------------------------------------------------------------
+' Sub: ClosePowerPointPresentation
+'
+' Omschrijving:
+' Sluit de Powerpoint presentatie
+'--------------------------------------------------------------------------------
+Private Sub ClosePowerPointPresentation(presentation As powerpoint.presentation)
+
+    On Error Resume Next
+    
+    Log "msOffice.ClosePowerPointPresentation()"
+    
+    If Not presentation Is Nothing Then
+        presentation.Saved = True
+        presentation.Close
+        Set presentation = Nothing
+    End If
+    
+    DoEvents
+    
+End Sub
+
+
+'--------------------------------------------------------------------------------
+' Sub: ClosePowerPoint
+'
+' Omschrijving:
+' Sluit het PowerPoint object en schoon deze op
+'--------------------------------------------------------------------------------
+Public Sub ClosePowerPoint(powerpoint As powerpoint.Application)
+    
+    On Error Resume Next
+    
+    Log "msOffice.ClosePowerPoint()"
+    
+    If Not (powerpoint Is Nothing) Then
+        powerpoint.Quit
+        Set powerpoint = Nothing
+    End If
+    
+    DoEvents
+
+End Sub
