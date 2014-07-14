@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using Microsoft.Office.Interop.Word;
+using Word = Microsoft.Office.Interop.Word;
+using Excel = Microsoft.Office.Interop.Excel;
+using PowerPoint = Microsoft.Office.Interop.PowerPoint;
+
 /*
    Copyright 2013-2014 Kees van Spelde
 
@@ -132,21 +135,21 @@ namespace OfficeConverter
 
         public void StartWord()
         {
-            Application ap = new Application();
+            Word.Application ap = new Word.Application();
 
             try
             {
 
-                Document doc = ap.Documents.Open(@"D:\Test.docx", ReadOnly: false, Visible: false);
+                Word.Document doc = ap.Documents.Open(@"D:\Test.docx", ReadOnly: false, Visible: false);
                 doc.Activate();
 
-                Selection sel = ap.Selection;
+                Word.Selection sel = ap.Selection;
 
                 if (sel != null)
                 {
                     switch (sel.Type)
                     {
-                        case WdSelectionType.wdSelectionIP:
+                        case Word.WdSelectionType.wdSelectionIP:
                             sel.TypeText(DateTime.Now.ToString());
                             sel.TypeParagraph();
                             break;
@@ -158,7 +161,7 @@ namespace OfficeConverter
                     }
 
                     // Remove all meta data.
-                    doc.RemoveDocumentInformation(WdRemoveDocInfoType.wdRDIAll);
+                    doc.RemoveDocumentInformation(Word.WdRemoveDocInfoType.wdRDIAll);
 
                     ap.Documents.Save(true, true);
 
@@ -212,5 +215,70 @@ namespace OfficeConverter
             Next
              */
         }
+
+        #region Word
+        public string ConvertWord(string inputFile)
+        {
+            throw new NotImplementedException();    
+        }
+
+        public Word.Document OpenWordDocument(Word.Application word,
+                                         string inputFile,
+                                         bool repairMode)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void CloseWordDocument(Microsoft.Office.Interop.Word.Document document)
+        {
+            try
+            {
+                if (document != null)
+                {
+                    document.Saved = true;
+                    document.Close();
+                }
+            }
+            catch (Exception)
+            {
+                
+                throw;
+            }
+        }
+        #endregion
+
+        #region Excel
+
+        public string ConvertExcel(string inputFile)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Document OpenExcelWorkbook(Microsoft.Office.Interop.Excel.Application Excel,
+            string inputFile,
+            bool repairMode)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void CloseWordDocument(Document document)
+        {
+            try
+            {
+                if (document != null)
+                {
+                    document.Saved = true;
+                    document.Close();
+                }
+            }
+            catch (Exception)
+            {
+
+                throw;
+            }
+        }
+
+        #endregion
+
     }
 }
