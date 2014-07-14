@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using Word = Microsoft.Office.Interop.Word;
 using Excel = Microsoft.Office.Interop.Excel;
 using PowerPoint = Microsoft.Office.Interop.PowerPoint;
@@ -188,37 +189,22 @@ namespace OfficeConverter
             }
         }
         
+        #region Word
         /// <summary>
-        /// This will lock all form fields in a word document so that auto fill and date/time 
-        /// field don't get updated automaticly when converting
+        /// This will lock or unlock all form fields in a Word document so that auto fill 
+        /// and date/time field do or don't get updated automaticly when converting
         /// </summary>
-        private void LockOrUnlockWordDocumentFields()
+        /// <param name="document">The <see cref="Word.Document"/></param>
+        /// <param name="lockField">True to lock or false to unlock</param>
+        private void LockOrUnlockWordDocumentFields(Word._Document document, bool lockField)
         {
-
-            /* document As word.document, LockField As Boolean
-            ' Als er geen fields gevonden worden mag deze stap worden overgeslagen
-            On Error Resume Next
-    
-            ' Header fields locken
-            For Each field In document.StoryRanges(wdPrimaryHeaderStory).Fields
-                field.Locked = LockField
-            Next
-    
-            ' Document fields locken
-            For Each field In document.Fields
-                field.Locked = LockField
-            Next
-
-            ' Footer fields locken
-            For Each field In document.StoryRanges(wdPrimaryFooterStory).Fields
-                field.Locked = LockField
-            Next
-             */
+            // 0 = false, 1  = true
+            document.Fields.Locked = lockField ? 1 : 0;
         }
 
-        #region Word
         public string ConvertWord(string inputFile)
         {
+
             throw new NotImplementedException();    
         }
 
@@ -226,7 +212,54 @@ namespace OfficeConverter
                                          string inputFile,
                                          bool repairMode)
         {
-            throw new NotImplementedException();
+            try
+            {
+                // Prevent any macro's from running
+                word.WordBasic.DisableAutoMacros(1);
+
+                // Prevent Word from updating links
+                word.Options.UpdateLinksAtOpen = false;
+
+                // Prevent Word from asking if we want to convert a document to another format
+                word.Options.ConfirmConversions = false;
+
+                // Prevent Word from auto saving
+                word.Options.SaveInterval = 0;
+
+                // Prevent Word from auto saving changed normal.dot(x)
+                word.Options.SaveNormalPrompt = false;
+
+                // Prevent Word from saving changed document properties
+                word.Options.SavePropertiesPrompt = false;
+
+                // Prevent Word from opening document in reading mode
+                word.Options.AllowReadingMode = false;
+
+                // Prevent Word from warning about document changes before saving, printing or sending
+                word.Options.WarnBeforeSavingPrintingSendingMarkup = false;
+
+                Word.Document result;
+
+                var extension = Path.GetExtension(inputFile);
+                if (!string.IsNullOrEmpty(extension))
+                    extension = extension.ToUpperInvariant();
+
+                switch (extension)
+                {
+                    case ".TXT":
+                        //http://www.devx.com/dotnet/Article/42590
+                        //result = word.Documents.Open(inputFile, ConfirmConversions: false, ReadOnly: false, AddToRecentFiles: false, false, "dummypassword",  , , , , Word.WdOpenFormat.wdOpenFormatUnicodeText, , , true, , true)
+                        break;
+
+                    default:
+
+                }
+            }
+            catch (COMException comException)
+            {
+                
+                throw;
+            }
         }
 
         private void CloseWordDocument(Microsoft.Office.Interop.Word.Document document)
