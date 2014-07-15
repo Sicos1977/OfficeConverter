@@ -1,7 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
+using Microsoft.Office.Core;
 using Word = Microsoft.Office.Interop.Word;
 using Excel = Microsoft.Office.Interop.Excel;
 using PowerPoint = Microsoft.Office.Interop.PowerPoint;
@@ -32,52 +32,53 @@ namespace OfficeConverter
     {
         #region CheckFileNameAndOutputFolder
         /// <summary>
-        /// Checks if the <see cref="inputFile"/> and <see cref="outputFolder"/> is valid
+        /// Checks if the <see cref="inputFile"/> and the path to the <see cref="outputFile"/> is valid
         /// </summary>
         /// <param name="inputFile"></param>
-        /// <param name="outputFolder"></param>
-        /// <exception cref="ArgumentNullException">Raised when the <see cref="inputFile"/> or <see cref="outputFolder"/> is null or empty</exception>
+        /// <param name="outputFile"></param>
+        /// <exception cref="ArgumentNullException">Raised when the <see cref="inputFile"/> or <see cref="outputFile"/> is null or empty</exception>
         /// <exception cref="FileNotFoundException">Raised when the <see cref="inputFile"/> does not exists</exception>
-        /// <exception cref="DirectoryNotFoundException">Raised when the <see cref="outputFolder"/> does not exists</exception>
-        private static void CheckFileNameAndOutputFolder(string inputFile, string outputFolder)
+        /// <exception cref="DirectoryNotFoundException">Raised when the path to the <see cref="outputFile"/> does not exists</exception>
+        private static void CheckFileNameAndOutputFolder(string inputFile, string outputFile)
         {
             if (string.IsNullOrEmpty(inputFile))
                 throw new ArgumentNullException(inputFile);
 
-            if (string.IsNullOrEmpty(outputFolder))
-                throw new ArgumentNullException(outputFolder);
+            if (string.IsNullOrEmpty(outputFile))
+                throw new ArgumentNullException(outputFile);
 
             if (!File.Exists(inputFile))
-                throw new FileNotFoundException(inputFile);
+                throw new FileNotFoundException("Could not find the input file '" + inputFile + "'");
+
+            var directoryInfo = new FileInfo(outputFile).Directory;
+            if (directoryInfo == null) return;
+            var outputFolder = directoryInfo.FullName;
 
             if (!Directory.Exists(outputFolder))
-                throw new DirectoryNotFoundException(outputFolder);
+                throw new DirectoryNotFoundException("The output folder '" + outputFolder + "' does not exist");
         }
         #endregion
 
-        #region ExtractToFolder
+        #region ConvertToFolder
         /// <summary>
-        /// Extracts all the embedded object from the Microsoft Office <see cref="inputFile"/> to the 
-        /// <see cref="outputFolder"/> and returns the files with full path as a list of strings
+        /// Converts the given <see cref="inputFile"/> to PDF and saves it as the <see cref="outputFile"/>
         /// </summary>
         /// <param name="inputFile">The Microsoft Office file</param>
-        /// <param name="outputFolder">The output folder</param>
+        /// <param name="outputFile">The output folder</param>
         /// <returns>List with files or en empty list when there are nog embedded files</returns>
-        /// <exception cref="ArgumentNullException">Raised when the <see cref="inputFile"/> or <see cref="outputFolder"/> is null or empty</exception>
+        /// <exception cref="ArgumentNullException">Raised when the <see cref="inputFile"/> or <see cref="outputFile"/> is null or empty</exception>
         /// <exception cref="FileNotFoundException">Raised when the <see cref="inputFile"/> does not exist</exception>
-        /// <exception cref="DirectoryNotFoundException">Raised when the <see cref="outputFolder"/> does not exists</exception>
+        /// <exception cref="DirectoryNotFoundException">Raised when the path to the <see cref="outputFile"/> does not exists</exception>
         /// <exception cref="OCFileIsCorrupt">Raised when the <see cref="inputFile" /> is corrupt</exception>
         /// <exception cref="OCFileTypeNotSupported">Raised when the <see cref="inputFile"/> is not supported</exception>
         /// <exception cref="OCFileIsPasswordProtected">Raised when the <see cref="inputFile"/> is password protected</exception>
-        public List<string> ConvertToFolder(string inputFile, string outputFolder)
+        public void ConvertToFolder(string inputFile, string outputFile)
         {
-            CheckFileNameAndOutputFolder(inputFile, outputFolder);
+            CheckFileNameAndOutputFolder(inputFile, outputFile);
 
             var extension = Path.GetExtension(inputFile);
             if (extension != null)
                 extension = extension.ToUpperInvariant();
-
-            outputFolder = FileManager.CheckForBackSlash(outputFolder);
 
             switch (extension)
             {
@@ -87,29 +88,23 @@ namespace OfficeConverter
                 //    return ExtractFromOpenDocumentFormat(inputFile, outputFolder);
 
                 case ".DOC":
-                case ".DOT":
-                    // Word 97 - 2003
-                    //return ExtractFromWordBinaryFormat(inputFile, outputFolder);
-
                 case ".DOCM":
                 case ".DOCX":
+                case ".DOT":
                 case ".DOTM":
-                    // Word 2007 - 2013
-                    //return ExtractFromOfficeOpenXmlFormat(inputFile, "/word/embeddings/", outputFolder);
+                    ConvertWord(inputFile, outputFile);
+                    break;
 
                 case ".XLS":
                 case ".XLT":
                 case ".XLW":
-                    // Excel 97 - 2003
-                    //return ExtractFromExcelBinaryFormat(inputFile, outputFolder, "MBD");
-
                 case ".XLSB":
                 case ".XLSM":
                 case ".XLSX":
                 case ".XLTM":
                 case ".XLTX":
-                    // Excel 2007 - 2013
-                    //return ExtractFromOfficeOpenXmlFormat(inputFile, "/xl/embeddings/", outputFolder);
+                    ConvertExcel(inputFile, outputFile);
+                    break;
 
                 case ".POT":
                 case ".PPT":
@@ -134,112 +129,102 @@ namespace OfficeConverter
         }
         #endregion
 
-        public void StartWord()
+        #region Word
+        /// <summary>
+        /// This method will open a Word document and save it as PDF
+        /// </summary>
+        /// <param name="inputFile"></param>
+        /// <param name="outputFolder"></param>
+        /// <returns>The path and filename to the saved PDF</returns>
+        /// <exception cref="OCFileIsPasswordProtected">Raised when the <see cref="inputFile"/> is password protected</exception>
+        /// <exception cref="OCFileIsCorrupt">Raised when the <see cref="inputFile"/> is corrupt</exception>
+        public void ConvertWord(string inputFile, string outputFolder)
         {
-            Word.Application ap = new Word.Application();
+            Word.Application word = null;
+            Word.Document document = null;
 
             try
             {
+                word = new Word.Application();
+                word.ScreenUpdating = false;
+                word.Options.UpdateLinksAtOpen = false;
+                word.Options.ConfirmConversions = false;
+                word.Options.SaveInterval = 0;
+                word.Options.SaveNormalPrompt = false;
+                word.Options.SavePropertiesPrompt = false;
+                word.Options.AllowReadingMode = false;
+                word.Options.WarnBeforeSavingPrintingSendingMarkup = false;
+                word.Options.UpdateFieldsAtPrint = false;
+                word.Options.UpdateLinksAtOpen = false;
+                word.Options.UpdateLinksAtPrint = false;
+                word.DisplayAlerts = Word.WdAlertLevel.wdAlertsNone;
+                word.DisplayDocumentInformationPanel = false;
+                word.DisplayRecentFiles = false;
+                word.DisplayScrollBars = false;
+                word.AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable;
 
-                Word.Document doc = ap.Documents.Open(@"D:\Test.docx", ReadOnly: false, Visible: false);
-                doc.Activate();
+                // Open the Word document
+                document = OpenWordDocument(word, inputFile, false);
+                
+                word.DisplayAutoCompleteTips = false;
+                word.DisplayScreenTips = false;
+                word.DisplayStatusBar = false;
 
-                Word.Selection sel = ap.Selection;
+                //var outputFile = outputFolder + Path.GetTempFileName()
 
-                if (sel != null)
+                // This will lock all form fields in a Word document so that auto fill 
+                // and date/time field do or don't get updated automaticly when saving as PDF
+                if (document.Fields.Count > 0)
                 {
-                    switch (sel.Type)
-                    {
-                        case Word.WdSelectionType.wdSelectionIP:
-                            sel.TypeText(DateTime.Now.ToString());
-                            sel.TypeParagraph();
-                            break;
-
-                        default:
-                            Console.WriteLine("Selection type not handled; no writing done");
-                            break;
-
-                    }
-
-                    // Remove all meta data.
-                    doc.RemoveDocumentInformation(Word.WdRemoveDocInfoType.wdRDIAll);
-
-                    ap.Documents.Save(true, true);
-
-                }
-                else
-                {
-                    Console.WriteLine("Unable to acquire Selection...no writing to document done..");
+                    foreach (Word.Field field in document.Fields)
+                        field.Locked = true;
                 }
 
-                ap.Documents.Close(false, false, false);
+                document.ExportAsFixedFormat(outputFolder, 
+                                             ExportFormat: Word.WdExportFormat.wdExportFormatPDF, 
+                                             OpenAfterExport: false,
+                                             OptimizeFor: Word.WdExportOptimizeFor.wdExportOptimizeForPrint);
 
             }
-            catch (Exception ex)
+            catch (COMException comException)
             {
-                Console.WriteLine("Exception Caught: " + ex.Message); // Could be that the document is already open (/) or Word is in Memory(?)
+                // TODO: Log exceptie
+                throw;
             }
             finally
             {
-                // Ambiguity between method 'Microsoft.Office.Interop.Word._Application.Quit(ref object, ref object, ref object)' and non-method 'Microsoft.Office.Interop.Word.ApplicationEvents4_Event.Quit'. Using method group.
-                // ap.Quit( SaveChanges: false, OriginalFormat: false, RouteDocument: false );
-                ap.Quit(false, false, false);
+                if (document != null)
+                {
+                    document.Saved = true;
+                    document.Close(SaveChanges: false);
+                    Marshal.ReleaseComObject(document);
+                }
 
-                System.Runtime.InteropServices.Marshal.ReleaseComObject(ap);
+                if (word != null)
+                {
+                    word.Quit(SaveChanges: false);
+                    Marshal.ReleaseComObject(word);
+                }
             }
         }
-        
-        #region Word
+
         /// <summary>
-        /// This will lock or unlock all form fields in a Word document so that auto fill 
-        /// and date/time field do or don't get updated automaticly when converting
+        /// This method will open the given <see cref="inputFile"/> and return a <see cref="Word.Document"/> object
         /// </summary>
-        /// <param name="document">The <see cref="Word.Document"/></param>
-        /// <param name="lockField">True to lock or false to unlock</param>
-        private void LockOrUnlockWordDocumentFields(Word._Document document, bool lockField)
-        {
-            // 0 = false, 1  = true
-            document.Fields.Locked = lockField ? 1 : 0;
-        }
-
-        public string ConvertWord(string inputFile)
-        {
-
-            throw new NotImplementedException();    
-        }
-
+        /// <param name="word">The <see cref="Word.Application"/> object</param>
+        /// <param name="inputFile">The file to open</param>
+        /// <param name="repairMode"></param>
+        /// <returns></returns>
+        /// <exception cref="OCFileIsPasswordProtected">Raised when the <see cref="inputFile"/> is password protected</exception>
+        /// <exception cref="OCFileIsCorrupt">Raised when the <see cref="inputFile"/> is corrupt</exception>
         public Word.Document OpenWordDocument(Word.Application word,
-                                         string inputFile,
-                                         bool repairMode)
+                                              string inputFile,
+                                              bool repairMode)
         {
+            Word.Document document;
+
             try
             {
-                // Prevent any macro's from running
-                word.WordBasic.DisableAutoMacros(1);
-
-                // Prevent Word from updating links
-                word.Options.UpdateLinksAtOpen = false;
-
-                // Prevent Word from asking if we want to convert a document to another format
-                word.Options.ConfirmConversions = false;
-
-                // Prevent Word from auto saving
-                word.Options.SaveInterval = 0;
-
-                // Prevent Word from auto saving changed normal.dot(x)
-                word.Options.SaveNormalPrompt = false;
-
-                // Prevent Word from saving changed document properties
-                word.Options.SavePropertiesPrompt = false;
-
-                // Prevent Word from opening document in reading mode
-                word.Options.AllowReadingMode = false;
-
-                // Prevent Word from warning about document changes before saving, printing or sending
-                word.Options.WarnBeforeSavingPrintingSendingMarkup = false;
-
-                Word.Document result;
-
                 var extension = Path.GetExtension(inputFile);
                 if (!string.IsNullOrEmpty(extension))
                     extension = extension.ToUpperInvariant();
@@ -247,70 +232,100 @@ namespace OfficeConverter
                 switch (extension)
                 {
                     case ".TXT":
-                        //http://www.devx.com/dotnet/Article/42590
-                        //result = word.Documents.Open(inputFile, ConfirmConversions: false, ReadOnly: false, AddToRecentFiles: false, false, "dummypassword",  , , , , Word.WdOpenFormat.wdOpenFormatUnicodeText, , , true, , true)
+                        document = word.Documents.Open(inputFile, 
+                                                     ConfirmConversions: false, 
+                                                     ReadOnly: true, 
+                                                     AddToRecentFiles: false, 
+                                                     PasswordDocument: "dummypassword", 
+                                                     Format: Word.WdOpenFormat.wdOpenFormatUnicodeText,
+                                                     OpenAndRepair: true,
+                                                     NoEncodingDialog: true);
                         break;
 
                     default:
-
+                        document = word.Documents.Open(inputFile,
+                                                     ConfirmConversions: false,
+                                                     ReadOnly: true,
+                                                     AddToRecentFiles: false,
+                                                     PasswordDocument: "dummypassword",
+                                                     OpenAndRepair: true,
+                                                     NoEncodingDialog: true);
+                        break;
                 }
             }
             catch (COMException comException)
             {
-                
-                throw;
-            }
-        }
+                // 5408 = password protected
+                if (comException.ErrorCode == 5408)
+                    throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
+                                                        "' is password protected");
+                if (repairMode)
+                    throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' is corrupt");
 
-        private void CloseWordDocument(Microsoft.Office.Interop.Word.Document document)
-        {
-            try
-            {
-                if (document != null)
-                {
-                    document.Saved = true;
-                    document.Close();
-                }
+                document = OpenWordDocument(word, inputFile, true);
             }
-            catch (Exception)
-            {
-                
-                throw;
-            }
+
+            return document;
         }
         #endregion
 
         #region Excel
 
-        public string ConvertExcel(string inputFile)
+        public string ConvertExcel(string inputFile, string outputFile)
         {
             throw new NotImplementedException();
         }
 
-        public Document OpenExcelWorkbook(Microsoft.Office.Interop.Excel.Application Excel,
-            string inputFile,
-            bool repairMode)
+        public Word.Document OpenExcelWorkbook(Excel.Application excel,
+                                               string inputFile,
+                                               bool repairMode)
         {
-            throw new NotImplementedException();
-        }
+            Excel.Workbook workbook;
 
-        private void CloseWordDocument(Document document)
-        {
             try
             {
-                if (document != null)
+                var extension = Path.GetExtension(inputFile);
+                if (!string.IsNullOrEmpty(extension))
+                    extension = extension.ToUpperInvariant();
+
+                switch (extension)
                 {
-                    document.Saved = true;
-                    document.Close();
+                    case ".TXT":
+                        workbook = word.Documents.Open(inputFile,
+                                                     ConfirmConversions: false,
+                                                     ReadOnly: true,
+                                                     AddToRecentFiles: false,
+                                                     PasswordDocument: "dummypassword",
+                                                     Format: Word.WdOpenFormat.wdOpenFormatUnicodeText,
+                                                     OpenAndRepair: true,
+                                                     NoEncodingDialog: true);
+                        break;
+
+                    default:
+                        workbook = word.Documents.Open(inputFile,
+                                                     ConfirmConversions: false,
+                                                     ReadOnly: true,
+                                                     AddToRecentFiles: false,
+                                                     PasswordDocument: "dummypassword",
+                                                     OpenAndRepair: true,
+                                                     NoEncodingDialog: true);
+                        break;
                 }
             }
-            catch (Exception)
+            catch (COMException comException)
             {
+                // 5408 = password protected
+                if (comException.ErrorCode == 5408)
+                    throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
+                                                        "' is password protected");
+                if (repairMode)
+                    throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' is corrupt");
 
-                throw;
+                workbook = OpenWordDocument(word, inputFile, true);
             }
-        }
 
+            return workbook;
+        }
         #endregion
 
     }

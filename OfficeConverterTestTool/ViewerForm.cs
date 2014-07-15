@@ -67,12 +67,11 @@ namespace OfficeConverterTestTool
                     tempFolder = GetTemporaryFolder();
                     _tempFolders.Add(tempFolder);
 
-                    //var extractor = new DocumentServices.Modules.Extractors.OfficeExtractor.Extractor();
-                    //var files = extractor.ExtractToFolder(openFileDialog1.FileName, tempFolder);
+                    var extractor = new OfficeConverter.Converter();
+                    extractor.ConvertToFolder(openFileDialog1.FileName, "d:\\kees.pdf");
                     FilesListBox.Items.Clear();
-
-                    //foreach (var file in files)
-                    //    FilesListBox.Items.Add(file);
+                    MessageBox.Show("Converted");
+                    //FilesListBox.Items.Add(file);
                 }
                 catch (Exception ex)
                 {
