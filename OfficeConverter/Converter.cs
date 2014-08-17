@@ -147,8 +147,16 @@ namespace OfficeConverter
 
             try
             {
-                word = new Word.Application();
-                word.ScreenUpdating = false;
+                word = new Word.Application
+                {
+                    ScreenUpdating = false,
+                    DisplayAlerts = Word.WdAlertLevel.wdAlertsNone,
+                    DisplayDocumentInformationPanel = false,
+                    DisplayRecentFiles = false,
+                    DisplayScrollBars = false,
+                    AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable
+                };
+
                 word.Options.UpdateLinksAtOpen = false;
                 word.Options.ConfirmConversions = false;
                 word.Options.SaveInterval = 0;
@@ -159,11 +167,6 @@ namespace OfficeConverter
                 word.Options.UpdateFieldsAtPrint = false;
                 word.Options.UpdateLinksAtOpen = false;
                 word.Options.UpdateLinksAtPrint = false;
-                word.DisplayAlerts = Word.WdAlertLevel.wdAlertsNone;
-                word.DisplayDocumentInformationPanel = false;
-                word.DisplayRecentFiles = false;
-                word.DisplayScrollBars = false;
-                word.AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable;
 
                 document = OpenWordDocument(word, inputFile, false);
                 
@@ -178,22 +181,26 @@ namespace OfficeConverter
                 if (document != null)
                 {
                     document.Saved = true;
-                    document.Close();
+                    document.Close(false);
+                    Marshal.ReleaseComObject(document);
                 }
 
                 if (word != null)
+                {
                     word.Quit(false);
+                    Marshal.ReleaseComObject(word);
+                }
             }
         }
         #endregion
 
         #region OpenWordDocument
         /// <summary>
-        /// Converts a Word document to PDF format
+        /// Opens the <paramref name="inputFile"/> and returns it as an <see cref="Word.Document"/> object
         /// </summary>
-        /// <param name="word"></param>
-        /// <param name="inputFile"></param>
-        /// <param name="repairMode"></param>
+        /// <param name="word">The <see cref="Word.Application"/></param>
+        /// <param name="inputFile">The file to open</param>
+        /// <param name="repairMode">When true the <paramref name="inputFile"/> is opened in repair mode</param>
         /// <returns></returns>
         private Word.Document OpenWordDocument(Word._Application word,
                                                string inputFile,
@@ -206,22 +213,12 @@ namespace OfficeConverter
                 var extension = Path.GetExtension(inputFile);
 
                 if (extension != null && extension.ToUpperInvariant() == ".TXT")
-                    document = word.Documents.OpenNoRepairDialog(
-                        FileName: inputFile,
-                        ConfirmConversions: false,
-                        ReadOnly: true,
-                        AddToRecentFiles: false,
-                        PasswordDocument: "dummypassword",
+                    document = word.Documents.OpenNoRepairDialog(inputFile, false, true, false, "dummypassword",
                         Format: Word.WdOpenFormat.wdOpenFormatUnicodeText,
                         OpenAndRepair: repairMode,
                         NoEncodingDialog: true);
                 else
-                    document = word.Documents.OpenNoRepairDialog(
-                        FileName: inputFile,
-                        ConfirmConversions: false,
-                        ReadOnly: true,
-                        AddToRecentFiles: false,
-                        PasswordDocument: "dummypassword",
+                    document = word.Documents.OpenNoRepairDialog(inputFile, false, true, false, "dummypassword",
                         OpenAndRepair: repairMode,
                         NoEncodingDialog: true);
 
@@ -248,9 +245,149 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region Excel
+        #region ConvertExcelDocument
+        /// <summary>
+        /// Converts a Excel document to PDF
+        /// </summary>
+        /// <param name="inputFile">The Excel input file</param>
+        /// <param name="outputFile">The PDF output file</param>
+        /// <returns></returns>
+        private void ConvertExcelDocument(string inputFile, string outputFile)
+        {
+            Excel.Application excel = null;
+            Excel.Workbook workbook = null;
 
+            try
+            {
+                excel = new Excel.ApplicationClass
+                {
+                    ScreenUpdating = false,
+                    DisplayAlerts = false,
+                    DisplayDocumentInformationPanel = false,
+                    DisplayRecentFiles = false,
+                    DisplayScrollBars = false,
+                    AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable
+                };
 
+                workbook = OpenExcelWorkbook(excel, inputFile, false);
+                workbook.ExportAsFixedFormat(Excel.XlFixedFormatType.xlTypePDF, outputFile);
+            }
+            finally
+            {
+                if (workbook != null)
+                {
+                    workbook.Saved = true;
+                    workbook.Close(false);
+                    Marshal.ReleaseComObject(workbook);
+                }
+
+                if (excel != null)
+                {
+                    excel.Quit();
+                    Marshal.ReleaseComObject(excel);
+                }
+            }
+        }
+        #endregion
+
+        #region OpenExcelWorkbook
+        /// <summary>
+        /// Returns the seperator that is used in the CSV file. If no seperator is found an empty string is returned
+        /// </summary>
+        /// <param name="inputFile"></param>
+        /// <returns></returns>
+        private string GetCsvSeperator(string inputFile)
+        {
+            using (var streamReader = new StreamReader(inputFile))
+            {
+                var line = string.Empty;
+                while (string.IsNullOrEmpty(line))
+                    line = streamReader.ReadLine();
+
+                if (line.Contains(";")) return ";";
+                if (line.Contains(",")) return ",";
+                if (line.Contains("\t")) return "\t";
+                if (line.Contains(" ")) return " ";
+            }
+
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// Opens the <paramref name="inputFile"/> and returns it as an <see cref="Excel.Workbook"/> object
+        /// </summary>
+        /// <param name="excel">The <see cref="Excel.Application"/></param>
+        /// <param name="inputFile">The file to open</param>
+        /// <param name="repairMode">When true the <paramref name="inputFile"/> is opened in repair mode</param>
+        /// <returns></returns>
+        private Excel.Workbook OpenExcelWorkbook(Excel._Application excel,
+                                                 string inputFile,
+                                                 bool repairMode)
+        {
+            try
+            {
+                Excel.Workbook workbook;
+
+                var extension = Path.GetExtension(inputFile);
+                if (string.IsNullOrWhiteSpace(extension))
+                    extension = string.Empty;
+                    
+                switch (extension.ToUpperInvariant())
+                {
+                    case ".CSV":
+
+                        var seperator = GetCsvSeperator(inputFile);
+
+                        switch (seperator)
+                        {
+                            case ";":
+                                excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing, Excel.XlTextParsingType.xlDelimited,
+                                    Excel.XlTextQualifier.xlTextQualifierNone, Type.Missing, false, true, false, false);
+                                break;
+                            case ",":
+                                excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
+                                    Excel.XlTextParsingType.xlDelimited, Excel.XlTextQualifier.xlTextQualifierNone,
+                                    Type.Missing, false, false, true, false);
+                                break;
+
+                            case "\t":
+                                excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
+                                    Excel.XlTextParsingType.xlDelimited, Excel.XlTextQualifier.xlTextQualifierNone,
+                                    Type.Missing, true, false, false, false);
+                                break;
+
+                            case " ":
+                                excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
+                                    Excel.XlTextParsingType.xlDelimited, Excel.XlTextQualifier.xlTextQualifierNone,
+                                    Type.Missing, false, false, false, true);
+                                break;
+
+                            default:
+                                excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
+                                    Excel.XlTextParsingType.xlDelimited, Excel.XlTextQualifier.xlTextQualifierNone,
+                                    Type.Missing, false, true, false, false);
+                                break;
+                        }
+
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+            catch (COMException comException)
+            {
+                if (comException.ErrorCode == 5408)
+                    throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) + "' is password protected");
+
+                if (repairMode)
+                    throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' seems to be corrupt");
+
+                return OpenExcelWorkbook(excel, inputFile, true);
+            }
+
+            throw new NotImplementedException();
+        }
         #endregion
     }
 }
