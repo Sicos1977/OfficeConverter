@@ -129,6 +129,38 @@ namespace OfficeConverterTest
             new Converter().Convert("TestFiles\\A XLSX excel document with password.xlsx", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
+
+        [TestMethod]
+        public void CsvSemicolonSeparated()
+        {
+            var outputFile = CreateTemporaryFolder() + "\\test.pdf";
+            new Converter().Convert("TestFiles\\Semicolon separated csv.csv", outputFile);
+            Assert.IsTrue(File.Exists(outputFile));
+        }
+
+        [TestMethod]
+        public void CsvCommaSeparated()
+        {
+            var outputFile = CreateTemporaryFolder() + "\\test.pdf";
+            new Converter().Convert("TestFiles\\Comma separated csv.csv", outputFile);
+            Assert.IsTrue(File.Exists(outputFile));
+        }
+
+        [TestMethod]
+        public void CsvSpaceSeparated()
+        {
+            var outputFile = CreateTemporaryFolder() + "\\test.pdf";
+            new Converter().Convert("TestFiles\\Space separated csv.csv", outputFile);
+            Assert.IsTrue(File.Exists(outputFile));
+        }
+
+        [TestMethod]
+        public void CsvTabSeparated()
+        {
+            var outputFile = CreateTemporaryFolder() + "\\test.pdf";
+            new Converter().Convert("TestFiles\\Tab separated csv.csv", outputFile);
+            Assert.IsTrue(File.Exists(outputFile));
+        }
         #endregion
 
         #region Microsoft Office PowerPoint tests
