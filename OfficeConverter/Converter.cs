@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Office.Core;
 using Word = Microsoft.Office.Interop.Word;
@@ -35,6 +36,18 @@ namespace OfficeConverter
     /// </summary>
     public class Converter
     {
+        #region Consts
+        /// <summary>
+        /// Maximum rows on an Excel 2007 or higher worksheet
+        /// </summary>
+        const int ExcelMaxRows = 1048576;
+
+        /// <summary>
+        /// Maximum columns on an Excel 2007 or higher worksheet
+        /// </summary>
+        const int ExcelMaxColumns = 16384;
+        #endregion
+
         #region CheckFileNameAndOutputFolder
         /// <summary>
         /// Checks if the <paramref name="inputFile"/> and the folder where the <paramref name="outputFile"/> is written exists
@@ -77,7 +90,7 @@ namespace OfficeConverter
         /// <exception cref="OCFileIsCorrupt">Raised when the <paramref name="inputFile" /> is corrupt</exception>
         /// <exception cref="OCFileTypeNotSupported">Raised when the <paramref name="inputFile"/> is not supported</exception>
         /// <exception cref="OCFileIsPasswordProtected">Raised when the <paramref name="inputFile"/> is password protected</exception>
-        /// <exception cref="OCFileContainsEmbeddedObjects">Raised when the <paramref name="inputFile"/> contains embedded objects</exception>
+        /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile"/> has to many rows</exception>
         public void Convert(string inputFile, string outputFile)
         {
             CheckFileNameAndOutputFolder(inputFile, outputFile);
@@ -99,16 +112,14 @@ namespace OfficeConverter
                 case ".XLS":
                 case ".XLT":
                 case ".XLW":
-                    // Excel 97 - 2003
-                    //return ExtractFromExcelBinaryFormat(inputFile, outputFolder, "MBD");
-
                 case ".XLSB":
                 case ".XLSM":
                 case ".XLSX":
                 case ".XLTM":
                 case ".XLTX":
-                    // Excel 2007 - 2013
-                    //return ExtractFromOfficeOpenXmlFormat(inputFile, "/xl/embeddings/", outputFolder);
+                case ".CSV":
+                    ConvertExcelDocument(inputFile, outputFile);
+                    break;
 
                 case ".POT":
                 case ".PPT":
@@ -142,19 +153,19 @@ namespace OfficeConverter
         /// <returns></returns>
         private void ConvertWordDocument(string inputFile, string outputFile)
         {
-            Word.Application word = null;
-            Word.Document document = null;
+            Word.ApplicationClass word = null;
+            Word.DocumentClass document = null;
 
             try
             {
-                word = new Word.Application
+                word = new Word.ApplicationClass()
                 {
                     ScreenUpdating = false,
                     DisplayAlerts = Word.WdAlertLevel.wdAlertsNone,
                     DisplayDocumentInformationPanel = false,
                     DisplayRecentFiles = false,
                     DisplayScrollBars = false,
-                    AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable
+                    //AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable
                 };
 
                 word.Options.UpdateLinksAtOpen = false;
@@ -168,7 +179,7 @@ namespace OfficeConverter
                 word.Options.UpdateLinksAtOpen = false;
                 word.Options.UpdateLinksAtPrint = false;
 
-                document = OpenWordDocument(word, inputFile, false);
+                document = (Word.DocumentClass) OpenWordDocument(word, inputFile, false);
                 
                 word.DisplayAutoCompleteTips = false;
                 word.DisplayScreenTips = false;
@@ -181,7 +192,7 @@ namespace OfficeConverter
                 if (document != null)
                 {
                     document.Saved = true;
-                    document.Close(false);
+                    document.Close();
                     Marshal.ReleaseComObject(document);
                 }
 
@@ -202,9 +213,9 @@ namespace OfficeConverter
         /// <param name="inputFile">The file to open</param>
         /// <param name="repairMode">When true the <paramref name="inputFile"/> is opened in repair mode</param>
         /// <returns></returns>
-        private Word.Document OpenWordDocument(Word._Application word,
-                                               string inputFile,
-                                               bool repairMode)
+        private static Word.Document OpenWordDocument(Word._Application word,
+                                                           string inputFile,
+                                                           bool repairMode)
         {
             try
             {
@@ -252,6 +263,7 @@ namespace OfficeConverter
         /// <param name="inputFile">The Excel input file</param>
         /// <param name="outputFile">The PDF output file</param>
         /// <returns></returns>
+        /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile"/> has to many rows</exception>
         private void ConvertExcelDocument(string inputFile, string outputFile)
         {
             Excel.Application excel = null;
@@ -296,7 +308,7 @@ namespace OfficeConverter
         /// </summary>
         /// <param name="inputFile"></param>
         /// <returns></returns>
-        private string GetCsvSeperator(string inputFile)
+        private static string GetCsvSeperator(string inputFile)
         {
             using (var streamReader = new StreamReader(inputFile))
             {
@@ -320,18 +332,22 @@ namespace OfficeConverter
         /// <param name="inputFile">The file to open</param>
         /// <param name="repairMode">When true the <paramref name="inputFile"/> is opened in repair mode</param>
         /// <returns></returns>
+        /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile"/> has to many rows</exception>
         private Excel.Workbook OpenExcelWorkbook(Excel._Application excel,
                                                  string inputFile,
                                                  bool repairMode)
         {
             try
             {
-                Excel.Workbook workbook;
 
                 var extension = Path.GetExtension(inputFile);
                 if (string.IsNullOrWhiteSpace(extension))
                     extension = string.Empty;
-                    
+
+                var count = File.ReadLines(inputFile).Count();
+                if (count > ExcelMaxRows)
+                    throw new OCCsvFileLimitExceeded("The input CSV file has more then " + ExcelMaxRows + " rows");
+
                 switch (extension.ToUpperInvariant())
                 {
                     case ".CSV":
@@ -343,36 +359,46 @@ namespace OfficeConverter
                             case ";":
                                 excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing, Excel.XlTextParsingType.xlDelimited,
                                     Excel.XlTextQualifier.xlTextQualifierNone, Type.Missing, false, true, false, false);
-                                break;
+                                return excel.ActiveWorkbook;
+
                             case ",":
                                 excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
                                     Excel.XlTextParsingType.xlDelimited, Excel.XlTextQualifier.xlTextQualifierNone,
                                     Type.Missing, false, false, true, false);
-                                break;
+                                return excel.ActiveWorkbook;
 
                             case "\t":
                                 excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
                                     Excel.XlTextParsingType.xlDelimited, Excel.XlTextQualifier.xlTextQualifierNone,
                                     Type.Missing, true, false, false, false);
-                                break;
+                                return excel.ActiveWorkbook;
 
                             case " ":
                                 excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
                                     Excel.XlTextParsingType.xlDelimited, Excel.XlTextQualifier.xlTextQualifierNone,
                                     Type.Missing, false, false, false, true);
-                                break;
+                                return excel.ActiveWorkbook;
 
                             default:
                                 excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
                                     Excel.XlTextParsingType.xlDelimited, Excel.XlTextQualifier.xlTextQualifierNone,
                                     Type.Missing, false, true, false, false);
-                                break;
+                                return excel.ActiveWorkbook;
                         }
 
-                        break;
-
                     default:
-                        break;
+
+                        if (repairMode)
+                            return excel.Workbooks.Open(inputFile, false, true,
+                                Password: "dummypassword",
+                                IgnoreReadOnlyRecommended: true,
+                                AddToMru: false,
+                                CorruptLoad: Excel.XlCorruptLoad.xlRepairFile);
+
+                        return excel.Workbooks.Open(inputFile, false, true,
+                            IgnoreReadOnlyRecommended: true,
+                            AddToMru: false);
+
                 }
             }
             catch (COMException comException)
@@ -386,7 +412,6 @@ namespace OfficeConverter
                 return OpenExcelWorkbook(excel, inputFile, true);
             }
 
-            throw new NotImplementedException();
         }
         #endregion
     }

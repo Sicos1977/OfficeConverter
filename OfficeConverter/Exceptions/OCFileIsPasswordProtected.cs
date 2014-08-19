@@ -7,15 +7,15 @@ namespace OfficeConverter.Exceptions
     /// </summary>
     public class OCFileIsPasswordProtected : Exception
     {
-        public OCFileIsPasswordProtected()
+        internal OCFileIsPasswordProtected()
         {
         }
 
-        public OCFileIsPasswordProtected(string message) : base(message)
+        internal OCFileIsPasswordProtected(string message) : base(message)
         {
         }
 
-        public OCFileIsPasswordProtected(string message, Exception inner) : base(message, inner)
+        internal OCFileIsPasswordProtected(string message, Exception inner) : base(message, inner)
         {
         }
     }

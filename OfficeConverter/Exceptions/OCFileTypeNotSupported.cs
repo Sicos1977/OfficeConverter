@@ -7,15 +7,15 @@ namespace OfficeConverter.Exceptions
     /// </summary>
     public class OCFileTypeNotSupported : Exception
     {
-        public OCFileTypeNotSupported()
+        internal OCFileTypeNotSupported()
         {
         }
 
-        public OCFileTypeNotSupported(string message) : base(message)
+        internal OCFileTypeNotSupported(string message) : base(message)
         {
         }
 
-        public OCFileTypeNotSupported(string message, Exception inner) : base(message, inner)
+        internal OCFileTypeNotSupported(string message, Exception inner) : base(message, inner)
         {
         }
     }

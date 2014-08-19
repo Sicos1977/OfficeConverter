@@ -7,15 +7,15 @@ namespace OfficeConverter.Exceptions
     /// </summary>
     public class OCFileIsCorrupt : Exception
     {
-        public OCFileIsCorrupt()
+        internal OCFileIsCorrupt()
         {
         }
 
-        public OCFileIsCorrupt(string message) : base(message)
+        internal OCFileIsCorrupt(string message) : base(message)
         {
         }
 
-        public OCFileIsCorrupt(string message, Exception inner) : base(message, inner)
+        internal OCFileIsCorrupt(string message, Exception inner) : base(message, inner)
         {
         }
     }
