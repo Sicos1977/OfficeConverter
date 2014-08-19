@@ -106,6 +106,7 @@ namespace OfficeConverter
                 case ".DOCM":
                 case ".DOCX":
                 case ".DOTM":
+                case ".ODP":
                     ConvertWordDocument(inputFile, outputFile);
                     break;
 
@@ -118,28 +119,27 @@ namespace OfficeConverter
                 case ".XLTM":
                 case ".XLTX":
                 case ".CSV":
+                case ".ODS":
                     ConvertExcelDocument(inputFile, outputFile);
                     break;
 
                 case ".POT":
                 case ".PPT":
                 case ".PPS":
-                    // PowerPoint 97 - 2003
-                    //return ExtractFromPowerPointBinaryFormat(inputFile, outputFolder);
-
                 case ".POTM":
                 case ".POTX":
                 case ".PPSM":
                 case ".PPSX":
                 case ".PPTM":
                 case ".PPTX":
+                case ".ODT":
                     // PowerPoint 2007 - 2013
                     //return ExtractFromOfficeOpenXmlFormat(inputFile, "/ppt/embeddings/", outputFolder);
 
                 default:
                     throw new OCFileTypeNotSupported("The file '" + Path.GetFileName(inputFile) +
-                                                     "' is not supported, only .DOC, .DOCM, .DOCX, .DOT, .DOTM, .XLS, .XLSB, .XLSM, .XLSX, .XLT, " +
-                                                     ".XLTM, .XLTX, .XLW, .POT, .PPT, .POTM, .POTX, .PPS, .PPSM, .PPSX, .PPTM and .PPTX are supported");
+                                                     "' is not supported, only .DOC, .DOCM, .DOCX, .DOT, .DOTM, .ODP, .XLS, .XLSB, .XLSM, .XLSX, .XLT, " +
+                                                     ".XLTM, .XLTX, .XLW, .ODS, .POT, .PPT, .POTM, .POTX, .PPS, .PPSM, .PPSX, .PPTM, .PPTX and .ODT are supported");
             }
         }
         #endregion
@@ -151,7 +151,7 @@ namespace OfficeConverter
         /// <param name="inputFile">The Word input file</param>
         /// <param name="outputFile">The PDF output file</param>
         /// <returns></returns>
-        private void ConvertWordDocument(string inputFile, string outputFile)
+        private static void ConvertWordDocument(string inputFile, string outputFile)
         {
             Word.ApplicationClass word = null;
             Word.DocumentClass document = null;
@@ -165,7 +165,7 @@ namespace OfficeConverter
                     DisplayDocumentInformationPanel = false,
                     DisplayRecentFiles = false,
                     DisplayScrollBars = false,
-                    //AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable
+                    AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable
                 };
 
                 word.Options.UpdateLinksAtOpen = false;

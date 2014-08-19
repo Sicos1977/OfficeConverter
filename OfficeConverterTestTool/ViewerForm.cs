@@ -50,8 +50,9 @@ namespace OfficeConverterTestTool
             var openFileDialog1 = new OpenFileDialog
             {
                 // ReSharper disable once LocalizableElement
-                Filter = "Microsoft Office files|*.DOC;*.DOCM;*.DOCX;*.DOT;*.DOTM;*.XLS;*.XLSB;*.XLSM;*.XLSX;*.XLT;" +
-                                                     "*.XLTM;*.XLTX;*.XLW;*.CSV;*.POT;*.PPT;*.POTM;*.POTX;*.PPS;*.PPSM;*.PPSX;*.PPTM;*.PPTX",
+                Filter = "Microsoft Office files|*.DOC;*.DOCM;*.DOCX;*.DOT;*.DOTM;*.ODT;*.XLS;*.XLSB;*.XLSM;*.XLSX;*.XLT;" +
+                                                     "*.XLTM;*.XLTX;*.XLW;*.CSV;*.ODS;*.POT;*.PPT;*.POTM;*.POTX;*.PPS;*.PPSM;" +
+                                                     "*.PPSX;*.PPTM;*.PPTX;*.ODT",
                 FilterIndex = 1,
                 Multiselect = false
             };
