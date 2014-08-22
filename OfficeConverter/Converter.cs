@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -24,9 +23,7 @@ using PowerPoint = Microsoft.Office.Interop.PowerPoint;
    limitations under the License.
 */
 
-//http://omegacoder.com/?p=555
 using OfficeConverter.Exceptions;
-using OfficeConverter.Helpers;
 
 namespace OfficeConverter
 {
@@ -42,10 +39,10 @@ namespace OfficeConverter
         /// </summary>
         const int ExcelMaxRows = 1048576;
 
-        /// <summary>
-        /// Maximum columns on an Excel 2007 or higher worksheet
-        /// </summary>
-        const int ExcelMaxColumns = 16384;
+        ///// <summary>
+        ///// Maximum columns on an Excel 2007 or higher worksheet
+        ///// </summary>
+        //const int ExcelMaxColumns = 16384;
         #endregion
 
         #region CheckFileNameAndOutputFolder
@@ -133,8 +130,8 @@ namespace OfficeConverter
                 case ".PPTM":
                 case ".PPTX":
                 case ".ODT":
-                    // PowerPoint 2007 - 2013
-                    //return ExtractFromOfficeOpenXmlFormat(inputFile, "/ppt/embeddings/", outputFolder);
+                    ConvertPowerPointPresentation(inputFile, outputFile);
+                    break;
 
                 default:
                     throw new OCFileTypeNotSupported("The file '" + Path.GetFileName(inputFile) +
@@ -158,7 +155,7 @@ namespace OfficeConverter
 
             try
             {
-                word = new Word.ApplicationClass()
+                word = new Word.ApplicationClass
                 {
                     ScreenUpdating = false,
                     DisplayAlerts = Word.WdAlertLevel.wdAlertsNone,
@@ -412,6 +409,48 @@ namespace OfficeConverter
                 return OpenExcelWorkbook(excel, inputFile, true);
             }
 
+        }
+        #endregion
+
+        #region ConvertPowerPointPresentation
+        /// <summary>
+        /// Converts a PowerPoint document to PDF
+        /// </summary>
+        /// <param name="inputFile">The PowerPoint input file</param>
+        /// <param name="outputFile">The PDF output file</param>
+        /// <returns></returns>
+        private static void ConvertPowerPointPresentation(string inputFile, string outputFile)
+        {
+            PowerPoint.ApplicationClass powerPoint = null;
+            PowerPoint.Presentation presentation = null;
+
+            try
+            {
+                powerPoint = new PowerPoint.ApplicationClass
+                {
+                    DisplayAlerts = PowerPoint.PpAlertLevel.ppAlertsNone,
+                    DisplayDocumentInformationPanel = false,
+                    AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable
+                };
+
+                presentation = powerPoint.Presentations.Open(inputFile, MsoTriState.msoTrue, MsoTriState.msoFalse, MsoTriState.msoFalse);
+                presentation.ExportAsFixedFormat(outputFile, PowerPoint.PpFixedFormatType.ppFixedFormatTypePDF);
+            }
+            finally
+            {
+                if (presentation != null)
+                {
+                    presentation.Saved = MsoTriState.msoFalse;
+                    presentation.Close();
+                    Marshal.ReleaseComObject(presentation);
+                }
+
+                if (powerPoint != null)
+                {
+                    powerPoint.Quit();
+                    Marshal.ReleaseComObject(powerPoint);
+                }
+            }
         }
         #endregion
     }
