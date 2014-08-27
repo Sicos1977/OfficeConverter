@@ -211,8 +211,8 @@ namespace OfficeConverter
         /// <param name="repairMode">When true the <paramref name="inputFile"/> is opened in repair mode</param>
         /// <returns></returns>
         private static Word.Document OpenWordDocument(Word._Application word,
-                                                           string inputFile,
-                                                           bool repairMode)
+                                                      string inputFile,
+                                                      bool repairMode)
         {
             try
             {
@@ -270,14 +270,14 @@ namespace OfficeConverter
             {
                 excel = new Excel.ApplicationClass
                 {
-                    ScreenUpdating = false,
+                    //ScreenUpdating = false,
                     DisplayAlerts = false,
                     DisplayDocumentInformationPanel = false,
                     DisplayRecentFiles = false,
                     DisplayScrollBars = false,
                     AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable
                 };
-
+                excel.Visible = true;
                 workbook = OpenExcelWorkbook(excel, inputFile, false);
                 workbook.ExportAsFixedFormat(Excel.XlFixedFormatType.xlTypePDF, outputFile);
             }
@@ -330,9 +330,9 @@ namespace OfficeConverter
         /// <param name="repairMode">When true the <paramref name="inputFile"/> is opened in repair mode</param>
         /// <returns></returns>
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile"/> has to many rows</exception>
-        private Excel.Workbook OpenExcelWorkbook(Excel._Application excel,
-                                                 string inputFile,
-                                                 bool repairMode)
+        private static Excel.Workbook OpenExcelWorkbook(Excel._Application excel,
+                                                        string inputFile,
+                                                        bool repairMode)
         {
             try
             {
@@ -355,19 +355,19 @@ namespace OfficeConverter
                         {
                             case ";":
                                 excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing, Excel.XlTextParsingType.xlDelimited,
-                                    Excel.XlTextQualifier.xlTextQualifierNone, Type.Missing, false, true, false, false);
+                                    Excel.XlTextQualifier.xlTextQualifierNone, Type.Missing, false, true);
                                 return excel.ActiveWorkbook;
 
                             case ",":
                                 excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
                                     Excel.XlTextParsingType.xlDelimited, Excel.XlTextQualifier.xlTextQualifierNone,
-                                    Type.Missing, false, false, true, false);
+                                    Type.Missing, false, false, true);
                                 return excel.ActiveWorkbook;
 
                             case "\t":
                                 excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
                                     Excel.XlTextParsingType.xlDelimited, Excel.XlTextQualifier.xlTextQualifierNone,
-                                    Type.Missing, true, false, false, false);
+                                    Type.Missing, true);
                                 return excel.ActiveWorkbook;
 
                             case " ":
@@ -379,7 +379,7 @@ namespace OfficeConverter
                             default:
                                 excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
                                     Excel.XlTextParsingType.xlDelimited, Excel.XlTextQualifier.xlTextQualifierNone,
-                                    Type.Missing, false, true, false, false);
+                                    Type.Missing, false, true);
                                 return excel.ActiveWorkbook;
                         }
 
