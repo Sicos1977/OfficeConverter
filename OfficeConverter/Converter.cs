@@ -3,6 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Microsoft.Office.Core;
+using Microsoft.Win32;
+using OfficeConverter.Exceptions;
 using Word = Microsoft.Office.Interop.Word;
 using Excel = Microsoft.Office.Interop.Excel;
 using PowerPoint = Microsoft.Office.Interop.PowerPoint;
@@ -23,8 +25,6 @@ using PowerPoint = Microsoft.Office.Interop.PowerPoint;
    limitations under the License.
 */
 
-using OfficeConverter.Exceptions;
-
 namespace OfficeConverter
 {
     /// <summary>
@@ -33,18 +33,6 @@ namespace OfficeConverter
     /// </summary>
     public class Converter
     {
-        #region Consts
-        /// <summary>
-        /// Maximum rows on an Excel 2007 or higher worksheet
-        /// </summary>
-        const int ExcelMaxRows = 1048576;
-
-        ///// <summary>
-        ///// Maximum columns on an Excel 2007 or higher worksheet
-        ///// </summary>
-        //const int ExcelMaxColumns = 16384;
-        #endregion
-
         #region CheckFileNameAndOutputFolder
         /// <summary>
         /// Checks if the <paramref name="inputFile"/> and the folder where the <paramref name="outputFile"/> is written exists
@@ -255,16 +243,45 @@ namespace OfficeConverter
 
         #region ConvertExcelDocument
         /// <summary>
+        /// Returns the maximum rows Excel supports
+        /// </summary>
+        /// <returns></returns>
+        private static int GetExcelMaxRows()
+        {
+            const int excelMaxRowsFrom2003AndBelow = 65535;
+            const int excelMaxRowsFrom2007AndUp = 1048576;
+
+            var baseKey = Registry.ClassesRoot;
+            var subKey = baseKey.OpenSubKey(@"Excel.Application\CurVer");
+            if (subKey != null)
+            {
+                switch (subKey.GetValue(string.Empty).ToString().ToUpperInvariant())
+                {
+                    case "EXCEL.APPLICATION.11":
+                        return excelMaxRowsFrom2003AndBelow;
+
+                    case "EXCEL.APPLICATION.12":
+                    case "EXCEL.APPLICATION.14":
+                    case "EXCEL.APPLICATION.15":
+                        return excelMaxRowsFrom2007AndUp;
+                }
+            }
+
+            throw new Exception("Could not read registry to check Excel version");
+        }
+
+        /// <summary>
         /// Converts a Excel document to PDF
         /// </summary>
         /// <param name="inputFile">The Excel input file</param>
         /// <param name="outputFile">The PDF output file</param>
         /// <returns></returns>
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile"/> has to many rows</exception>
-        private void ConvertExcelDocument(string inputFile, string outputFile)
+        private static void ConvertExcelDocument(string inputFile, string outputFile)
         {
             Excel.Application excel = null;
             Excel.Workbook workbook = null;
+            string tempFileName = null;
 
             try
             {
@@ -277,9 +294,28 @@ namespace OfficeConverter
                     DisplayScrollBars = false,
                     AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable
                 };
-                excel.Visible = true;
-                workbook = OpenExcelWorkbook(excel, inputFile, false);
+
+                // TODO: Set specific culture 
+                //excel.DecimalSeparator = ci.NumberFormat.NumberDecimalSeparator;
+                //excel.ThousandsSeparator = ci.NumberFormat.NumberGroupSeparator;
+
+
+                var extension = Path.GetExtension(inputFile);
+                if (string.IsNullOrWhiteSpace(extension))
+                    extension = string.Empty;
+
+                if (extension.ToUpperInvariant() == ".CSV")
+                {
+                    // Yes this look somewhat weird but we have to change the extension if we want to handle
+                    // CSV files with different kind of separators. Otherwhise Excel will always overrule whatever
+                    // setting we make to open a file
+                    tempFileName = Path.GetTempFileName() + Guid.NewGuid() + ".txt";
+                    File.Copy(inputFile, tempFileName);
+                }
+
+                workbook = OpenExcelWorkbook(excel, inputFile, extension, false);
                 workbook.ExportAsFixedFormat(Excel.XlFixedFormatType.xlTypePDF, outputFile);
+
             }
             finally
             {
@@ -295,31 +331,40 @@ namespace OfficeConverter
                     excel.Quit();
                     Marshal.ReleaseComObject(excel);
                 }
+
+                if (!string.IsNullOrEmpty(tempFileName) && File.Exists(tempFileName))
+                    File.Delete(tempFileName);
             }
         }
         #endregion
 
         #region OpenExcelWorkbook
         /// <summary>
-        /// Returns the seperator that is used in the CSV file. If no seperator is found an empty string is returned
+        /// Returns the seperator and textqualifier that is used in the CSV file
         /// </summary>
-        /// <param name="inputFile"></param>
+        /// <param name="inputFile">The inputfile</param>
+        /// <param name="separator">The separator that is used</param>
+        /// <param name="textQualifier">The text qualifier</param>
         /// <returns></returns>
-        private static string GetCsvSeperator(string inputFile)
+        private static void GetCsvSeperator(string inputFile, out string separator, out Excel.XlTextQualifier textQualifier)
         {
+            separator = string.Empty;
+            textQualifier = Excel.XlTextQualifier.xlTextQualifierNone;
+            
             using (var streamReader = new StreamReader(inputFile))
             {
                 var line = string.Empty;
                 while (string.IsNullOrEmpty(line))
                     line = streamReader.ReadLine();
 
-                if (line.Contains(";")) return ";";
-                if (line.Contains(",")) return ",";
-                if (line.Contains("\t")) return "\t";
-                if (line.Contains(" ")) return " ";
-            }
+                if (line.Contains(";")) separator = ";";
+                else if (line.Contains(",")) separator = ",";
+                else if (line.Contains("\t")) separator = "\t";
+                else if (line.Contains(" ")) separator = " ";
 
-            return string.Empty;
+                if (line.Contains("\"")) textQualifier = Excel.XlTextQualifier.xlTextQualifierDoubleQuote;
+                else if (line.Contains(",")) textQualifier = Excel.XlTextQualifier.xlTextQualifierSingleQuote;
+            }
         }
 
         /// <summary>
@@ -327,58 +372,62 @@ namespace OfficeConverter
         /// </summary>
         /// <param name="excel">The <see cref="Excel.Application"/></param>
         /// <param name="inputFile">The file to open</param>
+        /// <param name="extension">The file extension</param>
         /// <param name="repairMode">When true the <paramref name="inputFile"/> is opened in repair mode</param>
         /// <returns></returns>
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile"/> has to many rows</exception>
         private static Excel.Workbook OpenExcelWorkbook(Excel._Application excel,
                                                         string inputFile,
+                                                        string extension,
                                                         bool repairMode)
         {
             try
             {
-
-                var extension = Path.GetExtension(inputFile);
-                if (string.IsNullOrWhiteSpace(extension))
-                    extension = string.Empty;
-
-                var count = File.ReadLines(inputFile).Count();
-                if (count > ExcelMaxRows)
-                    throw new OCCsvFileLimitExceeded("The input CSV file has more then " + ExcelMaxRows + " rows");
-
                 switch (extension.ToUpperInvariant())
                 {
                     case ".CSV":
 
-                        var seperator = GetCsvSeperator(inputFile);
+                        var count = File.ReadLines(inputFile).Count();
+                        var excelMaxRows = GetExcelMaxRows();
+                        if (count > excelMaxRows)
+                            throw new OCCsvFileLimitExceeded("The input CSV file has more then " + excelMaxRows +
+                                                             " rows, the installed Excel version supports only " +
+                                                             excelMaxRows + " rows");
 
-                        switch (seperator)
+                        string separator;
+                        Excel.XlTextQualifier textQualifier;
+
+                        GetCsvSeperator(inputFile, out separator, out textQualifier);
+
+                        switch (separator)
                         {
                             case ";":
-                                excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing, Excel.XlTextParsingType.xlDelimited,
-                                    Excel.XlTextQualifier.xlTextQualifierNone, Type.Missing, false, true);
+                                excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
+                                    Excel.XlTextParsingType.xlDelimited,
+                                    textQualifier, true, false, true);
                                 return excel.ActiveWorkbook;
 
                             case ",":
                                 excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
-                                    Excel.XlTextParsingType.xlDelimited, Excel.XlTextQualifier.xlTextQualifierNone,
+                                    Excel.XlTextParsingType.xlDelimited, textQualifier,
                                     Type.Missing, false, false, true);
                                 return excel.ActiveWorkbook;
 
                             case "\t":
                                 excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
-                                    Excel.XlTextParsingType.xlDelimited, Excel.XlTextQualifier.xlTextQualifierNone,
+                                    Excel.XlTextParsingType.xlDelimited, textQualifier,
                                     Type.Missing, true);
                                 return excel.ActiveWorkbook;
 
                             case " ":
                                 excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
-                                    Excel.XlTextParsingType.xlDelimited, Excel.XlTextQualifier.xlTextQualifierNone,
+                                    Excel.XlTextParsingType.xlDelimited, textQualifier,
                                     Type.Missing, false, false, false, true);
                                 return excel.ActiveWorkbook;
 
                             default:
                                 excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
-                                    Excel.XlTextParsingType.xlDelimited, Excel.XlTextQualifier.xlTextQualifierNone,
+                                    Excel.XlTextParsingType.xlDelimited, textQualifier,
                                     Type.Missing, false, true);
                                 return excel.ActiveWorkbook;
                         }
@@ -406,7 +455,7 @@ namespace OfficeConverter
                 if (repairMode)
                     throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' seems to be corrupt");
 
-                return OpenExcelWorkbook(excel, inputFile, true);
+                return OpenExcelWorkbook(excel, inputFile, extension, true);
             }
 
         }
