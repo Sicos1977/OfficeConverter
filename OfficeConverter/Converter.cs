@@ -298,8 +298,7 @@ namespace OfficeConverter
                 // TODO: Set specific culture 
                 //excel.DecimalSeparator = ci.NumberFormat.NumberDecimalSeparator;
                 //excel.ThousandsSeparator = ci.NumberFormat.NumberGroupSeparator;
-
-
+                
                 var extension = Path.GetExtension(inputFile);
                 if (string.IsNullOrWhiteSpace(extension))
                     extension = string.Empty;
@@ -311,6 +310,7 @@ namespace OfficeConverter
                     // setting we make to open a file
                     tempFileName = Path.GetTempFileName() + Guid.NewGuid() + ".txt";
                     File.Copy(inputFile, tempFileName);
+                    inputFile = tempFileName;
                 }
 
                 workbook = OpenExcelWorkbook(excel, inputFile, extension, false);
@@ -482,6 +482,7 @@ namespace OfficeConverter
                     AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable
                 };
 
+                //presentation = powerPoint.ProtectedViewWindows.Open(inputFile, MsoTriState.msoTrue, MsoTriState.msoFalse, MsoTriState.msoFalse);
                 presentation = powerPoint.Presentations.Open(inputFile, MsoTriState.msoTrue, MsoTriState.msoFalse, MsoTriState.msoFalse);
                 presentation.ExportAsFixedFormat(outputFile, PowerPoint.PpFixedFormatType.ppFixedFormatTypePDF);
             }
