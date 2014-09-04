@@ -10,7 +10,7 @@ using Excel = Microsoft.Office.Interop.Excel;
 using PowerPoint = Microsoft.Office.Interop.PowerPoint;
 
 /*
-   Copyright 2013-2014 Kees van Spelde
+   Copyright 2014 Kees van Spelde
 
    Licensed under The Code Project Open License (CPOL) 1.02;
    you may not use this file except in compliance with the License.
@@ -105,7 +105,7 @@ namespace OfficeConverter
                 case ".XLTX":
                 case ".CSV":
                 case ".ODS":
-                    ConvertExcelDocument(inputFile, outputFile);
+                    ConvertExcelSheet(inputFile, outputFile);
                     break;
 
                 case ".POT":
@@ -230,7 +230,7 @@ namespace OfficeConverter
             }
             catch (COMException comException)
             {
-                if (comException.ErrorCode == 5408)
+                if (comException.ErrorCode == -2146822880)
                     throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) + "' is password protected");
 
                 if (repairMode)
@@ -241,7 +241,7 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region ConvertExcelDocument
+        #region ConvertExcelSheet
         /// <summary>
         /// Returns the maximum rows Excel supports
         /// </summary>
@@ -271,13 +271,13 @@ namespace OfficeConverter
         }
 
         /// <summary>
-        /// Converts a Excel document to PDF
+        /// Converts a Excel sheet to PDF
         /// </summary>
         /// <param name="inputFile">The Excel input file</param>
         /// <param name="outputFile">The PDF output file</param>
         /// <returns></returns>
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile"/> has to many rows</exception>
-        private static void ConvertExcelDocument(string inputFile, string outputFile)
+        private static void ConvertExcelSheet(string inputFile, string outputFile)
         {
             Excel.Application excel = null;
             Excel.Workbook workbook = null;
@@ -482,8 +482,7 @@ namespace OfficeConverter
                     AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable
                 };
 
-                //presentation = powerPoint.ProtectedViewWindows.Open(inputFile, MsoTriState.msoTrue, MsoTriState.msoFalse, MsoTriState.msoFalse);
-                presentation = powerPoint.Presentations.Open(inputFile, MsoTriState.msoTrue, MsoTriState.msoFalse, MsoTriState.msoFalse);
+                presentation = OpenPowerPointPresentation(powerPoint, inputFile, false);
                 presentation.ExportAsFixedFormat(outputFile, PowerPoint.PpFixedFormatType.ppFixedFormatTypePDF);
             }
             finally
@@ -500,6 +499,36 @@ namespace OfficeConverter
                     powerPoint.Quit();
                     Marshal.ReleaseComObject(powerPoint);
                 }
+            }
+        }
+        #endregion
+
+        #region OpenPowerPointPresentation
+        /// <summary>
+        /// Opens the <paramref name="inputFile"/> and returns it as an <see cref="PowerPoint.Presentation"/> object
+        /// </summary>
+        /// <param name="powerPoint">The <see cref="PowerPoint.Application"/></param>
+        /// <param name="inputFile">The file to open</param>
+        /// <param name="repairMode">When true the <paramref name="inputFile"/> is opened in repair mode</param>
+        /// <returns></returns>
+        private static PowerPoint.Presentation OpenPowerPointPresentation(PowerPoint._Application powerPoint,
+                                                                          string inputFile,
+                                                                          bool repairMode)
+        {
+            try
+            {
+                var protectedViewWindow = powerPoint.ProtectedViewWindows.Open(inputFile, "dummypassword", repairMode ? MsoTriState.msoTrue : MsoTriState.msoFalse);
+                return protectedViewWindow.Presentation;
+            }
+            catch (COMException comException)
+            {
+                if (comException.ErrorCode == -2147467259)
+                    throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) + "' is password protected");
+
+                if (repairMode)
+                    throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' seems to be corrupt");
+
+                return OpenPowerPointPresentation(powerPoint, inputFile, true);
             }
         }
         #endregion
