@@ -17,7 +17,7 @@ namespace OfficeConverterTest
         public void FileTypeNotSupported()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\filetypenotsupported.txt", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\filetypenotsupported.txt", outputFile);
         }
 
         [TestMethod]
@@ -25,7 +25,7 @@ namespace OfficeConverterTest
         public void FileIsCorrupt()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A corrupt compound document.doc", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A corrupt compound document.doc", outputFile);
         }
 
         #region Microsoft Office Word tests
@@ -33,7 +33,7 @@ namespace OfficeConverterTest
         public void DocWithoutEmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A DOC word document without embedded files.doc", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A DOC word document without embedded files.doc", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -41,7 +41,7 @@ namespace OfficeConverterTest
         public void DocWith7EmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A DOC word document with 7 embedded files.doc", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A DOC word document with 7 embedded files.doc", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -50,7 +50,7 @@ namespace OfficeConverterTest
         public void DocWithPassword()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A DOC word document with password.doc", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A DOC word document with password.doc", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -58,7 +58,7 @@ namespace OfficeConverterTest
         public void DocxWithoutEmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A DOCX word document without embedded files.docx", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A DOCX word document without embedded files.docx", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -66,7 +66,7 @@ namespace OfficeConverterTest
         public void DocxWith7EmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A DOCX word document with 7 embedded files.docx", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A DOCX word document with 7 embedded files.docx", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -75,7 +75,7 @@ namespace OfficeConverterTest
         public void DocxWithPassword()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A DOCX word document with password.docx", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A DOCX word document with password.docx", outputFile);
         }
         #endregion
 
@@ -84,7 +84,7 @@ namespace OfficeConverterTest
         public void XlsWithoutEmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A XLS excel document without embedded files.xls", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A XLS excel document without embedded files.xls", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -92,7 +92,7 @@ namespace OfficeConverterTest
         public void XlsWith2EmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A XLS excel document with 2 embedded files.xls", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A XLS excel document with 2 embedded files.xls", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -101,7 +101,7 @@ namespace OfficeConverterTest
         public void XlsWithPassword()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A XLS excel document with password.xls", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A XLS excel document with password.xls", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -109,7 +109,7 @@ namespace OfficeConverterTest
         public void XlsxWithoutEmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A XLSX excel document without embedded files.xlsx", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A XLSX excel document without embedded files.xlsx", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -117,7 +117,7 @@ namespace OfficeConverterTest
         public void XlsxWith2EmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A XLSX excel document with 2 embedded files.xlsx", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A XLSX excel document with 2 embedded files.xlsx", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -126,7 +126,7 @@ namespace OfficeConverterTest
         public void XlsxWithPassword()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A XLSX excel document with password.xlsx", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A XLSX excel document with password.xlsx", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -134,7 +134,7 @@ namespace OfficeConverterTest
         public void CsvSemicolonSeparated()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\Semicolon separated csv.csv", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\Semicolon separated csv.csv", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -142,7 +142,7 @@ namespace OfficeConverterTest
         public void CsvCommaSeparated()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\Comma separated csv.csv", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\Comma separated csv.csv", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -150,7 +150,7 @@ namespace OfficeConverterTest
         public void CsvSpaceSeparated()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\Space separated csv.csv", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\Space separated csv.csv", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -158,7 +158,7 @@ namespace OfficeConverterTest
         public void CsvTabSeparated()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\Tab separated csv.csv", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\Tab separated csv.csv", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
         #endregion
@@ -168,7 +168,7 @@ namespace OfficeConverterTest
         public void PptWithoutEmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A PPT PowerPoint document without embedded files.ppt", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A PPT PowerPoint document without embedded files.ppt", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -176,7 +176,7 @@ namespace OfficeConverterTest
         public void PptWith3EmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A PPT powerpoint document with 3 embedded files.ppt", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A PPT powerpoint document with 3 embedded files.ppt", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -185,14 +185,14 @@ namespace OfficeConverterTest
         public void PptWithPassword()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A PPT PowerPoint document with password.ppt", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A PPT PowerPoint document with password.ppt", outputFile);
         }
 
         [TestMethod]
         public void PptxWithoutEmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A PPTX PowerPoint document without embedded files.pptx", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A PPTX PowerPoint document without embedded files.pptx", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -200,7 +200,7 @@ namespace OfficeConverterTest
         public void PptxWith3EmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A PPTX powerpoint document with 3 embedded files.pptx", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A PPTX powerpoint document with 3 embedded files.pptx", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -209,7 +209,7 @@ namespace OfficeConverterTest
         public void PptxWithPassword()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\A PPTX PowerPoint document with password.pptx", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\A PPTX PowerPoint document with password.pptx", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
         #endregion
@@ -219,7 +219,7 @@ namespace OfficeConverterTest
         public void OdtWithoutEmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\An ODT document without embedded files.odt", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\An ODT document without embedded files.odt", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -227,7 +227,7 @@ namespace OfficeConverterTest
         public void OdtWith8EmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\An ODT document with 8 embedded files.odt", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\An ODT document with 8 embedded files.odt", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -236,7 +236,7 @@ namespace OfficeConverterTest
         public void OdtWithPassword()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\An ODT document with password.odt", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\An ODT document with password.odt", outputFile);
         }
         #endregion
         
@@ -245,7 +245,7 @@ namespace OfficeConverterTest
         public void OdpWithoutEmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\An ODP document without embedded files.odp", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\An ODP document without embedded files.odp", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -253,7 +253,7 @@ namespace OfficeConverterTest
         public void OdpWith3EmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\An ODP document with 3 embedded files.odp", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\An ODP document with 3 embedded files.odp", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }
 
@@ -262,7 +262,7 @@ namespace OfficeConverterTest
         public void OdpWithPassword()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert("TestFiles\\An ODP document with password.odp", outputFile);
+            new Converter().Convert(GetCurrentDir() + "TestFiles\\An ODP document with password.odp", outputFile);
         }
         #endregion
 
@@ -289,6 +289,14 @@ namespace OfficeConverterTest
             // ReSharper disable once EmptyGeneralCatchClause
             catch (Exception)
             { }
+        }
+
+        private static string GetCurrentDir()
+        {
+            var directoryInfo = Directory.GetParent(Directory.GetCurrentDirectory()).Parent;
+            if (directoryInfo != null)
+                return directoryInfo.FullName + Path.DirectorySeparatorChar;
+            throw new DirectoryNotFoundException();
         }
 
         [TestCleanup]

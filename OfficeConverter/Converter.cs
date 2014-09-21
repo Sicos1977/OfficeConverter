@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using CompoundFileStorage;
+using CompoundFileStorage.Exceptions;
 using Microsoft.Office.Core;
 using Microsoft.Win32;
 using OfficeConverter.Exceptions;
@@ -137,8 +138,12 @@ namespace OfficeConverter
         /// <param name="inputFile">The Word input file</param>
         /// <param name="outputFile">The PDF output file</param>
         /// <returns></returns>
+        /// <exception cref="OCFileIsPasswordProtected">Raised when the <paramref name="inputFile"/> is password protected</exception>
         private static void ConvertWordDocument(string inputFile, string outputFile)
         {
+            if (WordFileIsPasswordProtected(inputFile))
+                throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) + "' is password protected"); 
+            
             Word.ApplicationClass word = null;
             Word.DocumentClass document = null;
 
@@ -191,6 +196,52 @@ namespace OfficeConverter
         }
         #endregion
 
+        #region WordFileIsPasswordProtected
+        /// <summary>
+        /// Returns true when the Word file is password protected
+        /// </summary>
+        /// <param name="inputFile">The Word file to check</param>
+        /// <returns></returns>
+        /// <exception cref="OCFileIsCorrupt">Raised when the file is corrupt</exception>
+        public static bool WordFileIsPasswordProtected(string inputFile)
+        {
+            try
+            {
+                using (var compoundFile = new CompoundFile(inputFile))
+                {
+                    if (!compoundFile.RootStorage.ExistsStream("WordDocument"))
+                        throw new OCFileIsCorrupt("Could not find the WordDocument stream in the file '" + compoundFile.FileName + "'"); 
+                    
+                    if (compoundFile.RootStorage.ExistsStream("EncryptedPackage")) return true;
+                    var stream = compoundFile.RootStorage.GetStream("WordDocument") as CFStream;
+                    if (stream == null) return false;
+
+                    var bytes = stream.GetData();
+                    using (var memoryStream = new MemoryStream(bytes))
+                    using (var binaryReader = new BinaryReader(memoryStream))
+                    {
+                        //http://msdn.microsoft.com/en-us/library/dd944620%28v=office.12%29.aspx
+                        // The bit that shows if the file is encrypted is in the 11th and 12th byte so we 
+                        // need to skip the first 10 bytes
+                        binaryReader.ReadBytes(10);
+
+                        // Now we read the 2 bytes that we need
+                        var pnNext = binaryReader.ReadUInt16();
+                        //(value & mask) == mask)
+
+                        // The bit that tells us if the file is encrypted
+                        return (pnNext & 0x0100) == 0x0100;
+                    }
+                }
+            }
+            catch (CFFileFormatException)
+            {
+                // It seems the file is just a normal Microsoft Office 2007 and up Open XML file
+                return false;
+            }
+        }
+        #endregion
+
         #region OpenWordDocument
         /// <summary>
         /// Opens the <paramref name="inputFile"/> and returns it as an <see cref="Word.Document"/> object
@@ -229,11 +280,8 @@ namespace OfficeConverter
 
                 return document;
             }
-            catch (COMException comException)
+            catch
             {
-                if (comException.ErrorCode == -2146822880)
-                    throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) + "' is password protected");
-
                 if (repairMode)
                     throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' seems to be corrupt");
 
@@ -278,8 +326,12 @@ namespace OfficeConverter
         /// <param name="outputFile">The PDF output file</param>
         /// <returns></returns>
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile"/> has to many rows</exception>
+        /// <exception cref="OCFileIsPasswordProtected">Raised when the <paramref name="inputFile"/> is password protected</exception>
         private static void ConvertExcelSheet(string inputFile, string outputFile)
         {
+            if (ExcelFileIsPasswordProtected(inputFile))
+                throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) + "' is password protected"); 
+
             Excel.Application excel = null;
             Excel.Workbook workbook = null;
             string tempFileName = null;
@@ -335,6 +387,56 @@ namespace OfficeConverter
 
                 if (!string.IsNullOrEmpty(tempFileName) && File.Exists(tempFileName))
                     File.Delete(tempFileName);
+            }
+        }
+        #endregion
+
+        #region ExcelFileIsPasswordProtected
+        /// <summary>
+        /// Returns true when the Excel file is password protected
+        /// </summary>
+        /// <param name="inputFile">The Excel file to check</param>
+        /// <returns></returns>
+        /// <exception cref="OCFileIsCorrupt">Raised when the file is corrupt</exception>
+        public static bool ExcelFileIsPasswordProtected(string inputFile)
+        {
+            try
+            {
+                using (var compoundFile = new CompoundFile(inputFile))
+                {
+                    if (compoundFile.RootStorage.ExistsStream("EncryptedPackage")) return true;
+                    if (!compoundFile.RootStorage.ExistsStream("WorkBook"))
+                        throw new OCFileIsCorrupt("Could not find the WorkBook stream in the file '" +
+                                                  compoundFile.FileName + "'");
+
+                    var stream = compoundFile.RootStorage.GetStream("WorkBook") as CFStream;
+                    if (stream == null) return false;
+
+                    var bytes = stream.GetData();
+                    using (var memoryStream = new MemoryStream(bytes))
+                    using (var binaryReader = new BinaryReader(memoryStream))
+                    {
+                        // Get the record type, at the beginning of the stream this should always be the BOF
+                        var recordType = binaryReader.ReadUInt16();
+
+                        // Something seems to be wrong, we would expect a BOF but for some reason it isn't so stop it
+                        if (recordType != 0x809)
+                            throw new OCFileIsCorrupt("The file '" + Path.GetFileName(compoundFile.FileName) +
+                                                      "' is corrupt");
+
+                        var recordLength = binaryReader.ReadUInt16();
+                        binaryReader.BaseStream.Position += recordLength;
+
+                        // Search after the BOF for the FilePass record, this starts with 2F hex
+                        recordType = binaryReader.ReadUInt16();
+                        return (recordType == 0x2F);
+                    }
+                }
+            }
+            catch (CFFileFormatException)
+            {
+                // It seems the file is just a normal Microsoft Office 2007 and up Open XML file
+                return false;
             }
         }
         #endregion
@@ -469,8 +571,12 @@ namespace OfficeConverter
         /// <param name="inputFile">The PowerPoint input file</param>
         /// <param name="outputFile">The PDF output file</param>
         /// <returns></returns>
+        /// <exception cref="OCFileIsPasswordProtected">Raised when the <paramref name="inputFile"/> is password protected</exception>
         private static void ConvertPowerPointPresentation(string inputFile, string outputFile)
         {
+            if (PowerPointFileIsPasswordProtected(inputFile))
+                throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) + "' is password protected"); 
+            
             PowerPoint.ApplicationClass powerPoint = null;
             PowerPoint.Presentation presentation = null;
 
@@ -504,45 +610,57 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region PowerPointBinaryFormatIsPasswordProtected
+        #region PowerPointFileIsPasswordProtected
         /// <summary>
         /// Returns true when the binary PowerPoint file is password protected
         /// </summary>
-        /// <param name="compoundFile"></param>
+        /// <param name="inputFile">The PowerPoint file to check</param>
         /// <returns></returns>
-        private static bool PowerPointBinaryFormatIsPasswordProtected(CompoundFile compoundFile)
+        private static bool PowerPointFileIsPasswordProtected(string inputFile)
         {
-            if (!compoundFile.RootStorage.ExistsStream("Current User")) return false;
-            var stream = compoundFile.RootStorage.GetStream("Current User") as CFStream;
-            if (stream == null) return false;
-
-            using (var memoryStream = new MemoryStream(stream.GetData()))
-            using (var binaryReader = new BinaryReader(memoryStream))
+            try
             {
-                var verAndInstance = binaryReader.ReadUInt16();
-                // ReSharper disable UnusedVariable
-                // We need to read these fields to get to the correct location in the Current User stream
-                var version = verAndInstance & 0x000FU;         // first 4 bit of field verAndInstance
-                var instance = (verAndInstance & 0xFFF0U) >> 4; // last 12 bit of field verAndInstance
-                var typeCode = binaryReader.ReadUInt16();
-                var size = binaryReader.ReadUInt32();
-                var size1 = binaryReader.ReadUInt32();
-                // ReSharper restore UnusedVariable
-                var headerToken = binaryReader.ReadUInt32();
-
-                switch (headerToken)
+                using (var compoundFile = new CompoundFile(inputFile))
                 {
-                    // Not encrypted
-                    case 0xE391C05F:
-                        return false;
+                    if (compoundFile.RootStorage.ExistsStream("EncryptedPackage")) return true;
+                    if (!compoundFile.RootStorage.ExistsStream("Current User")) return false;
+                    var stream = compoundFile.RootStorage.GetStream("Current User") as CFStream;
+                    if (stream == null) return false;
 
-                    // Encrypted
-                    case 0xF3D1C4DF:
-                        return true;
+                    using (var memoryStream = new MemoryStream(stream.GetData()))
+                    using (var binaryReader = new BinaryReader(memoryStream))
+                    {
+                        var verAndInstance = binaryReader.ReadUInt16();
+                        // ReSharper disable UnusedVariable
+                        // We need to read these fields to get to the correct location in the Current User stream
+                        var version = verAndInstance & 0x000FU; // first 4 bit of field verAndInstance
+                        var instance = (verAndInstance & 0xFFF0U) >> 4; // last 12 bit of field verAndInstance
+                        var typeCode = binaryReader.ReadUInt16();
+                        var size = binaryReader.ReadUInt32();
+                        var size1 = binaryReader.ReadUInt32();
+                        // ReSharper restore UnusedVariable
+                        var headerToken = binaryReader.ReadUInt32();
 
-                    default:
-                        return false;
+                        switch (headerToken)
+                        {
+                            // Not encrypted
+                            case 0xE391C05F:
+                                return false;
+
+                            // Encrypted
+                            case 0xF3D1C4DF:
+                                return true;
+
+                            default:
+                                return false;
+                        }
+                    }
                 }
+            }
+            catch (CFFileFormatException)
+            {
+                // It seems the file is just a normal Microsoft Office 2007 and up Open XML file
+                return false;
             }
         }
         #endregion
@@ -555,22 +673,17 @@ namespace OfficeConverter
         /// <param name="inputFile">The file to open</param>
         /// <param name="repairMode">When true the <paramref name="inputFile"/> is opened in repair mode</param>
         /// <returns></returns>
+        /// <exception cref="OCFileIsCorrupt">Raised when the <paramref name="inputFile"/> is corrupt and can't be opened in repair mode</exception>
         private static PowerPoint.Presentation OpenPowerPointPresentation(PowerPoint._Application powerPoint,
                                                                           string inputFile,
                                                                           bool repairMode)
         {
             try
             {
-                PowerPoint.Presentation presentation = null;
-                presentation = powerPoint.Presentations.Open(inputFile, MsoTriState.msoTrue, MsoTriState.msoTrue, MsoTriState.msoFalse);
-                var protectedViewWindow = powerPoint.ProtectedViewWindows.Open(inputFile, "dummypassword", repairMode ? MsoTriState.msoTrue : MsoTriState.msoFalse);
-                return protectedViewWindow.Presentation;
+                return powerPoint.Presentations.Open(inputFile, MsoTriState.msoTrue, MsoTriState.msoTrue, MsoTriState.msoFalse);
             }
-            catch (COMException comException)
+            catch
             {
-                if (comException.ErrorCode == -2147467259)
-                    throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) + "' is password protected");
-
                 if (repairMode)
                     throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' seems to be corrupt");
 
