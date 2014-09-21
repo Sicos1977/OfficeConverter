@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using CompoundFileStorage;
 using CompoundFileStorage.Exceptions;
+using ICSharpCode.SharpZipLib.Zip;
 using Microsoft.Office.Core;
 using Microsoft.Win32;
 using OfficeConverter.Exceptions;
@@ -93,8 +94,19 @@ namespace OfficeConverter
                 case ".DOCM":
                 case ".DOCX":
                 case ".DOTM":
-                case ".ODP":
-                    ConvertWordDocument(inputFile, outputFile);
+                    if (WordFileIsPasswordProtected(inputFile))
+                        throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
+                                                            "' is password protected");
+
+                    ConvertWithWord(inputFile, outputFile);
+                    break;
+
+                case ".ODT":
+                    if (OpenDocumentFormatIsPasswordProtected(inputFile))
+                        throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
+                                                            "' is password protected");
+
+                    ConvertWithWord(inputFile, outputFile);
                     break;
 
                 case ".XLS":
@@ -105,9 +117,23 @@ namespace OfficeConverter
                 case ".XLSX":
                 case ".XLTM":
                 case ".XLTX":
+                    if (ExcelFileIsPasswordProtected(inputFile))
+                        throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
+                                                            "' is password protected"); 
+
+                    ConvertWithExcel(inputFile, outputFile);
+                    break;
+                
                 case ".CSV":
+                    ConvertWithExcel(inputFile, outputFile);
+                    break;
+
                 case ".ODS":
-                    ConvertExcelSheet(inputFile, outputFile);
+                    if (OpenDocumentFormatIsPasswordProtected(inputFile))
+                        throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
+                                                            "' is password protected");
+
+                    ConvertWithExcel(inputFile, outputFile);
                     break;
 
                 case ".POT":
@@ -119,31 +145,68 @@ namespace OfficeConverter
                 case ".PPSX":
                 case ".PPTM":
                 case ".PPTX":
-                case ".ODT":
-                    ConvertPowerPointPresentation(inputFile, outputFile);
+                    if (PowerPointFileIsPasswordProtected(inputFile))
+                        throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) + "' is password protected"); 
+            
+                    ConvertWithPowerPoint(inputFile, outputFile);
+                    break;
+
+                case ".ODP":
+                    if (OpenDocumentFormatIsPasswordProtected(inputFile))
+                        throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
+                                                            "' is password protected");
+
+                    ConvertWithPowerPoint(inputFile, outputFile);
                     break;
 
                 default:
                     throw new OCFileTypeNotSupported("The file '" + Path.GetFileName(inputFile) +
-                                                     "' is not supported, only .DOC, .DOCM, .DOCX, .DOT, .DOTM, .ODP, .XLS, .XLSB, .XLSM, .XLSX, .XLT, " +
-                                                     ".XLTM, .XLTX, .XLW, .ODS, .POT, .PPT, .POTM, .POTX, .PPS, .PPSM, .PPSX, .PPTM, .PPTX and .ODT are supported");
+                                                     "' is not supported, only .DOC, .DOCM, .DOCX, .DOT, .DOTM, .ODT, .XLS, .XLSB, .XLSM, .XLSX, .XLT, " +
+                                                     ".XLTM, .XLTX, .XLW, .ODS, .POT, .PPT, .POTM, .POTX, .PPS, .PPSM, .PPSX, .PPTM, .PPTX and .ODP are supported");
             }
         }
         #endregion
 
-        #region ConvertWordDocument
+        #region ExtractFromOpenDocumentFormat
+        /// <summary>
+        /// Returns true when the <paramref name="inputFile"/> is password protected
+        /// </summary>
+        /// <param name="inputFile">The OpenDocument format file</param>
+        public bool OpenDocumentFormatIsPasswordProtected(string inputFile)
+        {
+            var zipFile = new ZipFile(inputFile);
+
+            // Check if the file is password protected
+            var manifestEntry = zipFile.FindEntry("META-INF/manifest.xml", true);
+            if (manifestEntry != -1)
+            {
+                using (var manifestEntryStream = zipFile.GetInputStream(manifestEntry))
+                using (var manifestEntryMemoryStream = new MemoryStream())
+                {
+                    manifestEntryStream.CopyTo(manifestEntryMemoryStream);
+                    manifestEntryMemoryStream.Position = 0;
+                    using (var streamReader = new StreamReader(manifestEntryMemoryStream))
+                    {
+                        var manifest = streamReader.ReadToEnd();
+                        if (manifest.ToUpperInvariant().Contains("ENCRYPTION-DATA"))
+                            return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+        #endregion
+
+        #region ConvertWithWord
         /// <summary>
         /// Converts a Word document to PDF
         /// </summary>
         /// <param name="inputFile">The Word input file</param>
         /// <param name="outputFile">The PDF output file</param>
         /// <returns></returns>
-        /// <exception cref="OCFileIsPasswordProtected">Raised when the <paramref name="inputFile"/> is password protected</exception>
-        private static void ConvertWordDocument(string inputFile, string outputFile)
+        private static void ConvertWithWord(string inputFile, string outputFile)
         {
-            if (WordFileIsPasswordProtected(inputFile))
-                throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) + "' is password protected"); 
-            
             Word.ApplicationClass word = null;
             Word.DocumentClass document = null;
 
@@ -170,7 +233,7 @@ namespace OfficeConverter
                 word.Options.UpdateLinksAtOpen = false;
                 word.Options.UpdateLinksAtPrint = false;
 
-                document = (Word.DocumentClass) OpenWordDocument(word, inputFile, false);
+                document = (Word.DocumentClass) OpenWordFile(word, inputFile, false);
                 
                 word.DisplayAutoCompleteTips = false;
                 word.DisplayScreenTips = false;
@@ -209,10 +272,10 @@ namespace OfficeConverter
             {
                 using (var compoundFile = new CompoundFile(inputFile))
                 {
+                    if (compoundFile.RootStorage.ExistsStream("EncryptedPackage")) return true; 
                     if (!compoundFile.RootStorage.ExistsStream("WordDocument"))
                         throw new OCFileIsCorrupt("Could not find the WordDocument stream in the file '" + compoundFile.FileName + "'"); 
                     
-                    if (compoundFile.RootStorage.ExistsStream("EncryptedPackage")) return true;
                     var stream = compoundFile.RootStorage.GetStream("WordDocument") as CFStream;
                     if (stream == null) return false;
 
@@ -242,7 +305,7 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region OpenWordDocument
+        #region OpenWordFile
         /// <summary>
         /// Opens the <paramref name="inputFile"/> and returns it as an <see cref="Word.Document"/> object
         /// </summary>
@@ -250,9 +313,9 @@ namespace OfficeConverter
         /// <param name="inputFile">The file to open</param>
         /// <param name="repairMode">When true the <paramref name="inputFile"/> is opened in repair mode</param>
         /// <returns></returns>
-        private static Word.Document OpenWordDocument(Word._Application word,
-                                                      string inputFile,
-                                                      bool repairMode)
+        private static Word.Document OpenWordFile(Word._Application word,
+                                                  string inputFile,
+                                                  bool repairMode)
         {
             try
             {
@@ -285,12 +348,12 @@ namespace OfficeConverter
                 if (repairMode)
                     throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' seems to be corrupt");
 
-                return OpenWordDocument(word, inputFile, true);
+                return OpenWordFile(word, inputFile, true);
             }
         }
         #endregion
 
-        #region ConvertExcelSheet
+        #region ConvertWithExcel
         /// <summary>
         /// Returns the maximum rows Excel supports
         /// </summary>
@@ -326,12 +389,8 @@ namespace OfficeConverter
         /// <param name="outputFile">The PDF output file</param>
         /// <returns></returns>
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile"/> has to many rows</exception>
-        /// <exception cref="OCFileIsPasswordProtected">Raised when the <paramref name="inputFile"/> is password protected</exception>
-        private static void ConvertExcelSheet(string inputFile, string outputFile)
+        private static void ConvertWithExcel(string inputFile, string outputFile)
         {
-            if (ExcelFileIsPasswordProtected(inputFile))
-                throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) + "' is password protected"); 
-
             Excel.Application excel = null;
             Excel.Workbook workbook = null;
             string tempFileName = null;
@@ -366,7 +425,7 @@ namespace OfficeConverter
                     inputFile = tempFileName;
                 }
 
-                workbook = OpenExcelWorkbook(excel, inputFile, extension, false);
+                workbook = OpenExcelFile(excel, inputFile, extension, false);
                 workbook.ExportAsFixedFormat(Excel.XlFixedFormatType.xlTypePDF, outputFile);
 
             }
@@ -441,7 +500,7 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region OpenExcelWorkbook
+        #region OpenExcelFile
         /// <summary>
         /// Returns the seperator and textqualifier that is used in the CSV file
         /// </summary>
@@ -479,10 +538,10 @@ namespace OfficeConverter
         /// <param name="repairMode">When true the <paramref name="inputFile"/> is opened in repair mode</param>
         /// <returns></returns>
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile"/> has to many rows</exception>
-        private static Excel.Workbook OpenExcelWorkbook(Excel._Application excel,
-                                                        string inputFile,
-                                                        string extension,
-                                                        bool repairMode)
+        private static Excel.Workbook OpenExcelFile(Excel._Application excel,
+                                                    string inputFile,
+                                                    string extension,
+                                                    bool repairMode)
         {
             try
             {
@@ -558,25 +617,21 @@ namespace OfficeConverter
                 if (repairMode)
                     throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' seems to be corrupt");
 
-                return OpenExcelWorkbook(excel, inputFile, extension, true);
+                return OpenExcelFile(excel, inputFile, extension, true);
             }
 
         }
         #endregion
 
-        #region ConvertPowerPointPresentation
+        #region ConvertWithPowerPoint
         /// <summary>
         /// Converts a PowerPoint document to PDF
         /// </summary>
         /// <param name="inputFile">The PowerPoint input file</param>
         /// <param name="outputFile">The PDF output file</param>
         /// <returns></returns>
-        /// <exception cref="OCFileIsPasswordProtected">Raised when the <paramref name="inputFile"/> is password protected</exception>
-        private static void ConvertPowerPointPresentation(string inputFile, string outputFile)
+        private static void ConvertWithPowerPoint(string inputFile, string outputFile)
         {
-            if (PowerPointFileIsPasswordProtected(inputFile))
-                throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) + "' is password protected"); 
-            
             PowerPoint.ApplicationClass powerPoint = null;
             PowerPoint.Presentation presentation = null;
 
@@ -589,7 +644,7 @@ namespace OfficeConverter
                     AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable
                 };
                 
-                presentation = OpenPowerPointPresentation(powerPoint, inputFile, false);
+                presentation = OpenPowerPointFile(powerPoint, inputFile, false);
                 presentation.ExportAsFixedFormat(outputFile, PowerPoint.PpFixedFormatType.ppFixedFormatTypePDF);
             }
             finally
@@ -665,7 +720,7 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region OpenPowerPointPresentation
+        #region OpenPowerPointFile
         /// <summary>
         /// Opens the <paramref name="inputFile"/> and returns it as an <see cref="PowerPoint.Presentation"/> object
         /// </summary>
@@ -674,9 +729,9 @@ namespace OfficeConverter
         /// <param name="repairMode">When true the <paramref name="inputFile"/> is opened in repair mode</param>
         /// <returns></returns>
         /// <exception cref="OCFileIsCorrupt">Raised when the <paramref name="inputFile"/> is corrupt and can't be opened in repair mode</exception>
-        private static PowerPoint.Presentation OpenPowerPointPresentation(PowerPoint._Application powerPoint,
-                                                                          string inputFile,
-                                                                          bool repairMode)
+        private static PowerPoint.Presentation OpenPowerPointFile(PowerPoint._Application powerPoint,
+                                                                  string inputFile,
+                                                                  bool repairMode)
         {
             try
             {
@@ -687,7 +742,7 @@ namespace OfficeConverter
                 if (repairMode)
                     throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' seems to be corrupt");
 
-                return OpenPowerPointPresentation(powerPoint, inputFile, true);
+                return OpenPowerPointFile(powerPoint, inputFile, true);
             }
         }
         #endregion
