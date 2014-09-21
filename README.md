@@ -3,8 +3,9 @@ OfficeConverter
 
 Convert Microsoft Office document to PDF (Office 2007 - 2013)
 
-- 2014-07-13 Version 1.0 Beta
-  - Work in progress... setting up new project
+- 2014-09-21 Version 1.0
+  - Converts .DOC, .DOCM, .DOCX, .DOT, .DOTM, .ODT, .XLS, .XLSB, .XLSM, .XLSX, .XLT, .XLTM, .XLTX, .XLW, .ODS, .POT, .PPT, .POTM, .POTX, .PPS, .PPSM, .PPSX, .PPTM, .PPTX and .ODP files to PDF with the use of Microsoft Office
+  - Checks if the files are password protected without using Microsoft Office to speed up conversion
 
 
 License
