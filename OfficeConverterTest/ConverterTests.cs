@@ -32,7 +32,7 @@ namespace OfficeConverterTest
         [TestMethod]
         public void DocWithoutEmbeddedFiles()
         {
-           var outputFile = CreateTemporaryFolder() + "\\test.pdf";
+            var outputFile = CreateTemporaryFolder() + "\\test.pdf";
             new Converter().Convert("TestFiles\\A DOC word document without embedded files.doc", outputFile);
             Assert.IsTrue(File.Exists(outputFile));
         }

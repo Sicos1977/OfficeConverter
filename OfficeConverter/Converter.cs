@@ -2,6 +2,7 @@
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using CompoundFileStorage;
 using Microsoft.Office.Core;
 using Microsoft.Win32;
 using OfficeConverter.Exceptions;
@@ -481,7 +482,7 @@ namespace OfficeConverter
                     DisplayDocumentInformationPanel = false,
                     AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable
                 };
-
+                
                 presentation = OpenPowerPointPresentation(powerPoint, inputFile, false);
                 presentation.ExportAsFixedFormat(outputFile, PowerPoint.PpFixedFormatType.ppFixedFormatTypePDF);
             }
@@ -503,6 +504,49 @@ namespace OfficeConverter
         }
         #endregion
 
+        #region PowerPointBinaryFormatIsPasswordProtected
+        /// <summary>
+        /// Returns true when the binary PowerPoint file is password protected
+        /// </summary>
+        /// <param name="compoundFile"></param>
+        /// <returns></returns>
+        private static bool PowerPointBinaryFormatIsPasswordProtected(CompoundFile compoundFile)
+        {
+            if (!compoundFile.RootStorage.ExistsStream("Current User")) return false;
+            var stream = compoundFile.RootStorage.GetStream("Current User") as CFStream;
+            if (stream == null) return false;
+
+            using (var memoryStream = new MemoryStream(stream.GetData()))
+            using (var binaryReader = new BinaryReader(memoryStream))
+            {
+                var verAndInstance = binaryReader.ReadUInt16();
+                // ReSharper disable UnusedVariable
+                // We need to read these fields to get to the correct location in the Current User stream
+                var version = verAndInstance & 0x000FU;         // first 4 bit of field verAndInstance
+                var instance = (verAndInstance & 0xFFF0U) >> 4; // last 12 bit of field verAndInstance
+                var typeCode = binaryReader.ReadUInt16();
+                var size = binaryReader.ReadUInt32();
+                var size1 = binaryReader.ReadUInt32();
+                // ReSharper restore UnusedVariable
+                var headerToken = binaryReader.ReadUInt32();
+
+                switch (headerToken)
+                {
+                    // Not encrypted
+                    case 0xE391C05F:
+                        return false;
+
+                    // Encrypted
+                    case 0xF3D1C4DF:
+                        return true;
+
+                    default:
+                        return false;
+                }
+            }
+        }
+        #endregion
+
         #region OpenPowerPointPresentation
         /// <summary>
         /// Opens the <paramref name="inputFile"/> and returns it as an <see cref="PowerPoint.Presentation"/> object
@@ -517,6 +561,8 @@ namespace OfficeConverter
         {
             try
             {
+                PowerPoint.Presentation presentation = null;
+                presentation = powerPoint.Presentations.Open(inputFile, MsoTriState.msoTrue, MsoTriState.msoTrue, MsoTriState.msoFalse);
                 var protectedViewWindow = powerPoint.ProtectedViewWindows.Open(inputFile, "dummypassword", repairMode ? MsoTriState.msoTrue : MsoTriState.msoFalse);
                 return protectedViewWindow.Presentation;
             }
