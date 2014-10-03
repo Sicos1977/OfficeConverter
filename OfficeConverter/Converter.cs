@@ -30,12 +30,48 @@ using PowerPoint = Microsoft.Office.Interop.PowerPoint;
 
 namespace OfficeConverter
 {
+    #region Interface IReader
+    /// <summary>
+    /// Interface to make Reader class COM exposable
+    /// </summary>
+    public interface IConverter
+    {
+        /// <summary>
+        /// Converts the <paramref name="inputFile"/> to PDF and saves it as the <paramref name="outputFile"/>
+        /// </summary>
+        /// <param name="inputFile">The Microsoft Office file</param>
+        /// <param name="outputFile">The output file with full path</param>
+        /// <returns>Returns true when the conversion is succesfull, false is retournerd when an exception occurred. 
+        /// The exception can be retrieved with the <see cref="GetErrorMessage"/> method</returns>
+        [DispId(1)]
+        bool ConvertFromCom(string inputFile, string outputFile);
+
+        /// <summary>
+        /// Get the last know error message. When the string is empty there are no errors
+        /// </summary>
+        /// <returns></returns>
+        [DispId(2)]
+        string GetErrorMessage();
+    }
+    #endregion
+
     /// <summary>
     /// With this class an Microsoft Office document can be converted to PDF format. Microsoft Office 2007 
     /// (with PDF export plugin) or higher is needed.
     /// </summary>
-    public class Converter
+    [Guid("4F474ED1-70C5-47D4-8EEF-CDB3E1149455")]
+    [ComVisible(true)]
+    public class Converter : IConverter
     {
+        #region Fields
+        /// <summary>
+        /// Contains an error message when something goes wrong in the <see cref="ConvertFromCom"/> method.
+        /// This message can be retreived with the GetErrorMessage. This way we keep .NET exceptions inside
+        /// when this code is called from a COM language
+        /// </summary>
+        private string _errorMessage;
+        #endregion
+
         #region CheckFileNameAndOutputFolder
         /// <summary>
         /// Checks if the <paramref name="inputFile"/> and the folder where the <paramref name="outputFile"/> is written exists
@@ -67,6 +103,28 @@ namespace OfficeConverter
         #endregion
 
         #region Convert
+        /// <summary>
+        /// Converts the <paramref name="inputFile"/> to PDF and saves it as the <paramref name="outputFile"/>
+        /// </summary>
+        /// <param name="inputFile">The Microsoft Office file</param>
+        /// <param name="outputFile">The output file with full path</param>
+        /// <returns>Returns true when the conversion is succesfull, false is retournerd when an exception occurred. 
+        /// The exception can be retrieved with the <see cref="GetErrorMessage"/> method</returns>
+        public bool ConvertFromCom(string inputFile, string outputFile)
+        {
+            try
+            {
+                _errorMessage = string.Empty;
+                Convert(inputFile, outputFile);
+                return true;
+            }
+            catch (Exception exception)
+            {
+                _errorMessage = Helpers.ExceptionHelpers.GetInnerException(exception);
+                return false;
+            }
+        }
+
         /// <summary>
         /// Converts the <paramref name="inputFile"/> to PDF and saves it as the <paramref name="outputFile"/>
         /// </summary>
@@ -164,6 +222,17 @@ namespace OfficeConverter
                                                      "' is not supported, only .DOC, .DOCM, .DOCX, .DOT, .DOTM, .ODT, .XLS, .XLSB, .XLSM, .XLSX, .XLT, " +
                                                      ".XLTM, .XLTX, .XLW, .ODS, .POT, .PPT, .POTM, .POTX, .PPS, .PPSM, .PPSX, .PPTM, .PPTX and .ODP are supported");
             }
+        }
+        #endregion
+
+        #region GetErrorMessage
+        /// <summary>
+        /// Get the last know error message. When the string is empty there are no errors
+        /// </summary>
+        /// <returns></returns>
+        public string GetErrorMessage()
+        {
+            return _errorMessage;
         }
         #endregion
 
