@@ -8,6 +8,7 @@ using ICSharpCode.SharpZipLib.Zip;
 using Microsoft.Office.Core;
 using Microsoft.Win32;
 using OfficeConverter.Exceptions;
+using OfficeConverter.Helpers;
 using Word = Microsoft.Office.Interop.Word;
 using Excel = Microsoft.Office.Interop.Excel;
 using PowerPoint = Microsoft.Office.Interop.PowerPoint;
@@ -412,10 +413,12 @@ namespace OfficeConverter
 
                 return document;
             }
-            catch
+            catch (Exception exception)
             {
                 if (repairMode)
-                    throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' seems to be corrupt");
+                    throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) +
+                                              "' seems to be corrupt, error: " +
+                                              Helpers.ExceptionHelpers.GetInnerException(exception));
 
                 return OpenWordFile(word, inputFile, true);
             }
@@ -423,6 +426,46 @@ namespace OfficeConverter
         #endregion
 
         #region ConvertWithExcel
+        /// <summary>
+        /// If you want to run this code on a server the following folders must exists, if they don't
+        /// then you can't use Excel to convert files to PDF
+        /// </summary>
+        private static void CheckIfSystemProfileDesktopDirectoryExists()
+        {
+            if (Environment.Is64BitOperatingSystem)
+            {
+                var x64DesktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+                    @"SysWOW64\config\systemprofile\desktop");
+                if (!Directory.Exists(x64DesktopPath))
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(x64DesktopPath);
+                    }
+                    catch (Exception exception)
+                    {
+                        throw new IOException("Can't create directory '" + x64DesktopPath + "', error: " +
+                                              ExceptionHelpers.GetInnerException(exception));
+                    }
+                }
+            }
+
+            var x86DesktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows),
+                @"System32\config\systemprofile\desktop");
+            if (!Directory.Exists(x86DesktopPath))
+            {
+                try
+                {
+                    Directory.CreateDirectory(x86DesktopPath);
+                }
+                catch (Exception exception)
+                {
+                    throw new IOException("Can't create directory '" + x86DesktopPath + "', error: " +
+                                          ExceptionHelpers.GetInnerException(exception));
+                }
+            }
+        }
+
         /// <summary>
         /// Returns the maximum rows Excel supports
         /// </summary>
@@ -460,6 +503,8 @@ namespace OfficeConverter
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile"/> has to many rows</exception>
         private static void ConvertWithExcel(string inputFile, string outputFile)
         {
+            CheckIfSystemProfileDesktopDirectoryExists();
+
             Excel.Application excel = null;
             Excel.Workbook workbook = null;
             string tempFileName = null;
@@ -678,17 +723,15 @@ namespace OfficeConverter
 
                 }
             }
-            catch (COMException comException)
+            catch (Exception exception)
             {
-                if (comException.ErrorCode == 5408)
-                    throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) + "' is password protected");
-
                 if (repairMode)
-                    throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' seems to be corrupt");
+                    throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) +
+                                              "' seems to be corrupt, error: " +
+                                              Helpers.ExceptionHelpers.GetInnerException(exception));
 
                 return OpenExcelFile(excel, inputFile, extension, true);
             }
-
         }
         #endregion
 
@@ -806,10 +849,10 @@ namespace OfficeConverter
             {
                 return powerPoint.Presentations.Open(inputFile, MsoTriState.msoTrue, MsoTriState.msoTrue, MsoTriState.msoFalse);
             }
-            catch
+            catch (Exception exception)
             {
                 if (repairMode)
-                    throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' seems to be corrupt");
+                    throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' seems to be corrupt, error: " + Helpers.ExceptionHelpers.GetInnerException(exception));
 
                 return OpenPowerPointFile(powerPoint, inputFile, true);
             }
