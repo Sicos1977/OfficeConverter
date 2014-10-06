@@ -121,7 +121,7 @@ namespace OfficeConverter
             }
             catch (Exception exception)
             {
-                _errorMessage = Helpers.ExceptionHelpers.GetInnerException(exception);
+                _errorMessage = ExceptionHelpers.GetInnerException(exception);
                 return false;
             }
         }
@@ -165,6 +165,10 @@ namespace OfficeConverter
                         throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
                                                             "' is password protected");
 
+                    ConvertWithWord(inputFile, outputFile);
+                    break;
+
+                case ".RTF":
                     ConvertWithWord(inputFile, outputFile);
                     break;
 
@@ -220,7 +224,7 @@ namespace OfficeConverter
 
                 default:
                     throw new OCFileTypeNotSupported("The file '" + Path.GetFileName(inputFile) +
-                                                     "' is not supported, only .DOC, .DOCM, .DOCX, .DOT, .DOTM, .ODT, .XLS, .XLSB, .XLSM, .XLSX, .XLT, " +
+                                                     "' is not supported, only .DOC, .DOCM, .DOCX, .DOT, .DOTM, .RTF, .ODT, .XLS, .XLSB, .XLSM, .XLSX, .XLT, " +
                                                      ".XLTM, .XLTX, .XLW, .ODS, .POT, .PPT, .POTM, .POTX, .PPS, .PPSM, .PPSX, .PPTM, .PPTX and .ODP are supported");
             }
         }
@@ -418,7 +422,7 @@ namespace OfficeConverter
                 if (repairMode)
                     throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) +
                                               "' seems to be corrupt, error: " +
-                                              Helpers.ExceptionHelpers.GetInnerException(exception));
+                                              ExceptionHelpers.GetInnerException(exception));
 
                 return OpenWordFile(word, inputFile, true);
             }
@@ -728,7 +732,7 @@ namespace OfficeConverter
                 if (repairMode)
                     throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) +
                                               "' seems to be corrupt, error: " +
-                                              Helpers.ExceptionHelpers.GetInnerException(exception));
+                                              ExceptionHelpers.GetInnerException(exception));
 
                 return OpenExcelFile(excel, inputFile, extension, true);
             }
@@ -852,7 +856,7 @@ namespace OfficeConverter
             catch (Exception exception)
             {
                 if (repairMode)
-                    throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' seems to be corrupt, error: " + Helpers.ExceptionHelpers.GetInnerException(exception));
+                    throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' seems to be corrupt, error: " + ExceptionHelpers.GetInnerException(exception));
 
                 return OpenPowerPointFile(powerPoint, inputFile, true);
             }
