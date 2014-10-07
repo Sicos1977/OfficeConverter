@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 using CompoundFileStorage;
 using CompoundFileStorage.Exceptions;
 using ICSharpCode.SharpZipLib.Zip;
@@ -513,6 +515,10 @@ namespace OfficeConverter
             Excel.Workbook workbook = null;
             string tempFileName = null;
 
+            // For Excel to work correctly through interop we need a thread that is set to the en-US culture
+            var currentCulture = Thread.CurrentThread.CurrentCulture;
+            Thread.CurrentThread.CurrentCulture = new CultureInfo("en-US");
+
             try
             {
                 excel = new Excel.ApplicationClass
@@ -549,6 +555,9 @@ namespace OfficeConverter
             }
             finally
             {
+                // Reset the thread to it's previous culture
+                Thread.CurrentThread.CurrentCulture = currentCulture; 
+                
                 if (workbook != null)
                 {
                     workbook.Saved = true;
