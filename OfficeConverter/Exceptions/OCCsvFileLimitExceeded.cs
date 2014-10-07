@@ -7,16 +7,10 @@ namespace OfficeConverter.Exceptions
     /// </summary>
     public class OCCsvFileLimitExceeded : Exception
     {
-        internal OCCsvFileLimitExceeded()
-        {
-        }
+        internal OCCsvFileLimitExceeded() {}
 
-        internal OCCsvFileLimitExceeded(string message) : base(message)
-        {
-        }
+        internal OCCsvFileLimitExceeded(string message) : base(message) {}
 
-        internal OCCsvFileLimitExceeded(string message, Exception inner) : base(message, inner)
-        {
-        }
+        internal OCCsvFileLimitExceeded(string message, Exception inner) : base(message, inner) {}
     }
 }

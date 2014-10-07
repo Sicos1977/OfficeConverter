@@ -74,10 +74,12 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Converter.cs" />
     <Compile Include="Exceptions\OCCsvFileLimitExceeded.cs" />
+    <Compile Include="Exceptions\OCExcelConfiguration.cs" />
     <Compile Include="Exceptions\OCFileIsCorrupt.cs" />
     <Compile Include="Exceptions\OCFileIsPasswordProtected.cs" />
     <Compile Include="Exceptions\OCFileTypeNotSupported.cs" />

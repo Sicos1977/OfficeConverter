@@ -1,9 +1,8 @@
 ﻿using System;
-using System.Globalization;
+using System.Drawing.Printing;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Threading;
 using CompoundFileStorage;
 using CompoundFileStorage.Exceptions;
 using ICSharpCode.SharpZipLib.Zip;
@@ -432,6 +431,7 @@ namespace OfficeConverter
         #endregion
 
         #region ConvertWithExcel
+        #region CheckIfSystemProfileDesktopDirectoryExists
         /// <summary>
         /// If you want to run this code on a server the following folders must exists, if they don't
         /// then you can't use Excel to convert files to PDF
@@ -450,8 +450,9 @@ namespace OfficeConverter
                     }
                     catch (Exception exception)
                     {
-                        throw new IOException("Can't create directory '" + x64DesktopPath + "', error: " +
-                                              ExceptionHelpers.GetInnerException(exception));
+                        throw new OCExcelConfiguration("Can't create directory '" + x64DesktopPath +
+                                                       "' Excel needs this folder to work on a server, error: " +
+                                                       ExceptionHelpers.GetInnerException(exception));
                     }
                 }
             }
@@ -466,12 +467,43 @@ namespace OfficeConverter
                 }
                 catch (Exception exception)
                 {
-                    throw new IOException("Can't create directory '" + x86DesktopPath + "', error: " +
-                                          ExceptionHelpers.GetInnerException(exception));
+                    throw new OCExcelConfiguration("Can't create directory '" + x86DesktopPath +
+                                                   "' Excel needs this folder to work on a server, error: " +
+                                                   ExceptionHelpers.GetInnerException(exception));
                 }
             }
         }
+        #endregion
 
+        #region CheckIfPrinterIsInstalled
+        /// <summary>
+        /// Excel needs a default printer to export to PDF, this method will check if there is one
+        /// </summary>
+        private static void CheckIfPrinterIsInstalled()
+        {
+            var result = false;
+            foreach (string printerName in PrinterSettings.InstalledPrinters)
+            {
+                // Retrieve the printer settings.
+                var printer = new PrinterSettings { PrinterName = printerName };
+
+                // Check that this is a valid printer.
+                // (This step might be required if you read the printer name
+                // from a user-supplied value or a registry or configuration file
+                // setting.)
+                if (printer.IsValid)
+                {
+                    result = true;
+                    break;
+                }
+            }
+
+            if (!result)
+                throw new OCExcelConfiguration("There is no default printer installed, Excel needs one to export to PDF");
+        }
+        #endregion
+
+        #region GetExcelMaxRows
         /// <summary>
         /// Returns the maximum rows Excel supports
         /// </summary>
@@ -499,6 +531,7 @@ namespace OfficeConverter
 
             throw new Exception("Could not read registry to check Excel version");
         }
+        #endregion
 
         /// <summary>
         /// Converts a Excel sheet to PDF
@@ -510,14 +543,11 @@ namespace OfficeConverter
         private static void ConvertWithExcel(string inputFile, string outputFile)
         {
             CheckIfSystemProfileDesktopDirectoryExists();
+            CheckIfPrinterIsInstalled();
 
             Excel.Application excel = null;
             Excel.Workbook workbook = null;
             string tempFileName = null;
-
-            // For Excel to work correctly through interop we need a thread that is set to the en-US culture
-            var currentCulture = Thread.CurrentThread.CurrentCulture;
-            Thread.CurrentThread.CurrentCulture = new CultureInfo("en-US");
 
             try
             {
@@ -531,10 +561,6 @@ namespace OfficeConverter
                     AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable
                 };
 
-                // TODO: Set specific culture 
-                //excel.DecimalSeparator = ci.NumberFormat.NumberDecimalSeparator;
-                //excel.ThousandsSeparator = ci.NumberFormat.NumberGroupSeparator;
-                
                 var extension = Path.GetExtension(inputFile);
                 if (string.IsNullOrWhiteSpace(extension))
                     extension = string.Empty;
@@ -551,13 +577,9 @@ namespace OfficeConverter
 
                 workbook = OpenExcelFile(excel, inputFile, extension, false);
                 workbook.ExportAsFixedFormat(Excel.XlFixedFormatType.xlTypePDF, outputFile);
-
             }
             finally
             {
-                // Reset the thread to it's previous culture
-                Thread.CurrentThread.CurrentCulture = currentCulture; 
-                
                 if (workbook != null)
                 {
                     workbook.Saved = true;
