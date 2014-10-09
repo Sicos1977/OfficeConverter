@@ -6,7 +6,7 @@ using System.Linq;
 namespace OfficeConverter.Helpers
 {
     /// <summary>
-    /// This class contains file management functions that are not available in the .NET framework
+    /// This class contains file management methods that are not available in the .NET framework
     /// </summary>
     internal static class FileManager
     {

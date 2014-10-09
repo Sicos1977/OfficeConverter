@@ -83,6 +83,7 @@
     <Compile Include="Exceptions\OCFileIsCorrupt.cs" />
     <Compile Include="Exceptions\OCFileIsPasswordProtected.cs" />
     <Compile Include="Exceptions\OCFileTypeNotSupported.cs" />
+    <Compile Include="Helpers\ByteHelpers.cs" />
     <Compile Include="Helpers\ExceptionHelpers.cs" />
     <Compile Include="Helpers\FileManager.cs" />
     <Compile Include="Program.cs" />
