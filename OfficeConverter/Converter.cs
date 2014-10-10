@@ -346,10 +346,11 @@ namespace OfficeConverter
             {
                 using (var compoundFile = new CompoundFile(inputFile))
                 {
-                    if (compoundFile.RootStorage.ExistsStream("EncryptedPackage")) return true; 
+                    if (compoundFile.RootStorage.ExistsStream("EncryptedPackage")) return true;
                     if (!compoundFile.RootStorage.ExistsStream("WordDocument"))
-                        throw new OCFileIsCorrupt("Could not find the WordDocument stream in the file '" + compoundFile.FileName + "'"); 
-                    
+                        throw new OCFileIsCorrupt("Could not find the WordDocument stream in the file '" +
+                                                  compoundFile.FileName + "'");
+
                     var stream = compoundFile.RootStorage.GetStream("WordDocument") as CFStream;
                     if (stream == null) return false;
 
@@ -370,6 +371,10 @@ namespace OfficeConverter
                         return (pnNext & 0x0100) == 0x0100;
                     }
                 }
+            }
+            catch (CFCorruptedFileException)
+            {
+                throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' is corrupt");
             }
             catch (CFFileFormatException)
             {
@@ -640,6 +645,10 @@ namespace OfficeConverter
                     }
                 }
             }
+            catch (CFCorruptedFileException)
+            {
+                throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' is corrupt");
+            }
             catch (CFFileFormatException)
             {
                 // It seems the file is just a normal Microsoft Office 2007 and up Open XML file
@@ -867,6 +876,10 @@ namespace OfficeConverter
                         }
                     }
                 }
+            }
+            catch (CFCorruptedFileException)
+            {
+                throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' is corrupt");
             }
             catch (CFFileFormatException)
             {
