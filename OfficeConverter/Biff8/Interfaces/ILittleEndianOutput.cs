@@ -1,4 +1,4 @@
-﻿namespace OfficeConverter.Excel.Interfaces
+﻿namespace OfficeConverter.Biff8.Interfaces
 {
     internal interface ILittleEndianOutput
     {

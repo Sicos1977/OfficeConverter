@@ -78,23 +78,24 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Converter.cs" />
-    <Compile Include="Excel\Arrays.cs" />
-    <Compile Include="Excel\Biff8EncryptionKey.cs" />
-    <Compile Include="Excel\Interfaces\IBiffHeaderInput.cs" />
-    <Compile Include="Excel\Interfaces\ILittleEndianInput.cs" />
-    <Compile Include="Excel\Interfaces\ILittleEndianOutput.cs" />
-    <Compile Include="Excel\LittleEndianOutputStream.cs" />
+    <Compile Include="Biff8\Arrays.cs" />
+    <Compile Include="Biff8\Biff8EncryptionKey.cs" />
+    <Compile Include="Biff8\Interfaces\IBiffHeaderInput.cs" />
+    <Compile Include="Biff8\Interfaces\ILittleEndianInput.cs" />
+    <Compile Include="Biff8\Interfaces\ILittleEndianOutput.cs" />
+    <Compile Include="Biff8\LittleEndianInputStream.cs" />
+    <Compile Include="Biff8\LittleEndianOutputStream.cs" />
     <Compile Include="Exceptions\OCCsvFileLimitExceeded.cs" />
     <Compile Include="Exceptions\OCExcelConfiguration.cs" />
     <Compile Include="Exceptions\OCFileIsCorrupt.cs" />
     <Compile Include="Exceptions\OCFileIsPasswordProtected.cs" />
     <Compile Include="Exceptions\OCFileTypeNotSupported.cs" />
-    <Compile Include="Excel\Biff8DecryptingStream.cs" />
-    <Compile Include="Excel\Biff8Rc4.cs" />
+    <Compile Include="Biff8\Biff8DecryptingStream.cs" />
+    <Compile Include="Biff8\Biff8RC4.cs" />
     <Compile Include="Helpers\ByteHelpers.cs" />
     <Compile Include="Helpers\ExceptionHelpers.cs" />
     <Compile Include="Helpers\FileManager.cs" />
-    <Compile Include="Excel\RC4.cs" />
+    <Compile Include="Biff8\RC4.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

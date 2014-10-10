@@ -7,6 +7,7 @@ using CompoundFileStorage;
 using CompoundFileStorage.Exceptions;
 using ICSharpCode.SharpZipLib.Zip;
 using Microsoft.Office.Core;
+using Microsoft.Office.Interop.Excel;
 using Microsoft.Win32;
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
@@ -687,7 +688,7 @@ namespace OfficeConverter
         }
 
         /// <summary>
-        /// Opens the <paramref name="inputFile"/> and returns it as an <see cref="Excel.Workbook"/> object
+        /// Opens the <paramref name="inputFile"/> and returns it as an <see cref="Workbook"/> object
         /// </summary>
         /// <param name="excel">The <see cref="Excel.Application"/></param>
         /// <param name="inputFile">The file to open</param>

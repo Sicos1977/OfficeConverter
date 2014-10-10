@@ -2,50 +2,76 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
+using OfficeConverter.Exceptions;
 
-namespace OfficeConverter.Excel
+namespace OfficeConverter.Biff8
 {
+    /// <summary>
+    /// Used to create or validate the Excel encryption key
+    /// </summary>
     internal class Biff8EncryptionKey
     {
-        // these two constants coincidentally have the same value
+        #region Consts
+        // These two constants coincidentally have the same value
         private const int KeyDigestLength = 5;
         private const int PasswordHashNumberOfBytesUsed = 5;
+        #endregion
 
+        #region Fields
+        [ThreadStatic]
+        private static String _userPasswordTls;
         private readonly byte[] _keyDigest;
+        #endregion
 
-        /**
-         * Create using the default password and a specified docId
-         * @param docId 16 bytes
-         */
+        #region Properties
+        /// <summary>
+        /// Returns the BIFF8 encryption/decryption password for the current thread, <code>null</code> if it is currently unSet.
+        /// </summary>
+        public static String CurrentUserPassword
+        {
+            get { return _userPasswordTls; }
+            set { _userPasswordTls = value; }
+        }
+        #endregion
+
+        #region Constructors
+        /// <summary>
+        /// Create using the default password and a specified docId
+        /// </summary>
+        /// <param name="docId"></param>
+        /// <returns></returns>
         public static Biff8EncryptionKey Create(byte[] docId)
         {
             return new Biff8EncryptionKey(CreateKeyDigest("VelvetSweatshop", docId));
         }
-        public static Biff8EncryptionKey Create(String password, byte[] docIdData)
+
+        public static Biff8EncryptionKey Create(string password, byte[] docIdData)
         {
             return new Biff8EncryptionKey(CreateKeyDigest(password, docIdData));
         }
+        #endregion
 
-        internal Biff8EncryptionKey(byte[] keyDigest)
+        #region Biff8EncryptionKey
+        private Biff8EncryptionKey(byte[] keyDigest)
         {
             if (keyDigest.Length != KeyDigestLength)
-            {
-                // TODO: Fixen
-                //throw new ArgumentException("Expected 5 byte key digest, but got " + HexDump.ToHex(keyDigest));
-            }
+                throw new OCFileIsCorrupt("Expected 5 byte key digest, but got " + keyDigest.Length);
+
             _keyDigest = keyDigest;
         }
+        #endregion
 
-        internal static byte[] CreateKeyDigest(String password, byte[] docIdData)
+        #region CreateKeyDigest
+        private static byte[] CreateKeyDigest(String password, byte[] docIdData)
         {
             Check16Bytes(docIdData, "docId");
             var nChars = Math.Min(password.Length, 16);
-            var passwordData = new byte[nChars * 2];
+            var passwordData = new byte[nChars*2];
             for (var i = 0; i < nChars; i++)
             {
                 var chr = password[i];
-                passwordData[i * 2 + 0] = (byte)((chr << 0) & 0xFF);
-                passwordData[i * 2 + 1] = (byte)((chr << 8) & 0xFF);
+                passwordData[i*2 + 0] = (byte) ((chr << 0) & 0xFF);
+                passwordData[i*2 + 1] = (byte) ((chr << 8) & 0xFF);
             }
 
             using (MD5 md5 = new MD5CryptoServiceProvider())
@@ -54,13 +80,13 @@ namespace OfficeConverter.Excel
 
                 md5.Initialize();
 
-                var data = new byte[PasswordHashNumberOfBytesUsed * 16 + docIdData.Length * 16];
+                var data = new byte[PasswordHashNumberOfBytesUsed*16 + docIdData.Length*16];
 
                 var offset = 0;
                 for (var i = 0; i < 16; i++)
                 {
                     Array.Copy(passwordHash, 0, data, offset, PasswordHashNumberOfBytesUsed);
-                    offset += PasswordHashNumberOfBytesUsed;// passwordHash.Length;
+                    offset += PasswordHashNumberOfBytesUsed;
                     Array.Copy(docIdData, 0, data, offset, docIdData.Length);
                     offset += docIdData.Length;
                 }
@@ -72,10 +98,15 @@ namespace OfficeConverter.Excel
                 return result;
             }
         }
+        #endregion
 
-        /**
-         * @return <c>true</c> if the keyDigest is compatible with the specified saltData and saltHash
-         */
+        #region Validate
+        /// <summary>
+        /// Returns <c>true</c> if the keyDigest is compatible with the specified saltData and saltHash
+        /// </summary>
+        /// <param name="saltData"></param>
+        /// <param name="saltHash"></param>
+        /// <returns></returns>
         public bool Validate(byte[] saltData, byte[] saltHash)
         {
             Check16Bytes(saltData, "saltData");
@@ -97,31 +128,23 @@ namespace OfficeConverter.Excel
                 return Arrays.Equals(saltHashPrime, finalSaltResult);
             }
         }
+        #endregion
 
-        private static byte[] Xor(IList<byte> a, IList<byte> b)
+        #region Check16Bytes
+        private static void Check16Bytes(ICollection<byte> data, string argument)
         {
-            if (b == null) throw new ArgumentNullException("b");
-            var c = new byte[a.Count];
-            for (var i = 0; i < c.Length; i++)
-                c[i] = (byte)(a[i] ^ b[i]);
-            return c;
-        }
-
-        private static void Check16Bytes(ICollection<byte> data, string argName)
-        {
+            if (data == null) throw new ArgumentNullException("data");
             if (data.Count != 16)
-            {
-                // TODO: Fixen
-                //throw new ArgumentException("Expected 16 byte " + argName + ", but got " + HexDump.ToHex(data));
-            }
+                throw new ArgumentException("Expected 16 byte for " + argument);
         }
+        #endregion
 
-        //private static ConcatBytes()
-
-        /**
-         * The {@link RC4} instance needs to be Changed every 1024 bytes.
-         * @param keyBlockNo used to seed the newly Created {@link RC4}
-         */
+        #region CreateRC4
+        /// <summary>
+        /// The <see cref="RC4"/> instance needs to be Changed every 1024 bytes.
+        /// </summary>
+        /// <param name="keyBlockNo"></param>
+        /// <returns></returns>
         internal RC4 CreateRC4(int keyBlockNo)
         {
             using (MD5 md5 = new MD5CryptoServiceProvider())
@@ -139,31 +162,6 @@ namespace OfficeConverter.Excel
                 }
             }
         }
-
-
-        /**
-         * Stores the BIFF8 encryption/decryption password for the current thread.  This has been done
-         * using a {@link ThreadLocal} in order to avoid further overloading the various public APIs
-         * (e.g. {@link HSSFWorkbook}) that need this functionality.
-         */
-        [ThreadStatic]
-        private static String _userPasswordTls;
-
-        /**
-         * @return the BIFF8 encryption/decryption password for the current thread.
-         * <code>null</code> if it is currently unSet.
-         */
-        public static String CurrentUserPassword
-        {
-            get
-            {
-                return _userPasswordTls;
-            }
-            set
-            {
-                _userPasswordTls = value;
-            }
-        }
+        #endregion
     }
-
 }

@@ -1,14 +1,19 @@
 ﻿using System.Collections.Generic;
 
-namespace OfficeConverter.Excel
+namespace OfficeConverter.Biff8
 {
-    // ReSharper disable once InconsistentNaming
+    /// <summary>
+    /// Excel RC4 encryption or decryption
+    /// </summary>
     internal class RC4
     {
+        #region Fields
         private readonly byte[] _bytes = new byte[256];
         private int _i;
         private int _j;
+        #endregion
 
+        #region Constructor
         public RC4(IList<byte> key)
         {
             var keyLength = key.Count;
@@ -27,7 +32,9 @@ namespace OfficeConverter.Excel
             _i = 0;
             _j = 0;
         }
+        #endregion
 
+        #region Output
         public byte Output()
         {
             _i = (_i + 1) & 255;
@@ -39,20 +46,25 @@ namespace OfficeConverter.Excel
 
             return _bytes[(_bytes[_i] + _bytes[_j]) & 255];
         }
+        #endregion
 
-        public void Encrypt(byte[] in1)
+        #region Encrypt
+        public void Encrypt(byte[] inputBytes)
         {
-            for (var i = 0; i < in1.Length; i++)
+            for (var i = 0; i < inputBytes.Length; i++)
             {
-                in1[i] = (byte) (in1[i] ^ Output());
+                inputBytes[i] = (byte) (inputBytes[i] ^ Output());
             }
         }
+        #endregion
 
-        public void Encrypt(byte[] in1, int offSet, int len)
+        #region Encrypt
+        public void Encrypt(byte[] inputBytes, int offSet, int length)
         {
-            var end = offSet + len;
+            var end = offSet + length;
             for (var i = offSet; i < end; i++)
-                in1[i] = (byte) (in1[i] ^ Output());
+                inputBytes[i] = (byte) (inputBytes[i] ^ Output());
         }
+        #endregion
     }
 }
