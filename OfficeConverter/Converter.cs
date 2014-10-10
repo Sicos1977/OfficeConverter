@@ -172,6 +172,7 @@ namespace OfficeConverter
                 case ".RTF":
                 case ".MHT":
                 case ".WPS":
+                case ".WRI":
                     ConvertWithWord(inputFile, outputFile);
                     break;
 
@@ -183,13 +184,6 @@ namespace OfficeConverter
                 case ".XLSX":
                 case ".XLTM":
                 case ".XLTX":
-                    if (ExcelFileIsPasswordProtected(inputFile))
-                        throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
-                                                            "' is password protected"); 
-
-                    ConvertWithExcel(inputFile, outputFile);
-                    break;
-                
                 case ".CSV":
                     ConvertWithExcel(inputFile, outputFile);
                     break;
@@ -228,7 +222,7 @@ namespace OfficeConverter
                 default:
                     throw new OCFileTypeNotSupported("The file '" + Path.GetFileName(inputFile) +
                                                      "' is not supported only, " + Environment.NewLine +
-                                                     " .DOC, .DOCM, .DOCX, .DOT, .DOTM, .RTF, .MHT, .WPS, .ODT, " + Environment.NewLine +
+                                                     ".DOC, .DOCM, .DOCX, .DOT, .DOTM, .RTF, .MHT, .WPS, .WRI, .ODT, " + Environment.NewLine +
                                                      ".XLS, .XLSB, .XLSM, .XLSX, .XLT, .XLTM, .XLTX, .XLW, .ODS, " + Environment.NewLine +
                                                      ".POT, .PPT, .POTM, .POTX, .PPS, .PPSM, .PPSX, .PPTM, .PPTX and .ODP " + Environment.NewLine +
                                                      " are supported");
@@ -637,47 +631,12 @@ namespace OfficeConverter
                             throw new OCFileIsCorrupt("The file '" + Path.GetFileName(compoundFile.FileName) +
                                                       "' is corrupt");
 
-                        //var recordLength = binaryReader.ReadUInt16();
-                        //binaryReader.BaseStream.Position += recordLength;
+                        var recordLength = binaryReader.ReadUInt16();
+                        binaryReader.BaseStream.Position += recordLength;
 
                         // Search after the BOF for the FilePass record, this starts with 2F hex
-                        var fileIsPasswordProtected = false;
-                        var breakWhile = false;
-
-                        while (recordType != 0x3D && !breakWhile)
-                        {
-                            var recordLength = binaryReader.ReadUInt16();
-                            if (binaryReader.BaseStream.Position + recordLength >= memoryStream.Length)
-                                breakWhile = true;
-
-                            switch (recordType)
-                            {
-                                // FilePass
-                                case 0x2F:
-                                    fileIsPasswordProtected = true;
-                                    binaryReader.BaseStream.Position += recordLength;
-                                    break;
-                                
-                                // Protect
-                                case 0x12:
-                                    var byte1 = binaryReader.ReadByte();
-                                    var byte2 = binaryReader.ReadByte();
-                                    var protectedSheet = byte2.IsBitSet(3);
-
-                                    // true true = file protected
-
-                                    binaryReader.BaseStream.Position += recordLength - 2;
-                                    break;
-
-                                default:
-                                    binaryReader.BaseStream.Position += recordLength;
-                                    break;
-                            }
-
-                            recordType = binaryReader.ReadUInt16();
-                        }
-
-                        return fileIsPasswordProtected;
+                        recordType = binaryReader.ReadUInt16();
+                        return (recordType == 0x2F);
                     }
                 }
             }
@@ -793,16 +752,26 @@ namespace OfficeConverter
                                 CorruptLoad: Excel.XlCorruptLoad.xlRepairFile);
 
                         return excel.Workbooks.Open(inputFile, false, true,
+                            Password: "dummypassword",
                             IgnoreReadOnlyRecommended: true,
                             AddToMru: false);
 
                 }
             }
+            catch (COMException comException)
+            {
+                if (comException.ErrorCode == -2146827284)
+                    throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
+                                                        "' is password protected");
+
+                throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) +
+                                                        "' could not be opened, error: " + ExceptionHelpers.GetInnerException(comException));
+            }
             catch (Exception exception)
             {
                 if (repairMode)
                     throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) +
-                                              "' seems to be corrupt, error: " +
+                                              "' could not be opened, error: " +
                                               ExceptionHelpers.GetInnerException(exception));
 
                 return OpenExcelFile(excel, inputFile, extension, true);
