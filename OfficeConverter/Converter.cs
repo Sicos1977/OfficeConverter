@@ -9,6 +9,7 @@ using ICSharpCode.SharpZipLib.Zip;
 using Microsoft.Office.Core;
 using Microsoft.Office.Interop.Excel;
 using Microsoft.Win32;
+using OfficeConverter.Biff8;
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
 using Word = Microsoft.Office.Interop.Word;
@@ -185,6 +186,12 @@ namespace OfficeConverter
                 case ".XLSX":
                 case ".XLTM":
                 case ".XLTX":
+                    if (ExcelFileIsPasswordProtected(inputFile))
+                        throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
+                                                            "' is password protected");
+                    ConvertWithExcel(inputFile, outputFile);
+                    break;
+
                 case ".CSV":
                     ConvertWithExcel(inputFile, outputFile);
                     break;
@@ -642,7 +649,14 @@ namespace OfficeConverter
 
                         // Search after the BOF for the FilePass record, this starts with 2F hex
                         recordType = binaryReader.ReadUInt16();
-                        return (recordType == 0x2F);
+                        if (recordType == 0x2F)
+                        {
+                            recordLength = binaryReader.ReadUInt16();
+                            var filePassRecord = new FilePassRecord(memoryStream);
+                            return false;
+                        }
+                        else
+                            return false;
                     }
                 }
             }

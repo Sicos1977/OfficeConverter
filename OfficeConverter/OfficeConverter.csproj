@@ -77,6 +77,7 @@
     <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Biff8\FIlePassRecord.cs" />
     <Compile Include="Converter.cs" />
     <Compile Include="Biff8\Arrays.cs" />
     <Compile Include="Biff8\Biff8EncryptionKey.cs" />

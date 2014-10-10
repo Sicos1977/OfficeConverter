@@ -33,7 +33,6 @@ namespace OfficeConverter.Biff8
         }
         #endregion
 
-
         #region ReadByte
         /// <summary>
         /// Returns a byte from the stream
