@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using OfficeConverter.Biff8.Interfaces;
+using OfficeConverter.Exceptions;
 
 namespace OfficeConverter.Biff8
 {
@@ -44,13 +45,13 @@ namespace OfficeConverter.Biff8
             switch (encryptionType)
             {
                 case EncryptionXor:
-                    throw new NotSupportedException("XOR obfuscation is not supported");
+                    throw new OCExcelConfiguration("XOR obfuscation is not supported");
 
                 case EncryptionOther:
                     break;
                 
                 default:
-                    throw new NotSupportedException("Unknown encryption type " + encryptionType);
+                    throw new OCExcelConfiguration("Unknown encryption type " + encryptionType);
             }
 
             var encryptionInfo = input.ReadUShort();
@@ -59,11 +60,13 @@ namespace OfficeConverter.Biff8
                 case EncryptionOtherRC4:
                     // handled below
                     break;
+
                 case EncryptionOtherCapi2:
                 case EncryptionOtherCapi3:
-                    throw new NotSupportedException("CryptoAPI encryption is not supported");
+                    throw new OCExcelConfiguration("CryptoAPI encryption is not supported");
+                
                 default:
-                    throw new NotSupportedException("Unknown encryption info " + encryptionInfo);
+                    throw new OCExcelConfiguration("Unknown encryption info " + encryptionInfo);
             }
 
             input.ReadUShort();
@@ -74,6 +77,12 @@ namespace OfficeConverter.Biff8
         #endregion
 
         #region Read
+        /// <summary>
+        /// Returns <see cref="size"/> bytes from the <see cref="input"/> stream
+        /// </summary>
+        /// <param name="input"></param>
+        /// <param name="size"></param>
+        /// <returns></returns>
         private static byte[] Read(ILittleEndianInput input, int size)
         {
             var result = new byte[size];

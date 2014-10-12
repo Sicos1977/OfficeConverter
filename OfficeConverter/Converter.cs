@@ -7,7 +7,6 @@ using CompoundFileStorage;
 using CompoundFileStorage.Exceptions;
 using ICSharpCode.SharpZipLib.Zip;
 using Microsoft.Office.Core;
-using Microsoft.Office.Interop.Excel;
 using Microsoft.Win32;
 using OfficeConverter.Biff8;
 using OfficeConverter.Exceptions;
@@ -554,7 +553,10 @@ namespace OfficeConverter
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile"/> has to many rows</exception>
         private static void ConvertWithExcel(string inputFile, string outputFile)
         {
-            CheckIfSystemProfileDesktopDirectoryExists();
+            // We only need to perform this check if we are running on a server
+            if (NativeMethods.IsWindowsServer())
+                CheckIfSystemProfileDesktopDirectoryExists();
+
             CheckIfPrinterIsInstalled();
 
             Excel.Application excel = null;
@@ -588,6 +590,16 @@ namespace OfficeConverter
                 }
 
                 workbook = OpenExcelFile(excel, inputFile, extension, false);
+
+                foreach (Excel.Worksheet sheet in workbook.Sheets)
+                {
+                    // Automaticly fit columns
+                    sheet.Columns.AutoFit();
+
+                    // Auto set print area to use whole sheet
+                    sheet.PageSetup.PrintArea = string.Empty;
+                }
+
                 workbook.ExportAsFixedFormat(Excel.XlFixedFormatType.xlTypePDF, outputFile);
             }
             finally
@@ -649,16 +661,20 @@ namespace OfficeConverter
 
                         // Search after the BOF for the FilePass record, this starts with 2F hex
                         recordType = binaryReader.ReadUInt16();
-                        if (recordType == 0x2F)
-                        {
-                            recordLength = binaryReader.ReadUInt16();
-                            var filePassRecord = new FilePassRecord(memoryStream);
-                            return false;
-                        }
-                        else
-                            return false;
+                        if (recordType != 0x2F) return false;
+                        binaryReader.ReadUInt16();
+                        var filePassRecord = new FilePassRecord(memoryStream);
+                        var key = Biff8EncryptionKey.Create(filePassRecord.DocId);
+                        return !key.Validate(filePassRecord.SaltData, filePassRecord.SaltHash);
                     }
                 }
+            }
+            catch (OCExcelConfiguration)
+            {
+                // If we get an OCExcelConfiguration exception it means we have an unknown encryption
+                // type so we return a false so that Excel itself can figure out if the file is password
+                // protected
+                return false;
             }
             catch (CFCorruptedFileException)
             {
@@ -697,12 +713,12 @@ namespace OfficeConverter
                 else if (line.Contains(" ")) separator = " ";
 
                 if (line.Contains("\"")) textQualifier = Excel.XlTextQualifier.xlTextQualifierDoubleQuote;
-                else if (line.Contains(",")) textQualifier = Excel.XlTextQualifier.xlTextQualifierSingleQuote;
+                else if (line.Contains("'")) textQualifier = Excel.XlTextQualifier.xlTextQualifierSingleQuote;
             }
         }
 
         /// <summary>
-        /// Opens the <paramref name="inputFile"/> and returns it as an <see cref="Workbook"/> object
+        /// Opens the <paramref name="inputFile"/> and returns it as an <see cref="Excel.Workbook"/> object
         /// </summary>
         /// <param name="excel">The <see cref="Excel.Application"/></param>
         /// <param name="inputFile">The file to open</param>
