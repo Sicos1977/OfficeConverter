@@ -564,61 +564,42 @@ namespace OfficeConverter
             else
             {
 
-                firstColumn = worksheet.Cells.Find(string.Empty, , , , xlByColumns).column;
-                firstRow = worksheet.Cells.Find("*", , , , xlByColumns).row;
-
-                var column = worksheet.Cells.Find("*", , , , xlByRows).column;
-                var row = worksheet.Cells.Find("*", , , , xlByRows).row;
-
-                if (column < firstColumn)
-                    firstColumn = column;
-                if (row < firstRow)
-                    firstRow = row;
+                firstColumn = worksheet.Cells.Find(string.Empty, SearchOrder: Excel.XlSearchOrder.xlByColumns).Column;
+                firstRow = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByColumns).Row;
             }
+
+            var column = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows).Column;
+            var row = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows).Row;
+
+            if (column < firstColumn)
+                firstColumn = column;
+            if (row < firstRow)
+                firstRow = row;
+
+            var lastColumn =
+                worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByColumns,
+                    SearchDirection: Excel.XlSearchDirection.xlPrevious).Column;
+
+            var lastRow = worksheet.Cells.Find("*", , , , xlByColumns, xlPrevious).row;
+
+            column = worksheet.Cells.Find("*", , , , xlByRows, xlPrevious).column;
+            row = worksheet.Cells.Find("*", , , , xlByRows, xlPrevious).row;
+
+            if (column > lastColumn)
+                lastColumn = column;
+
+            if (row > lastRow) 
+                lastRow = row;
         }
     
         /*
-    On Error GoTo ErrorHandler
-
-    
-    If worksheet.Cells(1, 1) <> "" Then
-    
-        firstColumn = 1
-        firstRow = 1
-    
-    Else
-        
-        'Begin positie zoeken
-        firstColumn = worksheet.Cells.Find("", , , , xlByColumns).column
-        firstRow = worksheet.Cells.Find("*", , , , xlByColumns).row
-        
-        column = worksheet.Cells.Find("*", , , , xlByRows).column
-        row = worksheet.Cells.Find("*", , , , xlByRows).row
-        
-        If column < firstColumn Then firstColumn = column
-        If row < firstRow Then firstRow = row
-    
-    End If
-    
-    'Eind positie zoeken
-    lastColumn = worksheet.Cells.Find("*", , , , xlByColumns, xlPrevious).column
-    lastRow = worksheet.Cells.Find("*", , , , xlByColumns, xlPrevious).row
-    
-    column = worksheet.Cells.Find("*", , , , xlByRows, xlPrevious).column
-    row = worksheet.Cells.Find("*", , , , xlByRows, xlPrevious).row
-    
-    If column > lastColumn Then lastColumn = column
-    If row > lastRow Then lastRow = row
     
     GetWorksheetUsedRange = ConvertExcelColumnNumberToLetters(firstColumn) & firstRow & ":" & _
                             ConvertExcelColumnNumberToLetters(lastColumn) & lastRow
     
     Exit Function
-
-ErrorHandler:
-    GetWorksheetUsedRange = ""
-End Function
-         * */
+        
+         * * */
         #endregion
 
         /// <summary>
