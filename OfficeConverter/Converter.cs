@@ -544,6 +544,83 @@ namespace OfficeConverter
         }
         #endregion
 
+        #region GetWorksheetUsedRange
+        private string GetWorksheetUsedRange(Excel._Worksheet worksheet)
+        {
+            // We can't use this method when there are shapes on a sheet so
+            // we return an empty string
+            if (worksheet.Shapes.Count > 0)
+                return string.Empty;
+
+            int firstColumn;
+            int firstRow;
+
+
+            if (worksheet.Cells(1, 1) != string.Empty)
+            {
+                firstColumn = 1;
+                firstRow = 1;
+            }
+            else
+            {
+
+                firstColumn = worksheet.Cells.Find(string.Empty, , , , xlByColumns).column;
+                firstRow = worksheet.Cells.Find("*", , , , xlByColumns).row;
+
+                var column = worksheet.Cells.Find("*", , , , xlByRows).column;
+                var row = worksheet.Cells.Find("*", , , , xlByRows).row;
+
+                if (column < firstColumn)
+                    firstColumn = column;
+                if (row < firstRow)
+                    firstRow = row;
+            }
+        }
+    
+        /*
+    On Error GoTo ErrorHandler
+
+    
+    If worksheet.Cells(1, 1) <> "" Then
+    
+        firstColumn = 1
+        firstRow = 1
+    
+    Else
+        
+        'Begin positie zoeken
+        firstColumn = worksheet.Cells.Find("", , , , xlByColumns).column
+        firstRow = worksheet.Cells.Find("*", , , , xlByColumns).row
+        
+        column = worksheet.Cells.Find("*", , , , xlByRows).column
+        row = worksheet.Cells.Find("*", , , , xlByRows).row
+        
+        If column < firstColumn Then firstColumn = column
+        If row < firstRow Then firstRow = row
+    
+    End If
+    
+    'Eind positie zoeken
+    lastColumn = worksheet.Cells.Find("*", , , , xlByColumns, xlPrevious).column
+    lastRow = worksheet.Cells.Find("*", , , , xlByColumns, xlPrevious).row
+    
+    column = worksheet.Cells.Find("*", , , , xlByRows, xlPrevious).column
+    row = worksheet.Cells.Find("*", , , , xlByRows, xlPrevious).row
+    
+    If column > lastColumn Then lastColumn = column
+    If row > lastRow Then lastRow = row
+    
+    GetWorksheetUsedRange = ConvertExcelColumnNumberToLetters(firstColumn) & firstRow & ":" & _
+                            ConvertExcelColumnNumberToLetters(lastColumn) & lastRow
+    
+    Exit Function
+
+ErrorHandler:
+    GetWorksheetUsedRange = ""
+End Function
+         * */
+        #endregion
+
         /// <summary>
         /// Converts a Excel sheet to PDF
         /// </summary>
