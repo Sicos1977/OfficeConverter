@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Drawing.Printing;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -544,62 +547,186 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region GetWorksheetUsedRange
-        private string GetWorksheetUsedRange(Excel._Worksheet worksheet)
+        #region ExcelColumnAddress
+        /// <summary>
+        /// Returns the column address for the given <paramref name="column"/>
+        /// </summary>
+        /// <param name="column"></param>
+        /// <returns></returns>
+        private static string GetExcelColumnAddress(int column)
+        {
+            if (column <= 26)
+                return System.Convert.ToChar(column + 64).ToString(CultureInfo.InvariantCulture);
+
+            var div = column/26;
+            var mod = column%26;
+            if (mod != 0) return GetExcelColumnAddress(div) + GetExcelColumnAddress(mod);
+            mod = 26;
+            div--;
+
+            return GetExcelColumnAddress(div) + GetExcelColumnAddress(mod);
+        }
+        #endregion
+
+        #region GetExcelColumnNumber
+        /// <summary>
+        /// Returns the column number for the given <paramref name="columnAddress"/>
+        /// </summary>
+        /// <param name="columnAddress"></param>
+        /// <returns></returns>
+        private static int GetExcelColumnNumber(string columnAddress)
+        {
+            var digits = new int[columnAddress.Length];
+            
+            for (var i = 0; i < columnAddress.Length; ++i)
+                digits[i] = System.Convert.ToInt32(columnAddress[i]) - 64;
+            
+            var mul = 1; 
+            var res = 0;
+            
+            for (var pos = digits.Length - 1; pos >= 0; --pos)
+            {
+                res += digits[pos] * mul;
+                mul *= 26;
+            }
+
+            return res;
+        }
+        #endregion
+
+        #region SetWorksheetPrintArea
+        /// <summary>
+        /// Figures out the used cell range. This are the cell's that contain any form
+        /// of text and sets the PageSetup.PrintArea to this range
+        /// </summary>
+        /// <param name="worksheet"></param>
+        /// <returns></returns>
+        private static void SetWorksheetPrintArea(Excel._Worksheet worksheet)
         {
             // We can't use this method when there are shapes on a sheet so
             // we return an empty string
             if (worksheet.Shapes.Count > 0)
-                return string.Empty;
+                worksheet.PageSetup.PrintArea = string.Empty;
 
             int firstColumn;
             int firstRow;
 
-
-            if (worksheet.Cells(1, 1) != string.Empty)
+            var range = worksheet.Cells[1, 1] as Excel.Range;
+            if (range != null && !string.IsNullOrWhiteSpace((string) range.Value))
             {
                 firstColumn = 1;
                 firstRow = 1;
             }
             else
             {
+                // Search the first used cell column wise
+                var firstCell = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByColumns);
+                firstColumn = firstCell.Column;
+                firstRow = firstCell.Row;
 
-                firstColumn = worksheet.Cells.Find(string.Empty, SearchOrder: Excel.XlSearchOrder.xlByColumns).Column;
-                firstRow = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByColumns).Row;
+                // Search the first used cell row wise
+                firstCell = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows);
+
+                if (firstCell.Column < firstColumn) firstColumn = firstCell.Column;
+                if (firstCell.Row < firstRow) firstRow = firstCell.Row;
             }
 
-            var column = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows).Column;
-            var row = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows).Row;
-
-            if (column < firstColumn)
-                firstColumn = column;
-            if (row < firstRow)
-                firstRow = row;
-
-            var lastColumn =
+            var lastCell =
                 worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByColumns,
-                    SearchDirection: Excel.XlSearchDirection.xlPrevious).Column;
+                    SearchDirection: Excel.XlSearchDirection.xlPrevious);
 
-            var lastRow = worksheet.Cells.Find("*", , , , xlByColumns, xlPrevious).row;
+            var lastColumn = lastCell.Column;
+            var lastRow = lastCell.Row;
 
-            column = worksheet.Cells.Find("*", , , , xlByRows, xlPrevious).column;
-            row = worksheet.Cells.Find("*", , , , xlByRows, xlPrevious).row;
+            lastCell =
+                worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows,
+                    SearchDirection: Excel.XlSearchDirection.xlPrevious);
 
-            if (column > lastColumn)
-                lastColumn = column;
+            if (lastCell.Column > lastColumn) lastColumn = lastCell.Column;
+            if (lastCell.Row > lastRow) lastRow = lastCell.Row;
 
-            if (row > lastRow) 
-                lastRow = row;
+            worksheet.PageSetup.PrintArea = GetExcelColumnAddress(firstColumn) + firstRow + ":" +
+                                            GetExcelColumnAddress(lastColumn) + lastRow;
         }
-    
-        /*
-    
-    GetWorksheetUsedRange = ConvertExcelColumnNumberToLetters(firstColumn) & firstRow & ":" & _
-                            ConvertExcelColumnNumberToLetters(lastColumn) & lastRow
-    
-    Exit Function
-        
-         * * */
+        #endregion
+
+        #region SetWorkSheetPaperSize
+        private class ExcelPaperSize
+        {
+            public Excel.XlPaperSize PaperSize { get; private set; }
+            public Excel.XlPageOrientation Orientation { get; private set; }
+
+            public ExcelPaperSize(Excel.XlPaperSize paperSize, Excel.XlPageOrientation orientation)
+            {
+                PaperSize = paperSize;
+                Orientation = orientation;
+            }
+        }
+
+        /// <summary>
+        /// Returns the total number of horizontal pagebreaks in the print area
+        /// </summary>
+        /// <param name="pageBreaks"></param>
+        /// <returns></returns>
+        private static int CountHorizontalPageBreaks(IEnumerable pageBreaks)
+        {
+            var result = 0;
+
+            foreach (Excel.VPageBreak pageBreak in pageBreaks)
+            {
+                var row = pageBreak.Location.Row;
+                var column = pageBreak.Location.Column;
+                if (pageBreak.Extent == Excel.XlPageBreakExtent.xlPageBreakPartial)
+                    result += 1;
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// This method wil figure out the optimal paper size to use and sets
+        /// </summary>
+        /// <param name="worksheet"></param>
+        private static void SetWorkSheetPaperSize(Excel._Worksheet worksheet)
+        {
+            worksheet.PageSetup.Order = Excel.XlOrder.xlOverThenDown;
+
+            var paperSizes = new List<ExcelPaperSize>
+            {
+                new ExcelPaperSize(Excel.XlPaperSize.xlPaperA4, Excel.XlPageOrientation.xlPortrait),
+                new ExcelPaperSize(Excel.XlPaperSize.xlPaperA4, Excel.XlPageOrientation.xlLandscape),
+                new ExcelPaperSize(Excel.XlPaperSize.xlPaperA3, Excel.XlPageOrientation.xlLandscape),
+                new ExcelPaperSize(Excel.XlPaperSize.xlPaperA3, Excel.XlPageOrientation.xlPortrait)
+            };
+
+            var zoomRatios = new List<int> { 50, 95, 90, 85, 80, 75 };
+            worksheet.PageSetup.PaperSize = Excel.XlPaperSize.xlPaperA4;
+            worksheet.PageSetup.Orientation = Excel.XlPageOrientation.xlPortrait;
+            worksheet.PageSetup.Zoom = 50;
+
+
+            //foreach (var paperSize in paperSizes)
+            //{
+            //    var exitfor = false;
+            //    worksheet.PageSetup.PaperSize = paperSize.PaperSize;
+            //    worksheet.PageSetup.Orientation = paperSize.Orientation;
+
+            //    foreach (var zoomRatio in zoomRatios)
+            //    {
+            //        worksheet.Activate();
+            //        worksheet.PageSetup.Zoom = zoomRatio;
+            //        worksheet.ResetAllPageBreaks();
+            //        if (CountHorizontalPageBreaks(worksheet.VPageBreaks) == 0)
+            //        {
+            //            exitfor = true;
+            //            break;
+            //        }
+            //    }
+
+            //    if (exitfor)
+            //        break;
+            //}
+        }
         #endregion
 
         /// <summary>
@@ -626,11 +753,12 @@ namespace OfficeConverter
                 excel = new Excel.ApplicationClass
                 {
                     //ScreenUpdating = false,
-                    DisplayAlerts = false,
-                    DisplayDocumentInformationPanel = false,
-                    DisplayRecentFiles = false,
-                    DisplayScrollBars = false,
-                    AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable
+                    //DisplayAlerts = false,
+                    //DisplayDocumentInformationPanel = false,
+                    //DisplayRecentFiles = false,
+                    //DisplayScrollBars = false,
+                    //AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable,
+                    Visible = true
                 };
 
                 var extension = Path.GetExtension(inputFile);
@@ -653,15 +781,17 @@ namespace OfficeConverter
                 {
                     // Automaticly fit columns
                     sheet.Columns.AutoFit();
+                    sheet.PageSetup.Order = Excel.XlOrder.xlOverThenDown;
+                    SetWorksheetPrintArea(sheet);
 
-                    // Auto set print area to use whole sheet
-                    sheet.PageSetup.PrintArea = string.Empty;
+                    // Detect optimal paper size to use
+                    SetWorkSheetPaperSize(sheet);
                 }
 
                 workbook.ExportAsFixedFormat(Excel.XlFixedFormatType.xlTypePDF, outputFile);
             }
             finally
-            {
+             {
                 if (workbook != null)
                 {
                     workbook.Saved = true;

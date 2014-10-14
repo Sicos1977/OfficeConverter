@@ -5,7 +5,7 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{41D58D18-0218-42C1-B362-1B40417D6D03}</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>OfficeConverter</RootNamespace>
     <AssemblyName>OfficeConverter</AssemblyName>
@@ -53,6 +53,9 @@
   <PropertyGroup>
     <AssemblyOriginatorKeyFile>OfficeConverter.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="CompoundFileStorage">
       <HintPath>..\packages\CompoundFileStorage.1.0.0\lib\CompoundFileStorage.dll</HintPath>
@@ -96,7 +99,6 @@
     <Compile Include="Helpers\FileManager.cs" />
     <Compile Include="Biff8\RC4.cs" />
     <Compile Include="Helpers\NativeMethods.cs" />
-    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
