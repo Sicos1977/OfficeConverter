@@ -594,19 +594,19 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region SetWorksheetPrintArea
+        #region GetWorksheetPrintArea
         /// <summary>
-        /// Figures out the used cell range. This are the cell's that contain any form
-        /// of text and sets the PageSetup.PrintArea to this range
+        /// Figures out the used cell range. This are the cell's that contain any form of text and 
+        /// returns this range. An empty range will be returned when there are shapes used on a worksheet
         /// </summary>
         /// <param name="worksheet"></param>
         /// <returns></returns>
-        private static void SetWorksheetPrintArea(Excel._Worksheet worksheet)
+        private static string GetWorksheetPrintArea(Excel._Worksheet worksheet)
         {
             // We can't use this method when there are shapes on a sheet so
             // we return an empty string
-            if (worksheet.Shapes.Count > 0)
-                worksheet.PageSetup.PrintArea = string.Empty;
+            //if (worksheet.Shapes.Count > 0)
+            //    return string.Empty;
 
             int firstColumn;
             int firstRow;
@@ -645,8 +645,8 @@ namespace OfficeConverter
             if (lastCell.Column > lastColumn) lastColumn = lastCell.Column;
             if (lastCell.Row > lastRow) lastRow = lastCell.Row;
 
-            worksheet.PageSetup.PrintArea = GetExcelColumnAddress(firstColumn) + firstRow + ":" +
-                                            GetExcelColumnAddress(lastColumn) + lastRow;
+            return GetExcelColumnAddress(firstColumn) + firstRow + ":" +
+                   GetExcelColumnAddress(lastColumn) + lastRow;
         }
         #endregion
 
@@ -678,6 +678,8 @@ namespace OfficeConverter
                 var column = pageBreak.Location.Column;
                 if (pageBreak.Extent == Excel.XlPageBreakExtent.xlPageBreakPartial)
                     result += 1;
+
+                Marshal.ReleaseComObject(pageBreak);
             }
 
             return result;
@@ -699,33 +701,30 @@ namespace OfficeConverter
                 new ExcelPaperSize(Excel.XlPaperSize.xlPaperA3, Excel.XlPageOrientation.xlPortrait)
             };
 
-            var zoomRatios = new List<int> { 50, 95, 90, 85, 80, 75 };
-            worksheet.PageSetup.PaperSize = Excel.XlPaperSize.xlPaperA4;
-            worksheet.PageSetup.Orientation = Excel.XlPageOrientation.xlPortrait;
-            worksheet.PageSetup.Zoom = 50;
+            var zoomRatios = new List<int> { 100, 95, 90, 85, 80, 75 };
+            var printArea = GetWorksheetPrintArea(worksheet);
+            
+            foreach (var paperSize in paperSizes)
+            {
+                var exitfor = false;
+                worksheet.PageSetup.PaperSize = paperSize.PaperSize;
+                worksheet.PageSetup.Orientation = paperSize.Orientation;
 
+                foreach (var zoomRatio in zoomRatios)
+                {
+                    worksheet.Activate();
+                    worksheet.PageSetup.Zoom = zoomRatio;
+                    worksheet.PageSetup.PrintArea = printArea;
+                    if (CountHorizontalPageBreaks(worksheet.VPageBreaks) == 0)
+                    {
+                        exitfor = true;
+                        break;
+                    }
+                }
 
-            //foreach (var paperSize in paperSizes)
-            //{
-            //    var exitfor = false;
-            //    worksheet.PageSetup.PaperSize = paperSize.PaperSize;
-            //    worksheet.PageSetup.Orientation = paperSize.Orientation;
-
-            //    foreach (var zoomRatio in zoomRatios)
-            //    {
-            //        worksheet.Activate();
-            //        worksheet.PageSetup.Zoom = zoomRatio;
-            //        worksheet.ResetAllPageBreaks();
-            //        if (CountHorizontalPageBreaks(worksheet.VPageBreaks) == 0)
-            //        {
-            //            exitfor = true;
-            //            break;
-            //        }
-            //    }
-
-            //    if (exitfor)
-            //        break;
-            //}
+                if (exitfor)
+                    break;
+            }
         }
         #endregion
 
@@ -782,9 +781,6 @@ namespace OfficeConverter
                     // Automaticly fit columns
                     sheet.Columns.AutoFit();
                     sheet.PageSetup.Order = Excel.XlOrder.xlOverThenDown;
-                    SetWorksheetPrintArea(sheet);
-
-                    // Detect optimal paper size to use
                     SetWorkSheetPaperSize(sheet);
                 }
 
