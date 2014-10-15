@@ -574,6 +574,7 @@ namespace OfficeConverter
         /// </summary>
         /// <param name="columnAddress"></param>
         /// <returns></returns>
+        // ReSharper disable once UnusedMember.Local
         private static int GetExcelColumnNumber(string columnAddress)
         {
             var digits = new int[columnAddress.Length];
@@ -605,8 +606,8 @@ namespace OfficeConverter
         {
             // We can't use this method when there are shapes on a sheet so
             // we return an empty string
-            //if (worksheet.Shapes.Count > 0)
-            //    return string.Empty;
+            if (worksheet.Shapes.Count > 0)
+                return string.Empty;
 
             int firstColumn;
             int firstRow;
@@ -621,6 +622,9 @@ namespace OfficeConverter
             {
                 // Search the first used cell column wise
                 var firstCell = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByColumns);
+                if (firstCell == null)
+                    return string.Empty;
+
                 firstColumn = firstCell.Column;
                 firstRow = firstCell.Row;
 
@@ -631,19 +635,26 @@ namespace OfficeConverter
                 if (firstCell.Row < firstRow) firstRow = firstCell.Row;
             }
 
+            var lastColumn = firstColumn;
+            var lastRow = firstRow;
+
             var lastCell =
                 worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByColumns,
                     SearchDirection: Excel.XlSearchDirection.xlPrevious);
 
-            var lastColumn = lastCell.Column;
-            var lastRow = lastCell.Row;
+            if (lastCell != null)
+            {
 
-            lastCell =
-                worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows,
-                    SearchDirection: Excel.XlSearchDirection.xlPrevious);
+                lastColumn = lastCell.Column;
+                lastRow = lastCell.Row;
 
-            if (lastCell.Column > lastColumn) lastColumn = lastCell.Column;
-            if (lastCell.Row > lastRow) lastRow = lastCell.Row;
+                lastCell =
+                    worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows,
+                        SearchDirection: Excel.XlSearchDirection.xlPrevious);
+
+                if (lastCell.Column > lastColumn) lastColumn = lastCell.Column;
+                if (lastCell.Row > lastRow) lastRow = lastCell.Row;
+            }
 
             return GetExcelColumnAddress(firstColumn) + firstRow + ":" +
                    GetExcelColumnAddress(lastColumn) + lastRow;
@@ -674,11 +685,9 @@ namespace OfficeConverter
 
             foreach (Excel.VPageBreak pageBreak in pageBreaks)
             {
-                var row = pageBreak.Location.Row;
-                var column = pageBreak.Location.Column;
                 if (pageBreak.Extent == Excel.XlPageBreakExtent.xlPageBreakPartial)
                     result += 1;
-
+                
                 Marshal.ReleaseComObject(pageBreak);
             }
 
@@ -691,6 +700,13 @@ namespace OfficeConverter
         /// <param name="worksheet"></param>
         private static void SetWorkSheetPaperSize(Excel._Worksheet worksheet)
         {
+            try
+            {
+                worksheet.Columns.AutoFit();
+            }
+            // ReSharper disable once EmptyGeneralCatchClause
+            catch {}
+            
             worksheet.PageSetup.Order = Excel.XlOrder.xlOverThenDown;
 
             var paperSizes = new List<ExcelPaperSize>
@@ -702,28 +718,39 @@ namespace OfficeConverter
             };
 
             var zoomRatios = new List<int> { 100, 95, 90, 85, 80, 75 };
-            var printArea = GetWorksheetPrintArea(worksheet);
-            
-            foreach (var paperSize in paperSizes)
+            worksheet.PageSetup.PrintArea = GetWorksheetPrintArea(worksheet);
+
+            if (CountHorizontalPageBreaks(worksheet.VPageBreaks) != 0)
             {
-                var exitfor = false;
-                worksheet.PageSetup.PaperSize = paperSize.PaperSize;
-                worksheet.PageSetup.Orientation = paperSize.Orientation;
-
-                foreach (var zoomRatio in zoomRatios)
+                foreach (var paperSize in paperSizes)
                 {
-                    worksheet.Activate();
-                    worksheet.PageSetup.Zoom = zoomRatio;
-                    worksheet.PageSetup.PrintArea = printArea;
-                    if (CountHorizontalPageBreaks(worksheet.VPageBreaks) == 0)
+                    var exitfor = false;
+                    worksheet.PageSetup.PaperSize = paperSize.PaperSize;
+                    worksheet.PageSetup.Orientation = paperSize.Orientation;
+                    
+                    foreach (var zoomRatio in zoomRatios)
                     {
-                        exitfor = true;
-                        break;
-                    }
-                }
+                        worksheet.PageSetup.Zoom = false;
+                        #pragma warning disable 219
+                        // Yes these page counts look lame, but so is Excel 2010 in not updating
+                        // the pages collection otherwis. We need to call the count methods to
+                        // make this code work
+                        var pages = worksheet.PageSetup.Pages.Count;
+                        worksheet.PageSetup.Zoom = zoomRatio;
+                        // ReSharper disable once RedundantAssignment
+                        pages = worksheet.PageSetup.Pages.Count;
+                        #pragma warning restore 219
 
-                if (exitfor)
-                    break;
+                        if (CountHorizontalPageBreaks(worksheet.VPageBreaks) == 0)
+                        {
+                            exitfor = true;
+                            break;
+                        }
+                    }
+
+                    if (exitfor)
+                        break;
+                }
             }
         }
         #endregion
@@ -751,14 +778,16 @@ namespace OfficeConverter
             {
                 excel = new Excel.ApplicationClass
                 {
-                    //ScreenUpdating = false,
-                    //DisplayAlerts = false,
-                    //DisplayDocumentInformationPanel = false,
-                    //DisplayRecentFiles = false,
-                    //DisplayScrollBars = false,
-                    //AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable,
-                    Visible = true
+                    //ScreenUpdating = true,
+                    DisplayAlerts = false,
+                    DisplayDocumentInformationPanel = false,
+                    DisplayRecentFiles = false,
+                    DisplayScrollBars = false,
+                    AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable,
+                    PrintCommunication = true,
+                    //Visible = true
                 };
+
 
                 var extension = Path.GetExtension(inputFile);
                 if (string.IsNullOrWhiteSpace(extension))
@@ -779,9 +808,8 @@ namespace OfficeConverter
                 foreach (Excel.Worksheet sheet in workbook.Sheets)
                 {
                     // Automaticly fit columns
-                    sheet.Columns.AutoFit();
-                    sheet.PageSetup.Order = Excel.XlOrder.xlOverThenDown;
                     SetWorkSheetPaperSize(sheet);
+                    Marshal.ReleaseComObject(sheet);
                 }
 
                 workbook.ExportAsFixedFormat(Excel.XlFixedFormatType.xlTypePDF, outputFile);
