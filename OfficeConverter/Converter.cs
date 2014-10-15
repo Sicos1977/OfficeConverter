@@ -606,8 +606,13 @@ namespace OfficeConverter
         {
             // We can't use this method when there are shapes on a sheet so
             // we return an empty string
-            if (worksheet.Shapes.Count > 0)
+            var shapes = worksheet.Shapes;
+            if (shapes.Count > 0)
+            {
+                Marshal.ReleaseComObject(shapes);
                 return string.Empty;
+            }
+            Marshal.ReleaseComObject(shapes);
 
             int firstColumn;
             int firstRow;
@@ -617,6 +622,7 @@ namespace OfficeConverter
             {
                 firstColumn = 1;
                 firstRow = 1;
+                Marshal.ReleaseComObject(range);
             }
             else
             {
@@ -627,12 +633,14 @@ namespace OfficeConverter
 
                 firstColumn = firstCell.Column;
                 firstRow = firstCell.Row;
+                Marshal.ReleaseComObject(firstCell);
 
                 // Search the first used cell row wise
                 firstCell = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows);
 
                 if (firstCell.Column < firstColumn) firstColumn = firstCell.Column;
                 if (firstCell.Row < firstRow) firstRow = firstCell.Row;
+                Marshal.ReleaseComObject(firstCell);
             }
 
             var lastColumn = firstColumn;
@@ -647,6 +655,7 @@ namespace OfficeConverter
 
                 lastColumn = lastCell.Column;
                 lastRow = lastCell.Row;
+                Marshal.ReleaseComObject(lastCell);
 
                 lastCell =
                     worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows,
@@ -654,6 +663,7 @@ namespace OfficeConverter
 
                 if (lastCell.Column > lastColumn) lastColumn = lastCell.Column;
                 if (lastCell.Row > lastRow) lastRow = lastCell.Row;
+                Marshal.ReleaseComObject(lastCell);
             }
 
             return GetExcelColumnAddress(firstColumn) + firstRow + ":" +
@@ -706,10 +716,13 @@ namespace OfficeConverter
             }
             // ReSharper disable once EmptyGeneralCatchClause
             catch {}
-            
-            worksheet.PageSetup.Order = Excel.XlOrder.xlOverThenDown;
 
-            var paperSizes = new List<ExcelPaperSize>
+            var pageSetup = worksheet.PageSetup;
+            try
+            {
+                pageSetup.Order = Excel.XlOrder.xlOverThenDown;
+
+                var paperSizes = new List<ExcelPaperSize>
             {
                 new ExcelPaperSize(Excel.XlPaperSize.xlPaperA4, Excel.XlPageOrientation.xlPortrait),
                 new ExcelPaperSize(Excel.XlPaperSize.xlPaperA4, Excel.XlPageOrientation.xlLandscape),
@@ -717,41 +730,48 @@ namespace OfficeConverter
                 new ExcelPaperSize(Excel.XlPaperSize.xlPaperA3, Excel.XlPageOrientation.xlPortrait)
             };
 
-            var zoomRatios = new List<int> { 100, 95, 90, 85, 80, 75 };
-            worksheet.PageSetup.PrintArea = GetWorksheetPrintArea(worksheet);
+                var zoomRatios = new List<int> { 100, 95, 90, 85, 80, 75 };
+                pageSetup.PrintArea = GetWorksheetPrintArea(worksheet);
 
-            if (CountHorizontalPageBreaks(worksheet.VPageBreaks) != 0)
-            {
-                foreach (var paperSize in paperSizes)
+                if (CountHorizontalPageBreaks(worksheet.VPageBreaks) != 0)
                 {
-                    var exitfor = false;
-                    worksheet.PageSetup.PaperSize = paperSize.PaperSize;
-                    worksheet.PageSetup.Orientation = paperSize.Orientation;
-                    
-                    foreach (var zoomRatio in zoomRatios)
+                    foreach (var paperSize in paperSizes)
                     {
-                        worksheet.PageSetup.Zoom = false;
-                        #pragma warning disable 219
-                        // Yes these page counts look lame, but so is Excel 2010 in not updating
-                        // the pages collection otherwis. We need to call the count methods to
-                        // make this code work
-                        var pages = worksheet.PageSetup.Pages.Count;
-                        worksheet.PageSetup.Zoom = zoomRatio;
-                        // ReSharper disable once RedundantAssignment
-                        pages = worksheet.PageSetup.Pages.Count;
-                        #pragma warning restore 219
+                        var exitfor = false;
+                        pageSetup.PaperSize = paperSize.PaperSize;
+                        pageSetup.Orientation = paperSize.Orientation;
 
-                        if (CountHorizontalPageBreaks(worksheet.VPageBreaks) == 0)
+                        foreach (var zoomRatio in zoomRatios)
                         {
-                            exitfor = true;
-                            break;
-                        }
-                    }
+                            pageSetup.Zoom = false;
+#pragma warning disable 219
+                            // Yes these page counts look lame, but so is Excel 2010 in not updating
+                            // the pages collection otherwis. We need to call the count methods to
+                            // make this code work
+                            var pages = pageSetup.Pages.Count;
+                            pageSetup.Zoom = zoomRatio;
+                            // ReSharper disable once RedundantAssignment
+                            pages = pageSetup.Pages.Count;
+#pragma warning restore 219
 
-                    if (exitfor)
-                        break;
+                            if (CountHorizontalPageBreaks(worksheet.VPageBreaks) == 0)
+                            {
+                                exitfor = true;
+                                break;
+                            }
+                        }
+
+                        if (exitfor)
+                            break;
+                    }
                 }
             }
+            finally
+            {
+                if (pageSetup != null)
+                    Marshal.ReleaseComObject(pageSetup);
+            }
+
         }
         #endregion
 
@@ -788,7 +808,6 @@ namespace OfficeConverter
                     //Visible = true
                 };
 
-
                 var extension = Path.GetExtension(inputFile);
                 if (string.IsNullOrWhiteSpace(extension))
                     extension = string.Empty;
@@ -815,7 +834,7 @@ namespace OfficeConverter
                 workbook.ExportAsFixedFormat(Excel.XlFixedFormatType.xlTypePDF, outputFile);
             }
             finally
-             {
+            {
                 if (workbook != null)
                 {
                     workbook.Saved = true;
@@ -832,6 +851,9 @@ namespace OfficeConverter
                 if (!string.IsNullOrEmpty(tempFileName) && File.Exists(tempFileName))
                     File.Delete(tempFileName);
             }
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
         }
         #endregion
 
