@@ -318,11 +318,20 @@ namespace OfficeConverter
                 word.Options.UpdateLinksAtPrint = false;
 
                 document = (Word.DocumentClass) OpenWordFile(word, inputFile, false);
+
+                // Do not remove this line!!
+                // This is yet another solution to a weird Office problem. Sometimes there
+                // are Word documents with images in it that take some time to load. When
+                // we remove the line below the ExportAsFixedFormat method will be called 
+                // before the images are loaded thus resulting in an unendless loop somewhere
+                // in this method.
+                // ReSharper disable once UnusedVariable
+                var count = document.ComputeStatistics(Word.WdStatistic.wdStatisticPages);
                 
                 word.DisplayAutoCompleteTips = false;
                 word.DisplayScreenTips = false;
                 word.DisplayStatusBar = false;
-
+                
                 document.ExportAsFixedFormat(outputFile, Word.WdExportFormat.wdExportFormatPDF);
             }
             finally
