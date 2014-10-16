@@ -143,6 +143,7 @@ namespace OfficeConverter
         /// <exception cref="OCFileTypeNotSupported">Raised when the <paramref name="inputFile"/> is not supported</exception>
         /// <exception cref="OCFileIsPasswordProtected">Raised when the <paramref name="inputFile"/> is password protected</exception>
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile"/> has to many rows</exception>
+        /// <exception cref="OCFileContainsNoData">Raised when the Microsoft Office file contains no actual data</exception>
         public void Convert(string inputFile, string outputFile)
         {
             CheckFileNameAndOutputFolder(inputFile, outputFile);
@@ -619,15 +620,16 @@ namespace OfficeConverter
             if (shapes.Count > 0)
             {
                 Marshal.ReleaseComObject(shapes);
-                return string.Empty;
+                return "shapes";
             }
+
             Marshal.ReleaseComObject(shapes);
 
             int firstColumn;
             int firstRow;
 
             var range = worksheet.Cells[1, 1] as Excel.Range;
-            if (range != null && !string.IsNullOrWhiteSpace((string) range.Value))
+            if (range != null && range.Value != null)
             {
                 firstColumn = 1;
                 firstRow = 1;
@@ -694,11 +696,11 @@ namespace OfficeConverter
         }
 
         /// <summary>
-        /// Returns the total number of horizontal pagebreaks in the print area
+        /// Returns the total number of vertical pagebreaks in the print area
         /// </summary>
         /// <param name="pageBreaks"></param>
         /// <returns></returns>
-        private static int CountHorizontalPageBreaks(IEnumerable pageBreaks)
+        private static int CountVerticalPageBreaks(IEnumerable pageBreaks)
         {
             var result = 0;
 
@@ -717,7 +719,8 @@ namespace OfficeConverter
         /// This method wil figure out the optimal paper size to use and sets
         /// </summary>
         /// <param name="worksheet"></param>
-        private static void SetWorkSheetPaperSize(Excel._Worksheet worksheet)
+        /// <param name="printArea"></param>
+        private static void SetWorkSheetPaperSize(Excel._Worksheet worksheet, string printArea)
         {
             try
             {
@@ -727,6 +730,7 @@ namespace OfficeConverter
             catch {}
 
             var pageSetup = worksheet.PageSetup;
+
             try
             {
                 pageSetup.Order = Excel.XlOrder.xlOverThenDown;
@@ -740,39 +744,37 @@ namespace OfficeConverter
             };
 
                 var zoomRatios = new List<int> { 100, 95, 90, 85, 80, 75 };
-                pageSetup.PrintArea = GetWorksheetPrintArea(worksheet);
+                pageSetup.PrintArea = printArea;
+                pageSetup.LeftHeader = worksheet.Name;
 
-                if (CountHorizontalPageBreaks(worksheet.VPageBreaks) != 0)
+                foreach (var paperSize in paperSizes)
                 {
-                    foreach (var paperSize in paperSizes)
-                    {
-                        var exitfor = false;
-                        pageSetup.PaperSize = paperSize.PaperSize;
-                        pageSetup.Orientation = paperSize.Orientation;
+                    var exitfor = false;
+                    pageSetup.PaperSize = paperSize.PaperSize;
+                    pageSetup.Orientation = paperSize.Orientation;
 
-                        foreach (var zoomRatio in zoomRatios)
-                        {
-                            pageSetup.Zoom = false;
+                    foreach (var zoomRatio in zoomRatios)
+                    {
+                        pageSetup.Zoom = false;
 #pragma warning disable 219
-                            // Yes these page counts look lame, but so is Excel 2010 in not updating
-                            // the pages collection otherwis. We need to call the count methods to
-                            // make this code work
-                            var pages = pageSetup.Pages.Count;
-                            pageSetup.Zoom = zoomRatio;
-                            // ReSharper disable once RedundantAssignment
-                            pages = pageSetup.Pages.Count;
+                        // Yes these page counts look lame, but so is Excel 2010 in not updating
+                        // the pages collection otherwis. We need to call the count methods to
+                        // make this code work
+                        var pages = pageSetup.Pages.Count;
+                        pageSetup.Zoom = zoomRatio;
+                        // ReSharper disable once RedundantAssignment
+                        pages = pageSetup.Pages.Count;
 #pragma warning restore 219
 
-                            if (CountHorizontalPageBreaks(worksheet.VPageBreaks) == 0)
-                            {
-                                exitfor = true;
-                                break;
-                            }
-                        }
-
-                        if (exitfor)
+                        if (CountVerticalPageBreaks(worksheet.VPageBreaks) == 0)
+                        {
+                            exitfor = true;
                             break;
+                        }
                     }
+
+                    if (exitfor)
+                        break;
                 }
             }
             finally
@@ -832,15 +834,36 @@ namespace OfficeConverter
                 }
 
                 workbook = OpenExcelFile(excel, inputFile, extension, false);
+                var usedSheets = 0;
 
                 foreach (Excel.Worksheet sheet in workbook.Sheets)
                 {
-                    // Automaticly fit columns
-                    SetWorkSheetPaperSize(sheet);
+                    var printArea = GetWorksheetPrintArea(sheet);
+
+                    switch (printArea)
+                    {
+                        case "shapes":
+                            SetWorkSheetPaperSize(sheet, string.Empty);
+                            usedSheets += 1;
+                            break;
+
+                        case "":
+                            break;
+
+                        default:
+                            SetWorkSheetPaperSize(sheet, printArea);
+                            usedSheets += 1;
+                            break;
+                    }
+
                     Marshal.ReleaseComObject(sheet);
                 }
 
-                workbook.ExportAsFixedFormat(Excel.XlFixedFormatType.xlTypePDF, outputFile);
+                // It is not possible in Excel to export an empty workbook
+                if (usedSheets != 0)
+                    workbook.ExportAsFixedFormat(Excel.XlFixedFormatType.xlTypePDF, outputFile);
+                else
+                    throw new OCFileContainsNoData("The file '" + Path.GetFileName(inputFile) + "' contains no data"); 
             }
             finally
             {

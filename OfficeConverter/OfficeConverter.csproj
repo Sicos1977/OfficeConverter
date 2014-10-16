@@ -93,6 +93,7 @@
     <Compile Include="Exceptions\OCCsvFileLimitExceeded.cs" />
     <Compile Include="Exceptions\OCExcelConfiguration.cs" />
     <Compile Include="Exceptions\OCFileIsCorrupt.cs" />
+    <Compile Include="Exceptions\OCFileContainsNoData.cs" />
     <Compile Include="Exceptions\OCFileIsPasswordProtected.cs" />
     <Compile Include="Exceptions\OCFileTypeNotSupported.cs" />
     <Compile Include="Biff8\Biff8RC4.cs" />
