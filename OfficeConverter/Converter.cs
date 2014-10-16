@@ -746,7 +746,7 @@ namespace OfficeConverter
                 var zoomRatios = new List<int> { 100, 95, 90, 85, 80, 75 };
                 pageSetup.PrintArea = printArea;
                 pageSetup.LeftHeader = worksheet.Name;
-
+                //pageSetup.PrintArea.SpecialCells(xlCellTypeBlanks).EntireRow.Delete;
                 foreach (var paperSize in paperSizes)
                 {
                     var exitfor = false;
