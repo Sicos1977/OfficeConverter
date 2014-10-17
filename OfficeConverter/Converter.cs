@@ -454,7 +454,6 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region ConvertWithExcel
         #region CheckIfSystemProfileDesktopDirectoryExists
         /// <summary>
         /// If you want to run this code on a server the following folders must exists, if they don't
@@ -674,6 +673,16 @@ namespace OfficeConverter
 
                 if (lastCell.Column > lastColumn) lastColumn = lastCell.Column;
                 if (lastCell.Row > lastRow) lastRow = lastCell.Row;
+
+                
+                //for (var i = lastRow; i < 1; i--)
+                //{
+                //    if (worksheet.Range[].Count)
+                //}
+                var rangeToDelete = new Excel.Range[firstRow, lastRow];
+                worksheet.Application.WorksheetFunction.CountA(rangeToDelete.Rows(i))
+
+
                 Marshal.ReleaseComObject(lastCell);
             }
 
@@ -746,7 +755,11 @@ namespace OfficeConverter
                 var zoomRatios = new List<int> { 100, 95, 90, 85, 80, 75 };
                 pageSetup.PrintArea = printArea;
                 pageSetup.LeftHeader = worksheet.Name;
+<<<<<<< HEAD
                 //pageSetup.PrintArea.SpecialCells(xlCellTypeBlanks).EntireRow.Delete;
+=======
+                
+>>>>>>> origin/master
                 foreach (var paperSize in paperSizes)
                 {
                     var exitfor = false;
@@ -786,6 +799,7 @@ namespace OfficeConverter
         }
         #endregion
 
+        #region ConvertWithExcel
         /// <summary>
         /// Converts a Excel sheet to PDF
         /// </summary>
