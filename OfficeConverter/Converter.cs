@@ -624,32 +624,41 @@ namespace OfficeConverter
 
             Marshal.ReleaseComObject(shapes);
 
-            int firstColumn;
-            int firstRow;
+            var firstColumn = 1;
+            var firstRow = 1;
 
             var range = worksheet.Cells[1, 1] as Excel.Range;
-            if (range != null && range.Value != null)
+            if (range == null || range.Value == null)
             {
-                firstColumn = 1;
-                firstRow = 1;
-                Marshal.ReleaseComObject(range);
-            }
-            else
-            {
-                // Search the first used cell column wise
-                var firstCell = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByColumns);
-                if (firstCell == null)
-                    return string.Empty;
+                if (range != null)
+                    Marshal.ReleaseComObject(range);
 
-                firstColumn = firstCell.Column;
-                firstRow = firstCell.Row;
-                Marshal.ReleaseComObject(firstCell);
+                var firstCell = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByColumns);
+                var foundByFirstColumn = false;
+                if (firstCell != null)
+                {
+                    foundByFirstColumn = true;
+                    firstColumn = firstCell.Column;
+                    firstRow = firstCell.Row;
+                    Marshal.ReleaseComObject(firstCell);
+                }
 
                 // Search the first used cell row wise
                 firstCell = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows);
+                if (firstCell == null)
+                    return string.Empty;
 
-                if (firstCell.Column < firstColumn) firstColumn = firstCell.Column;
-                if (firstCell.Row < firstRow) firstRow = firstCell.Row;
+                if (foundByFirstColumn)
+                {
+                    if (firstCell.Column < firstColumn) firstColumn = firstCell.Column;
+                    if (firstCell.Row < firstRow) firstRow = firstCell.Row;
+                }
+                else
+                {
+                    firstColumn = firstCell.Column;
+                    firstRow = firstCell.Row;
+                }
+
                 Marshal.ReleaseComObject(firstCell);
             }
 
@@ -660,30 +669,47 @@ namespace OfficeConverter
                 worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByColumns,
                     SearchDirection: Excel.XlSearchDirection.xlPrevious);
 
+            //var foundByLastColumn = false;
             if (lastCell != null)
             {
-
+                //foundByLastColumn = true;
                 lastColumn = lastCell.Column;
                 lastRow = lastCell.Row;
                 Marshal.ReleaseComObject(lastCell);
+            }
 
-                lastCell =
-                    worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows,
-                        SearchDirection: Excel.XlSearchDirection.xlPrevious);
+            lastCell =
+                worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows,
+                    SearchDirection: Excel.XlSearchDirection.xlPrevious);
 
+            if (lastCell != null)
+            {
                 if (lastCell.Column > lastColumn) lastColumn = lastCell.Column;
                 if (lastCell.Row > lastRow) lastRow = lastCell.Row;
 
-                
-                //for (var i = lastRow; i < 1; i--)
-                //{
-                //    if (worksheet.Range[].Count)
-                //}
-                var rangeToDelete = new Excel.Range[firstRow, lastRow];
-                worksheet.Application.WorksheetFunction.CountA(rangeToDelete.Rows(i))
-
+                var previousLastCell =
+                    worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows,
+                        SearchDirection: Excel.XlSearchDirection.xlPrevious,
+                        After: lastCell);
 
                 Marshal.ReleaseComObject(lastCell);
+
+                if (previousLastCell != null)
+                {
+                    var previousRow = previousLastCell.Row;
+                    Marshal.ReleaseComObject(previousLastCell);
+
+                    if (previousRow < lastRow - 2)
+                    {
+                        var rangeToDelete =
+                            worksheet.Range[GetExcelColumnAddress(firstColumn) + (previousRow + 1) + ":" +
+                                            GetExcelColumnAddress(lastColumn) + (lastRow - 2)];
+
+                        rangeToDelete.Delete(Excel.XlDeleteShiftDirection.xlShiftUp);
+                        Marshal.ReleaseComObject(rangeToDelete);
+                        lastRow = previousRow + 2;
+                    }
+                }
             }
 
             return GetExcelColumnAddress(firstColumn) + firstRow + ":" +
@@ -755,11 +781,7 @@ namespace OfficeConverter
                 var zoomRatios = new List<int> { 100, 95, 90, 85, 80, 75 };
                 pageSetup.PrintArea = printArea;
                 pageSetup.LeftHeader = worksheet.Name;
-<<<<<<< HEAD
-                //pageSetup.PrintArea.SpecialCells(xlCellTypeBlanks).EntireRow.Delete;
-=======
                 
->>>>>>> origin/master
                 foreach (var paperSize in paperSizes)
                 {
                     var exitfor = false;
@@ -823,14 +845,14 @@ namespace OfficeConverter
             {
                 excel = new Excel.ApplicationClass
                 {
-                    //ScreenUpdating = true,
+                    ScreenUpdating = false,
                     DisplayAlerts = false,
                     DisplayDocumentInformationPanel = false,
                     DisplayRecentFiles = false,
                     DisplayScrollBars = false,
                     AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable,
                     PrintCommunication = true,
-                    //Visible = true
+                    Visible = false
                 };
 
                 var extension = Path.GetExtension(inputFile);
