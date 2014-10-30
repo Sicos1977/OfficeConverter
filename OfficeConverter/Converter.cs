@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Drawing.Printing;
 using System.Globalization;
@@ -526,33 +525,81 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region GetExcelMaxRows
+        #region ExcelVersionNumber
+        /// <summary>
+        /// Returns the Excel version number as an integer
+        /// </summary>
+        /// <exception cref="OCExcelConfiguration">Raised when Excel version could not be determined or the registry could not be read</exception>
+        private static int ExcelVersionNumber
+        {
+            get
+            {
+                try
+                {
+                    var baseKey = Registry.ClassesRoot;
+                    var subKey = baseKey.OpenSubKey(@"Excel.Application\CurVer");
+                    if (subKey != null)
+                    {
+                        switch (subKey.GetValue(string.Empty).ToString().ToUpperInvariant())
+                        {
+                            // Excel 2003
+                            case "EXCEL.APPLICATION.11":
+                                return 11;
+
+                            // Excel 2007
+                            case "EXCEL.APPLICATION.12":
+                                return 12;
+
+                            // Excel 2010
+                            case "EXCEL.APPLICATION.14":
+                                return 14;
+
+                            // Excel 2013
+                            case "EXCEL.APPLICATION.15":
+                                return 15;
+
+                            default:
+                                throw new OCExcelConfiguration("Could not determine Excel version");
+                        }
+                    }
+
+                    throw new OCExcelConfiguration("Could not find registry key Excel.Application\\CurVer");
+                }
+                catch (Exception exception)
+                {
+                    throw new OCExcelConfiguration("Could not read registry to check Excel version", exception);
+                }
+            }
+        }
+        #endregion
+
+        #region ExcelMaxRows
         /// <summary>
         /// Returns the maximum rows Excel supports
         /// </summary>
         /// <returns></returns>
-        private static int GetExcelMaxRows()
+        private static int ExcelMaxRows
         {
-            const int excelMaxRowsFrom2003AndBelow = 65535;
-            const int excelMaxRowsFrom2007AndUp = 1048576;
-
-            var baseKey = Registry.ClassesRoot;
-            var subKey = baseKey.OpenSubKey(@"Excel.Application\CurVer");
-            if (subKey != null)
+            get
             {
-                switch (subKey.GetValue(string.Empty).ToString().ToUpperInvariant())
-                {
-                    case "EXCEL.APPLICATION.11":
-                        return excelMaxRowsFrom2003AndBelow;
+                const int excelMaxRowsFrom2003AndBelow = 65535;
+                const int excelMaxRowsFrom2007AndUp = 1048576;
 
-                    case "EXCEL.APPLICATION.12":
-                    case "EXCEL.APPLICATION.14":
-                    case "EXCEL.APPLICATION.15":
+                switch (ExcelVersionNumber)
+                {
+                    // Excel 2007
+                    case 12:
+                    // Excel 2010
+                    case 14:
+                    // Excel 2013
+                    case 15:
                         return excelMaxRowsFrom2007AndUp;
+
+                    // Excel 2003 and older
+                    default:
+                        return excelMaxRowsFrom2003AndBelow;
                 }
             }
-
-            throw new Exception("Could not read registry to check Excel version");
         }
         #endregion
 
@@ -606,6 +653,29 @@ namespace OfficeConverter
 
         #region GetWorksheetPrintArea
         /// <summary>
+        /// Placeholder for shape information
+        /// </summary>
+        private class ShapePosition
+        {
+            public int TopLeftColumn { get; private set; }
+            public int TopLeftRow { get; private set; }
+            public int BottomRightColumn { get; private set; }
+            public int BottomRightRow { get; private set; }
+
+            public ShapePosition(Excel.Shape shape)
+            {
+                var topLeftCell = shape.TopLeftCell;
+                var bottomRightCell = shape.BottomRightCell;
+                TopLeftRow = topLeftCell.Row;
+                TopLeftColumn = topLeftCell.Column;
+                BottomRightRow = bottomRightCell.Row;
+                BottomRightColumn = bottomRightCell.Column;
+                Marshal.ReleaseComObject(topLeftCell);
+                Marshal.ReleaseComObject(bottomRightCell);
+            }
+        }
+
+        /// <summary>
         /// Figures out the used cell range. This are the cell's that contain any form of text and 
         /// returns this range. An empty range will be returned when there are shapes used on a worksheet
         /// </summary>
@@ -613,19 +683,28 @@ namespace OfficeConverter
         /// <returns></returns>
         private static string GetWorksheetPrintArea(Excel._Worksheet worksheet)
         {
+            var firstColumn = 1;
+            var firstRow = 1;
+
+            var shapesPosition = new List<ShapePosition>();
+
             // We can't use this method when there are shapes on a sheet so
             // we return an empty string
             var shapes = worksheet.Shapes;
             if (shapes.Count > 0)
             {
+                if (ExcelVersionNumber < 14)
+                    return "shapes";
+
+                // The shape TopLeftCell and BottomRightCell is only supported from Excel 2010 and up
+                foreach (Excel.Shape shape in worksheet.Shapes)
+                {
+                    shapesPosition.Add(new ShapePosition(shape));
+                    Marshal.ReleaseComObject(shape);
+                }
+
                 Marshal.ReleaseComObject(shapes);
-                return "shapes";
             }
-
-            Marshal.ReleaseComObject(shapes);
-
-            var firstColumn = 1;
-            var firstRow = 1;
 
             var range = worksheet.Cells[1, 1] as Excel.Range;
             if (range == null || range.Value == null)
@@ -633,71 +712,78 @@ namespace OfficeConverter
                 if (range != null)
                     Marshal.ReleaseComObject(range);
 
-                var firstCell = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByColumns);
+                var firstCellByColumn = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByColumns);
                 var foundByFirstColumn = false;
-                if (firstCell != null)
+                if (firstCellByColumn != null)
                 {
                     foundByFirstColumn = true;
-                    firstColumn = firstCell.Column;
-                    firstRow = firstCell.Row;
-                    Marshal.ReleaseComObject(firstCell);
+                    firstColumn = firstCellByColumn.Column;
+                    firstRow = firstCellByColumn.Row;
+                    Marshal.ReleaseComObject(firstCellByColumn);
                 }
 
                 // Search the first used cell row wise
-                firstCell = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows);
-                if (firstCell == null)
+                var firstCellByRow = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows);
+                if (firstCellByRow == null)
                     return string.Empty;
 
                 if (foundByFirstColumn)
                 {
-                    if (firstCell.Column < firstColumn) firstColumn = firstCell.Column;
-                    if (firstCell.Row < firstRow) firstRow = firstCell.Row;
+                    if (firstCellByRow.Column < firstColumn) firstColumn = firstCellByRow.Column;
+                    if (firstCellByRow.Row < firstRow) firstRow = firstCellByRow.Row;
                 }
                 else
                 {
-                    firstColumn = firstCell.Column;
-                    firstRow = firstCell.Row;
+                    firstColumn = firstCellByRow.Column;
+                    firstRow = firstCellByRow.Row;
                 }
 
-                Marshal.ReleaseComObject(firstCell);
+                Marshal.ReleaseComObject(firstCellByRow);
+            }
+
+            foreach (var shapePosition in shapesPosition)
+            {
+                if (shapePosition.TopLeftColumn < firstColumn)
+                    firstColumn = shapePosition.TopLeftColumn;
+
+                if (shapePosition.TopLeftRow < firstRow)
+                    firstRow = shapePosition.TopLeftRow;
             }
 
             var lastColumn = firstColumn;
             var lastRow = firstRow;
 
-            var lastCell =
+            var lastCellByColumn =
                 worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByColumns,
                     SearchDirection: Excel.XlSearchDirection.xlPrevious);
 
-            //var foundByLastColumn = false;
-            if (lastCell != null)
+            if (lastCellByColumn != null)
             {
-                //foundByLastColumn = true;
-                lastColumn = lastCell.Column;
-                lastRow = lastCell.Row;
-                Marshal.ReleaseComObject(lastCell);
+                lastColumn = lastCellByColumn.Column;
+                lastRow = lastCellByColumn.Row;
+                Marshal.ReleaseComObject(lastCellByColumn);
             }
 
-            lastCell =
+            var lastCellByRow =
                 worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows,
                     SearchDirection: Excel.XlSearchDirection.xlPrevious);
 
-            if (lastCell != null)
+            if (lastCellByRow != null)
             {
-                if (lastCell.Column > lastColumn) lastColumn = lastCell.Column;
-                if (lastCell.Row > lastRow) lastRow = lastCell.Row;
+                if (lastCellByRow.Column > lastColumn) lastColumn = lastCellByRow.Column;
+                if (lastCellByRow.Row > lastRow) lastRow = lastCellByRow.Row;
 
-                var previousLastCell =
+                var previousLastCellByRow =
                     worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows,
                         SearchDirection: Excel.XlSearchDirection.xlPrevious,
-                        After: lastCell);
+                        After: lastCellByRow);
 
-                Marshal.ReleaseComObject(lastCell);
+                Marshal.ReleaseComObject(lastCellByRow);
 
-                if (previousLastCell != null)
+                if (previousLastCellByRow != null)
                 {
-                    var previousRow = previousLastCell.Row;
-                    Marshal.ReleaseComObject(previousLastCell);
+                    var previousRow = previousLastCellByRow.Row;
+                    Marshal.ReleaseComObject(previousLastCellByRow);
 
                     if (previousRow < lastRow - 2)
                     {
@@ -710,6 +796,15 @@ namespace OfficeConverter
                         lastRow = previousRow + 2;
                     }
                 }
+            }
+
+            foreach (var shapePosition in shapesPosition)
+            {
+                if (shapePosition.BottomRightColumn > lastColumn)
+                    lastColumn = shapePosition.BottomRightColumn;
+
+                if (shapePosition.BottomRightRow > lastRow)
+                    lastRow = shapePosition.BottomRightRow;
             }
 
             return GetExcelColumnAddress(firstColumn) + firstRow + ":" +
@@ -735,35 +830,35 @@ namespace OfficeConverter
         /// </summary>
         /// <param name="pageBreaks"></param>
         /// <returns></returns>
-        private static int CountVerticalPageBreaks(IEnumerable pageBreaks)
+        private static int CountVerticalPageBreaks(Excel.VPageBreaks pageBreaks)
         {
             var result = 0;
 
-            foreach (Excel.VPageBreak pageBreak in pageBreaks)
+            try
             {
-                if (pageBreak.Extent == Excel.XlPageBreakExtent.xlPageBreakPartial)
-                    result += 1;
-                
-                Marshal.ReleaseComObject(pageBreak);
+                foreach (Excel.VPageBreak pageBreak in pageBreaks)
+                {
+                    if (pageBreak.Extent == Excel.XlPageBreakExtent.xlPageBreakPartial)
+                        result += 1;
+
+                    Marshal.ReleaseComObject(pageBreak);
+                }
+            }
+            catch (COMException)
+            {
+                result = pageBreaks.Count;
             }
 
             return result;
         }
 
         /// <summary>
-        /// This method wil figure out the optimal paper size to use and sets
+        /// This method wil figure out the optimal paper size to use and sets it
         /// </summary>
         /// <param name="worksheet"></param>
         /// <param name="printArea"></param>
         private static void SetWorkSheetPaperSize(Excel._Worksheet worksheet, string printArea)
         {
-            try
-            {
-                worksheet.Columns.AutoFit();
-            }
-            // ReSharper disable once EmptyGeneralCatchClause
-            catch {}
-
             var pageSetup = worksheet.PageSetup;
 
             try
@@ -787,6 +882,7 @@ namespace OfficeConverter
                     var exitfor = false;
                     pageSetup.PaperSize = paperSize.PaperSize;
                     pageSetup.Orientation = paperSize.Orientation;
+                    worksheet.ResetAllPageBreaks();
 
                     foreach (var zoomRatio in zoomRatios)
                     {
@@ -874,6 +970,15 @@ namespace OfficeConverter
 
                 foreach (Excel.Worksheet sheet in workbook.Sheets)
                 {
+                    try
+                    {
+                        sheet.Columns.AutoFit();
+                    }
+                    catch (COMException)
+                    {
+                        // Do nothing, this sometimes failes and there is nothing we can do about it
+                    }
+
                     var printArea = GetWorksheetPrintArea(sheet);
 
                     switch (printArea)
@@ -1040,7 +1145,7 @@ namespace OfficeConverter
                     case ".CSV":
 
                         var count = File.ReadLines(inputFile).Count();
-                        var excelMaxRows = GetExcelMaxRows();
+                        var excelMaxRows = ExcelMaxRows;
                         if (count > excelMaxRows)
                             throw new OCCsvFileLimitExceeded("The input CSV file has more then " + excelMaxRows +
                                                              " rows, the installed Excel version supports only " +
