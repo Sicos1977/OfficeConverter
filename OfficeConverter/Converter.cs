@@ -966,6 +966,10 @@ namespace OfficeConverter
                 }
 
                 workbook = OpenExcelFile(excel, inputFile, extension, false);
+
+                // We cannot determine a print area when the document is marked as final so we remove this
+                workbook.Final = false;
+
                 var usedSheets = 0;
 
                 foreach (Excel.Worksheet sheet in workbook.Sheets)
