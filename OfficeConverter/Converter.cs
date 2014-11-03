@@ -676,6 +676,80 @@ namespace OfficeConverter
         }
 
         /// <summary>
+        /// Direction to search in merged cell
+        /// </summary>
+        private enum MergedCellSearchOrder
+        {
+            /// <summary>
+            /// Search for first row in the merge area
+            /// </summary>
+            FirstRow,
+
+            /// <summary>
+            /// Search for first column in the merge area
+            /// </summary>
+            FirstColumn,
+
+            /// <summary>
+            /// Search for last row in the merge area
+            /// </summary>
+            LastRow,
+
+            /// <summary>
+            /// Search for last column in the merge area
+            /// </summary>
+            LastColumn
+        }
+
+        /// <summary>
+        /// Checks if the given cell is merged and if so returns the last column or row from this merge.
+        /// When the cell is not merged it just returns the cell
+        /// </summary>
+        /// <param name="range">The cell</param>
+        /// <param name="searchOrder"><see cref="MergedCellSearchOrder"/></param>
+        /// <returns></returns>
+        private static int CheckForMergedCell(Excel.Range range, MergedCellSearchOrder searchOrder)
+        {
+            if (range == null)
+                return 0;
+
+            var result = 0;
+            var mergeArea = range.MergeArea;
+
+            switch (searchOrder)
+            {
+                case MergedCellSearchOrder.FirstRow:
+                    result = range.Row;
+                    if (mergeArea != null)
+                        result = mergeArea.Row;
+                    break;
+
+                case MergedCellSearchOrder.FirstColumn:
+                    result = range.Column;
+                    if (mergeArea != null)
+                        result = mergeArea.Column;
+                    break;
+
+                case MergedCellSearchOrder.LastRow:
+                    result = range.Row;
+                    if (mergeArea != null)
+                        result += mergeArea.Rows.Count;
+                    break;
+
+                case MergedCellSearchOrder.LastColumn:
+                    result = range.Column;
+                    if (mergeArea != null)
+                        result += mergeArea.Columns.Count;
+                    break;
+            }
+
+            if (mergeArea != null)
+                Marshal.ReleaseComObject(mergeArea);
+
+            return result;
+        }
+
+        /// <summary>
         /// Figures out the used cell range. This are the cell's that contain any form of text and 
         /// returns this range. An empty range will be returned when there are shapes used on a worksheet
         /// </summary>
@@ -699,7 +773,9 @@ namespace OfficeConverter
                 // The shape TopLeftCell and BottomRightCell is only supported from Excel 2010 and up
                 foreach (Excel.Shape shape in worksheet.Shapes)
                 {
-                    shapesPosition.Add(new ShapePosition(shape));
+                    if (shape.AutoShapeType != MsoAutoShapeType.msoShapeMixed)
+                        shapesPosition.Add(new ShapePosition(shape));
+
                     Marshal.ReleaseComObject(shape);
                 }
 
@@ -717,8 +793,8 @@ namespace OfficeConverter
                 if (firstCellByColumn != null)
                 {
                     foundByFirstColumn = true;
-                    firstColumn = firstCellByColumn.Column;
-                    firstRow = firstCellByColumn.Row;
+                    firstColumn = CheckForMergedCell(firstCellByColumn, MergedCellSearchOrder.FirstColumn);
+                    firstRow = CheckForMergedCell(firstCellByColumn, MergedCellSearchOrder.FirstRow);
                     Marshal.ReleaseComObject(firstCellByColumn);
                 }
 
@@ -729,13 +805,13 @@ namespace OfficeConverter
 
                 if (foundByFirstColumn)
                 {
-                    if (firstCellByRow.Column < firstColumn) firstColumn = firstCellByRow.Column;
-                    if (firstCellByRow.Row < firstRow) firstRow = firstCellByRow.Row;
+                    if (firstCellByRow.Column < firstColumn) firstColumn = CheckForMergedCell(firstCellByRow, MergedCellSearchOrder.FirstColumn);
+                    if (firstCellByRow.Row < firstRow) firstRow = CheckForMergedCell(firstCellByRow, MergedCellSearchOrder.FirstRow);
                 }
                 else
                 {
-                    firstColumn = firstCellByRow.Column;
-                    firstRow = firstCellByRow.Row;
+                    firstColumn = CheckForMergedCell(firstCellByRow, MergedCellSearchOrder.FirstColumn);
+                    firstRow = CheckForMergedCell(firstCellByRow, MergedCellSearchOrder.FirstRow);
                 }
 
                 Marshal.ReleaseComObject(firstCellByRow);
@@ -770,31 +846,37 @@ namespace OfficeConverter
 
             if (lastCellByRow != null)
             {
-                if (lastCellByRow.Column > lastColumn) lastColumn = lastCellByRow.Column;
-                if (lastCellByRow.Row > lastRow) lastRow = lastCellByRow.Row;
+                if (lastCellByRow.Column > lastColumn) lastColumn = CheckForMergedCell(lastCellByRow, MergedCellSearchOrder.LastColumn);
+                if (lastCellByRow.Row > lastRow) lastRow = CheckForMergedCell(lastCellByRow, MergedCellSearchOrder.LastRow);
 
-                var previousLastCellByRow =
-                    worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows,
-                        SearchDirection: Excel.XlSearchDirection.xlPrevious,
-                        After: lastCellByRow);
-
-                Marshal.ReleaseComObject(lastCellByRow);
-
-                if (previousLastCellByRow != null)
+                var protection = worksheet.Protection;
+                if (!worksheet.ProtectContents || protection.AllowDeletingRows)
                 {
-                    var previousRow = previousLastCellByRow.Row;
-                    Marshal.ReleaseComObject(previousLastCellByRow);
+                    var previousLastCellByRow =
+                        worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows,
+                            SearchDirection: Excel.XlSearchDirection.xlPrevious,
+                            After: lastCellByRow);
 
-                    if (previousRow < lastRow - 2)
+                    Marshal.ReleaseComObject(lastCellByRow);
+
+                    if (previousLastCellByRow != null)
                     {
-                        var rangeToDelete =
-                            worksheet.Range[GetExcelColumnAddress(firstColumn) + (previousRow + 1) + ":" +
-                                            GetExcelColumnAddress(lastColumn) + (lastRow - 2)];
+                        var previousRow = CheckForMergedCell(previousLastCellByRow, MergedCellSearchOrder.LastRow);
+                        Marshal.ReleaseComObject(previousLastCellByRow);
 
-                        rangeToDelete.Delete(Excel.XlDeleteShiftDirection.xlShiftUp);
-                        Marshal.ReleaseComObject(rangeToDelete);
-                        lastRow = previousRow + 2;
+                        if (previousRow < lastRow - 2)
+                        {
+                            var rangeToDelete =
+                                worksheet.Range[GetExcelColumnAddress(firstColumn) + (previousRow + 1) + ":" +
+                                                GetExcelColumnAddress(lastColumn) + (lastRow - 2)];
+
+                            rangeToDelete.Delete(Excel.XlDeleteShiftDirection.xlShiftUp);
+                            Marshal.ReleaseComObject(rangeToDelete);
+                            lastRow = previousRow + 2;
+                        }
                     }
+
+                    Marshal.ReleaseComObject(protection);
                 }
             }
 
@@ -941,14 +1023,14 @@ namespace OfficeConverter
             {
                 excel = new Excel.ApplicationClass
                 {
-                    ScreenUpdating = false,
+                    //ScreenUpdating = false,
                     DisplayAlerts = false,
                     DisplayDocumentInformationPanel = false,
                     DisplayRecentFiles = false,
                     DisplayScrollBars = false,
                     AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable,
                     PrintCommunication = true,
-                    Visible = false
+                    Visible = true
                 };
 
                 var extension = Path.GetExtension(inputFile);
@@ -976,7 +1058,11 @@ namespace OfficeConverter
                 {
                     try
                     {
-                        sheet.Columns.AutoFit();
+                        var protection = sheet.Protection;
+                        if (!sheet.ProtectContents || protection.AllowFormattingColumns)
+                            sheet.Columns.AutoFit();
+
+                        Marshal.ReleaseComObject(protection);
                     }
                     catch (COMException)
                     {
