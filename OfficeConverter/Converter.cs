@@ -719,28 +719,52 @@ namespace OfficeConverter
             switch (searchOrder)
             {
                 case MergedCellSearchOrder.FirstRow:
-                    result = range.Row;
-                    if (mergeArea != null)
-                        result = mergeArea.Row;
+                    result = mergeArea.Row;
                     break;
 
                 case MergedCellSearchOrder.FirstColumn:
-                    result = range.Column;
-                    if (mergeArea != null)
-                        result = mergeArea.Column;
+                    result = mergeArea.Column;
                     break;
 
                 case MergedCellSearchOrder.LastRow:
+                {
                     result = range.Row;
-                    if (mergeArea != null)
-                        result += mergeArea.Rows.Count;
-                    break;
+                    var entireRow = range.EntireRow;
+                    var cells = entireRow.Cells;
 
-                case MergedCellSearchOrder.LastColumn:
-                    result = range.Column;
-                    if (mergeArea != null)
-                        result += mergeArea.Columns.Count;
+                    var lastCell = cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByColumns, SearchDirection: Excel.XlSearchDirection.xlPrevious);
+
+                    Excel.Range searchRange = entireRow.Range["1:" + lastCell.Column];
+
+                    var rows = mergeArea.Rows;
+                    var count = rows.Count;
+
+                    if (count > 1)
+                        result += count;
+
+                    if (lastCell != null)
+                        Marshal.ReleaseComObject(lastCell);
+
+                    Marshal.ReleaseComObject(rows);
+                    Marshal.ReleaseComObject(entireRow);
+                    Marshal.ReleaseComObject(cells);
+
                     break;
+                }
+                
+                case MergedCellSearchOrder.LastColumn:
+                {
+                    result = range.Column;
+                    var columns = mergeArea.Columns;
+                    var count = columns.Count;
+
+                    if (count > 1)
+                        result += count;
+
+                    Marshal.ReleaseComObject(columns);
+
+                    break;
+                }
             }
 
             if (mergeArea != null)
@@ -751,7 +775,7 @@ namespace OfficeConverter
 
         /// <summary>
         /// Figures out the used cell range. This are the cell's that contain any form of text and 
-        /// returns this range. An empty range will be returned when there are shapes used on a worksheet
+        /// returns this range.
         /// </summary>
         /// <param name="worksheet"></param>
         /// <returns></returns>
@@ -761,6 +785,7 @@ namespace OfficeConverter
             var firstRow = 1;
 
             var shapesPosition = new List<ShapePosition>();
+            var cells = worksheet.Cells;
 
             // We can't use this method when there are shapes on a sheet so
             // we return an empty string
@@ -788,7 +813,7 @@ namespace OfficeConverter
                 if (range != null)
                     Marshal.ReleaseComObject(range);
 
-                var firstCellByColumn = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByColumns);
+                var firstCellByColumn = cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByColumns);
                 var foundByFirstColumn = false;
                 if (firstCellByColumn != null)
                 {
@@ -799,14 +824,17 @@ namespace OfficeConverter
                 }
 
                 // Search the first used cell row wise
-                var firstCellByRow = worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows);
+                var firstCellByRow = cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows);
                 if (firstCellByRow == null)
                     return string.Empty;
 
                 if (foundByFirstColumn)
                 {
-                    if (firstCellByRow.Column < firstColumn) firstColumn = CheckForMergedCell(firstCellByRow, MergedCellSearchOrder.FirstColumn);
-                    if (firstCellByRow.Row < firstRow) firstRow = CheckForMergedCell(firstCellByRow, MergedCellSearchOrder.FirstRow);
+                    if (firstCellByRow.Column < firstColumn) 
+                        firstColumn = CheckForMergedCell(firstCellByRow, MergedCellSearchOrder.FirstColumn);
+
+                    if (firstCellByRow.Row < firstRow) firstRow = 
+                        CheckForMergedCell(firstCellByRow, MergedCellSearchOrder.FirstRow);
                 }
                 else
                 {
@@ -830,7 +858,7 @@ namespace OfficeConverter
             var lastRow = firstRow;
 
             var lastCellByColumn =
-                worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByColumns,
+                cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByColumns,
                     SearchDirection: Excel.XlSearchDirection.xlPrevious);
 
             if (lastCellByColumn != null)
@@ -841,7 +869,7 @@ namespace OfficeConverter
             }
 
             var lastCellByRow =
-                worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows,
+                cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows,
                     SearchDirection: Excel.XlSearchDirection.xlPrevious);
 
             if (lastCellByRow != null)
@@ -853,7 +881,7 @@ namespace OfficeConverter
                 if (!worksheet.ProtectContents || protection.AllowDeletingRows)
                 {
                     var previousLastCellByRow =
-                        worksheet.Cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows,
+                        cells.Find("*", SearchOrder: Excel.XlSearchOrder.xlByRows,
                             SearchDirection: Excel.XlSearchDirection.xlPrevious,
                             After: lastCellByRow);
 
@@ -880,6 +908,9 @@ namespace OfficeConverter
                 }
             }
 
+            if (cells != null)
+                Marshal.ReleaseComObject(cells);
+            
             foreach (var shapePosition in shapesPosition)
             {
                 if (shapePosition.BottomRightColumn > lastColumn)
