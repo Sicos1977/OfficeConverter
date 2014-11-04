@@ -204,8 +204,8 @@ namespace OfficeConverter
                 case ".PPTM":
                 case ".PPTX":
                     if (PowerPoint.FileIsPasswordProtected(inputFile))
-                        throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) + "' is password protected"); 
-            
+                        throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) + "' is password protected");
+
                     PowerPoint.Convert(inputFile, outputFile);
                     break;
 
