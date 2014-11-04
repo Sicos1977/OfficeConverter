@@ -289,7 +289,7 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region GetWorksheetPrintArea
+        #region CheckForMergedCell
         /// <summary>
         /// Checks if the given cell is merged and if so returns the last column or row from this merge.
         /// When the cell is not merged it just returns the cell
@@ -308,28 +308,55 @@ namespace OfficeConverter
             switch (searchOrder)
             {
                 case MergedCellSearchOrder.FirstRow:
-                    result = range.Row;
-                    if (mergeArea != null)
-                        result = mergeArea.Row;
+                    result = mergeArea.Row;
                     break;
 
                 case MergedCellSearchOrder.FirstColumn:
-                    result = range.Column;
-                    if (mergeArea != null)
-                        result = mergeArea.Column;
+                    result = mergeArea.Column;
                     break;
 
                 case MergedCellSearchOrder.LastRow:
+                {
                     result = range.Row;
-                    if (mergeArea != null)
-                        result += mergeArea.Rows.Count;
+                    var entireRow = range.EntireRow;
+
+                    for (var i = 1; i < range.Column; i++)
+                    {
+                        var cell = (ExcelInterop.Range) entireRow.Cells[i];
+                        var cellMergeArea = cell.MergeArea;
+                        var cellMergeAreaRows = cellMergeArea.Rows;
+                        var count = cellMergeAreaRows.Count;
+
+                        Marshal.ReleaseComObject(cellMergeAreaRows);
+                        Marshal.ReleaseComObject(cellMergeArea);
+                        Marshal.ReleaseComObject(cell);
+
+                        var tempResult = result;
+
+                        if (count > 1 && range.Row + count > tempResult)
+                            tempResult = result + count;
+
+                        result = tempResult;
+                    }
+
+                    Marshal.ReleaseComObject(entireRow);
+
                     break;
+                }
 
                 case MergedCellSearchOrder.LastColumn:
+                {
                     result = range.Column;
-                    if (mergeArea != null)
-                        result += mergeArea.Columns.Count;
+                    var columns = mergeArea.Columns;
+                    var count = columns.Count;
+
+                    if (count > 1)
+                        result += count;
+
+                    Marshal.ReleaseComObject(columns);
+
                     break;
+                }
             }
 
             if (mergeArea != null)
@@ -337,7 +364,9 @@ namespace OfficeConverter
 
             return result;
         }
+        #endregion
 
+        #region GetWorksheetPrintArea
         /// <summary>
         /// Figures out the used cell range. This are the cell's that contain any form of text and 
         /// returns this range. An empty range will be returned when there are shapes used on a worksheet
@@ -435,8 +464,11 @@ namespace OfficeConverter
 
             if (lastCellByRow != null)
             {
-                if (lastCellByRow.Column > lastColumn) lastColumn = CheckForMergedCell(lastCellByRow, MergedCellSearchOrder.LastColumn);
-                if (lastCellByRow.Row > lastRow) lastRow = CheckForMergedCell(lastCellByRow, MergedCellSearchOrder.LastRow);
+                if (lastCellByRow.Column > lastColumn) 
+                    lastColumn = CheckForMergedCell(lastCellByRow, MergedCellSearchOrder.LastColumn);
+
+                if (lastCellByRow.Row > lastRow) 
+                    lastRow = CheckForMergedCell(lastCellByRow, MergedCellSearchOrder.LastRow);
 
                 var protection = worksheet.Protection;
                 if (!worksheet.ProtectContents || protection.AllowDeletingRows)
@@ -521,6 +553,14 @@ namespace OfficeConverter
         private static void SetWorkSheetPaperSize(ExcelInterop._Worksheet worksheet, string printArea)
         {
             var pageSetup = worksheet.PageSetup;
+            var pages = pageSetup.Pages;
+            pageSetup.PrintArea = printArea;
+            pageSetup.LeftHeader = worksheet.Name;
+
+            var pageCount = pages.Count;
+
+            if (pageCount == 1)
+                return;
 
             try
             {
@@ -535,8 +575,6 @@ namespace OfficeConverter
             };
 
                 var zoomRatios = new List<int> { 100, 95, 90, 85, 80, 75 };
-                pageSetup.PrintArea = printArea;
-                pageSetup.LeftHeader = worksheet.Name;
 
                 foreach (var paperSize in paperSizes)
                 {
@@ -547,16 +585,12 @@ namespace OfficeConverter
 
                     foreach (var zoomRatio in zoomRatios)
                     {
-                        pageSetup.Zoom = false;
-#pragma warning disable 219
                         // Yes these page counts look lame, but so is Excel 2010 in not updating
                         // the pages collection otherwis. We need to call the count methods to
                         // make this code work
-                        var pages = pageSetup.Pages.Count;
                         pageSetup.Zoom = zoomRatio;
                         // ReSharper disable once RedundantAssignment
-                        pages = pageSetup.Pages.Count;
-#pragma warning restore 219
+                        pageCount = pages.Count;
 
                         if (CountVerticalPageBreaks(worksheet.VPageBreaks) == 0)
                         {
@@ -571,8 +605,8 @@ namespace OfficeConverter
             }
             finally
             {
-                if (pageSetup != null)
-                    Marshal.ReleaseComObject(pageSetup);
+                Marshal.ReleaseComObject(pages);
+                Marshal.ReleaseComObject(pageSetup);
             }
 
         }
@@ -602,14 +636,14 @@ namespace OfficeConverter
             {
                 excel = new ExcelInterop.ApplicationClass
                 {
-                    //ScreenUpdating = false,
+                    ScreenUpdating = false,
                     DisplayAlerts = false,
                     DisplayDocumentInformationPanel = false,
                     DisplayRecentFiles = false,
                     DisplayScrollBars = false,
                     AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable,
                     PrintCommunication = true,
-                    Visible = true
+                    Visible = false
                 };
 
                 var extension = Path.GetExtension(inputFile);

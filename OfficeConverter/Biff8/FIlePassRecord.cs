@@ -78,7 +78,7 @@ namespace OfficeConverter.Biff8
 
         #region Read
         /// <summary>
-        /// Returns <see cref="size"/> bytes from the <see cref="input"/> stream
+        /// Returns <paramref name="size"/> bytes from the <paramref name="input"/> stream
         /// </summary>
         /// <param name="input"></param>
         /// <param name="size"></param>
