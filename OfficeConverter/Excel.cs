@@ -92,8 +92,31 @@ namespace OfficeConverter
         #endregion
 
         #region Fields
+        /// <summary>
+        /// Excel version number
+        /// </summary>
         private static readonly int VersionNumber;
+
+        /// <summary>
+        /// Excel maximum rows
+        /// </summary>
         private static readonly int MaxRows;
+
+        /// <summary>
+        /// Paper sizes to use when detecting optimal page size with the <see cref="SetWorkSheetPaperSize"/> method
+        /// </summary>
+        private static readonly List<ExcelPaperSize> PaperSizes = new List<ExcelPaperSize>
+            {
+                new ExcelPaperSize(ExcelInterop.XlPaperSize.xlPaperA4, ExcelInterop.XlPageOrientation.xlPortrait),
+                new ExcelPaperSize(ExcelInterop.XlPaperSize.xlPaperA4, ExcelInterop.XlPageOrientation.xlLandscape),
+                new ExcelPaperSize(ExcelInterop.XlPaperSize.xlPaperA3, ExcelInterop.XlPageOrientation.xlLandscape),
+                new ExcelPaperSize(ExcelInterop.XlPaperSize.xlPaperA3, ExcelInterop.XlPageOrientation.xlPortrait)
+            };
+
+        /// <summary>
+        /// Zoom ration to use when detecting optimal page size with the <see cref="SetWorkSheetPaperSize"/> method
+        /// </summary>
+        private static readonly List<int> ZoomRatios = new List<int> { 100, 95, 90, 85, 80, 75 };     
         #endregion
 
         #region Constructor
@@ -554,9 +577,10 @@ namespace OfficeConverter
         {
             var pageSetup = worksheet.PageSetup;
             var pages = pageSetup.Pages;
+
             pageSetup.PrintArea = printArea;
             pageSetup.LeftHeader = worksheet.Name;
-
+            
             var pageCount = pages.Count;
 
             if (pageCount == 1)
@@ -566,24 +590,14 @@ namespace OfficeConverter
             {
                 pageSetup.Order = ExcelInterop.XlOrder.xlOverThenDown;
 
-                var paperSizes = new List<ExcelPaperSize>
-            {
-                new ExcelPaperSize(ExcelInterop.XlPaperSize.xlPaperA4, ExcelInterop.XlPageOrientation.xlPortrait),
-                new ExcelPaperSize(ExcelInterop.XlPaperSize.xlPaperA4, ExcelInterop.XlPageOrientation.xlLandscape),
-                new ExcelPaperSize(ExcelInterop.XlPaperSize.xlPaperA3, ExcelInterop.XlPageOrientation.xlLandscape),
-                new ExcelPaperSize(ExcelInterop.XlPaperSize.xlPaperA3, ExcelInterop.XlPageOrientation.xlPortrait)
-            };
-
-                var zoomRatios = new List<int> { 100, 95, 90, 85, 80, 75 };
-
-                foreach (var paperSize in paperSizes)
+                foreach (var paperSize in PaperSizes)
                 {
                     var exitfor = false;
                     pageSetup.PaperSize = paperSize.PaperSize;
                     pageSetup.Orientation = paperSize.Orientation;
                     worksheet.ResetAllPageBreaks();
 
-                    foreach (var zoomRatio in zoomRatios)
+                    foreach (var zoomRatio in ZoomRatios)
                     {
                         // Yes these page counts look lame, but so is Excel 2010 in not updating
                         // the pages collection otherwis. We need to call the count methods to
@@ -602,6 +616,31 @@ namespace OfficeConverter
                     if (exitfor)
                         break;
                 }
+            }
+            finally
+            {
+                Marshal.ReleaseComObject(pages);
+                Marshal.ReleaseComObject(pageSetup);
+            }
+
+        }
+        #endregion
+
+        #region SetChartPaperSize
+        /// <summary>
+        /// This method wil set the papersize for a chart
+        /// </summary>
+        /// <param name="chart"></param>
+        private static void SetChartPaperSize(ExcelInterop._Chart chart)
+        {
+            var pageSetup = chart.PageSetup;
+            var pages = pageSetup.Pages;
+
+            try
+            {
+                pageSetup.LeftHeader = chart.Name;
+                pageSetup.PaperSize = ExcelInterop.XlPaperSize.xlPaperA4;
+                pageSetup.Orientation = ExcelInterop.XlPageOrientation.xlLandscape;
             }
             finally
             {
@@ -642,7 +681,7 @@ namespace OfficeConverter
                     DisplayRecentFiles = false,
                     DisplayScrollBars = false,
                     AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable,
-                    PrintCommunication = true,
+                    PrintCommunication = true, // DO NOT REMOVE THIS LINE, NO NEVER EVER ... DON'T EVEN TRY IT
                     Visible = false
                 };
 
@@ -667,40 +706,61 @@ namespace OfficeConverter
 
                 var usedSheets = 0;
 
-                foreach (ExcelInterop.Worksheet sheet in workbook.Sheets)
+                foreach (var sheetObject in workbook.Sheets)
                 {
-                    try
+                    var sheet = sheetObject as ExcelInterop.Worksheet;
+
+                    if (sheet != null)
                     {
                         var protection = sheet.Protection;
-                        if (!sheet.ProtectContents || protection.AllowFormattingColumns)
-                            sheet.Columns.AutoFit();
+                        var activeWindow = excel.ActiveWindow;
 
-                        Marshal.ReleaseComObject(protection);
+                        try
+                        {
+                            sheet.Activate();
+                            if (!sheet.ProtectContents || protection.AllowFormattingColumns)
+                                if (activeWindow.View != ExcelInterop.XlWindowView.xlPageLayoutView)
+                                    sheet.Columns.AutoFit();
+
+                        }
+                        catch (COMException)
+                        {
+                            // Do nothing, this sometimes failes and there is nothing we can do about it
+                        }
+                        finally
+                        {
+                            Marshal.ReleaseComObject(activeWindow);
+                            Marshal.ReleaseComObject(protection);
+                        }
+
+                        var printArea = GetWorksheetPrintArea(sheet);
+
+                        switch (printArea)
+                        {
+                            case "shapes":
+                                SetWorkSheetPaperSize(sheet, string.Empty);
+                                usedSheets += 1;
+                                break;
+
+                            case "":
+                                break;
+
+                            default:
+                                SetWorkSheetPaperSize(sheet, printArea);
+                                usedSheets += 1;
+                                break;
+                        }
+
+                        Marshal.ReleaseComObject(sheet);
+                        continue;
                     }
-                    catch (COMException)
+
+                    var chart = sheetObject as ExcelInterop.Chart;
+                    if (chart != null)
                     {
-                        // Do nothing, this sometimes failes and there is nothing we can do about it
+                        SetChartPaperSize(chart);
+                        Marshal.ReleaseComObject(chart);
                     }
-
-                    var printArea = GetWorksheetPrintArea(sheet);
-
-                    switch (printArea)
-                    {
-                        case "shapes":
-                            SetWorkSheetPaperSize(sheet, string.Empty);
-                            usedSheets += 1;
-                            break;
-
-                        case "":
-                            break;
-
-                        default:
-                            SetWorkSheetPaperSize(sheet, printArea);
-                            usedSheets += 1;
-                            break;
-                    }
-
-                    Marshal.ReleaseComObject(sheet);
                 }
 
                 // It is not possible in Excel to export an empty workbook
