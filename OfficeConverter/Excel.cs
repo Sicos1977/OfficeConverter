@@ -160,7 +160,7 @@ namespace OfficeConverter
                     }
                 }
                 else
-                    throw new OCExcelConfiguration("Could not find registry key ExcelInterop.Application\\CurVer");
+                    throw new OCExcelConfiguration("Could not find registry key Excel.Application\\CurVer");
             }
             catch (Exception exception)
             {
