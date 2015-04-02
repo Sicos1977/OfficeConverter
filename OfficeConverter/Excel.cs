@@ -579,7 +579,7 @@ namespace OfficeConverter
             var pages = pageSetup.Pages;
 
             pageSetup.PrintArea = printArea;
-            pageSetup.LeftHeader = worksheet.Name;
+            //pageSetup.LeftHeader = worksheet.Name;
             
             var pageCount = pages.Count;
 
@@ -717,7 +717,8 @@ namespace OfficeConverter
 
                         try
                         {
-                            sheet.Activate();
+                            // ReSharper disable once RedundantCast
+                            ((Microsoft.Office.Interop.Excel._Worksheet)sheet).Activate();
                             if (!sheet.ProtectContents || protection.AllowFormattingColumns)
                                 if (activeWindow.View != ExcelInterop.XlWindowView.xlPageLayoutView)
                                     sheet.Columns.AutoFit();
