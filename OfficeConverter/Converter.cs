@@ -220,9 +220,10 @@ namespace OfficeConverter
                 default:
                     throw new OCFileTypeNotSupported("The file '" + Path.GetFileName(inputFile) +
                                                      "' is not supported only, " + Environment.NewLine +
-                                                     ".DOC, .DOCM, .DOCX, .DOT, .DOTM, .RTF, .MHT, .WPS, .WRI, .ODT, " + Environment.NewLine +
-                                                     ".XLS, .XLSB, .XLSM, .XLSX, .XLT, .XLTM, .XLTX, .XLW, .ODS, " + Environment.NewLine +
-                                                     ".POT, .PPT, .POTM, .POTX, .PPS, .PPSM, .PPSX, .PPTM, .PPTX and .ODP " + Environment.NewLine +
+                                                     ".DOC, .DOT, .DOCM, .DOCX, .DOTM, .ODT, .RTF, .MHT, " + Environment.NewLine +
+                                                     ".WPS, .WRI, .XLS, .XLT, .XLW, .XLSB, .XLSM, .XLSX, " + Environment.NewLine +
+                                                     ".XLTM, .XLTX, .CSV, .ODS, .POT, .PPT, .PPS, .POTM, " + Environment.NewLine +
+                                                     ".POTX, .PPSM, .PPSX, .PPTM, .PPTX, .ODP" + Environment.NewLine +
                                                      " are supported");
             }
         }

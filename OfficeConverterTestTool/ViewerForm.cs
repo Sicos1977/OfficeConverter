@@ -50,9 +50,10 @@ namespace OfficeConverterTestTool
             var openFileDialog1 = new OpenFileDialog
             {
                 // ReSharper disable once LocalizableElement
-                Filter = "Microsoft Office files|*.DOC;*.DOCM;*.DOCX;*.DOT;*.DOTM;*.ODT;*.XLS;*.XLSB;*.XLSM;*.XLSX;*.XLT;" +
-                                                     "*.XLTM;*.XLTX;*.XLW;*.CSV;*.ODS;*.POT;*.PPT;*.POTM;*.POTX;*.PPS;*.PPSM;" +
-                                                     "*.PPSX;*.PPTM;*.PPTX;*.ODT",
+                Filter = "Microsoft Office files|*.DOC;*.DOT;*.DOCM;*.DOCX;*.DOTM;*.ODT;*.RTF;*.MHT;" +
+                                                "*.WPS;*.WRI;*.XLS;*.XLT;*.XLW;*.XLSB;*.XLSM;*.XLSX;" +
+                                                "*.XLTM;*.XLTX;*.CSV;*.ODS;*.POT;*.PPT;*.PPS;*.POTM;" +
+                                                "*.POTX;*.PPSM;*.PPSX;*.PPTM;*.PPTX;*.ODP",
                 FilterIndex = 1,
                 Multiselect = false
             };
@@ -69,17 +70,18 @@ namespace OfficeConverterTestTool
                     _tempFolders.Add(tempFolder);
 
                     var extractor = new OfficeConverter.Converter();
-                    extractor.Convert(openFileDialog1.FileName, "d:\\kees.pdf");
-                    FilesListBox.Items.Clear();
-                    MessageBox.Show("Converted");
-                    //FilesListBox.Items.Add(file);
+                    var outputFile = openFileDialog1.FileName.Substring(0, openFileDialog1.FileName.LastIndexOf('.')) + ".pdf";
+                    OutputTextBox.Text = "Converting...";
+                    extractor.Convert(openFileDialog1.FileName, outputFile);
+                    OutputTextBox.Clear();
+                    OutputTextBox.Text = "Converted file written to '" + outputFile + "'";
                 }
                 catch (Exception ex)
                 {
                     if (tempFolder != null && Directory.Exists(tempFolder))
                         Directory.Delete(tempFolder, true);
 
-                    MessageBox.Show(ex.Message);
+                    OutputTextBox.Text = GetInnerException(ex);
                 }
             }
         }
@@ -90,5 +92,20 @@ namespace OfficeConverterTestTool
             Directory.CreateDirectory(tempDirectory);
             return tempDirectory;
         }
+
+        #region GetInnerException
+        /// <summary>
+        /// Get the complete inner exception tree
+        /// </summary>
+        /// <param name="e">The exception object</param>
+        /// <returns></returns>
+        public static string GetInnerException(Exception e)
+        {
+            var exception = e.Message + Environment.NewLine;
+            if (e.InnerException != null)
+                exception += GetInnerException(e.InnerException);
+            return exception;
+        }
+        #endregion
     }
 }
