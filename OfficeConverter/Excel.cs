@@ -579,7 +579,7 @@ namespace OfficeConverter
             var pages = pageSetup.Pages;
 
             pageSetup.PrintArea = printArea;
-            //pageSetup.LeftHeader = worksheet.Name;
+            pageSetup.LeftHeader = worksheet.Name;
             
             var pageCount = pages.Count;
 
