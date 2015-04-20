@@ -49,7 +49,7 @@ namespace OfficeConverter
                 word.Options.UpdateFieldsAtPrint = false;
                 word.Options.UpdateLinksAtOpen = false;
                 word.Options.UpdateLinksAtPrint = false;
-
+                
                 document = (WordInterop.DocumentClass)Open(word, inputFile, false);
 
                 // Do not remove this line!!
@@ -72,7 +72,7 @@ namespace OfficeConverter
                 if (document != null)
                 {
                     document.Saved = true;
-                    document.Close();
+                    document.Close(false);
                     Marshal.ReleaseComObject(document);
                 }
 
