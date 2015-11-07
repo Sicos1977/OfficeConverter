@@ -106,12 +106,12 @@ namespace OfficeConverter
         /// Paper sizes to use when detecting optimal page size with the <see cref="SetWorkSheetPaperSize"/> method
         /// </summary>
         private static readonly List<ExcelPaperSize> PaperSizes = new List<ExcelPaperSize>
-            {
-                new ExcelPaperSize(ExcelInterop.XlPaperSize.xlPaperA4, ExcelInterop.XlPageOrientation.xlPortrait),
-                new ExcelPaperSize(ExcelInterop.XlPaperSize.xlPaperA4, ExcelInterop.XlPageOrientation.xlLandscape),
-                new ExcelPaperSize(ExcelInterop.XlPaperSize.xlPaperA3, ExcelInterop.XlPageOrientation.xlLandscape),
-                new ExcelPaperSize(ExcelInterop.XlPaperSize.xlPaperA3, ExcelInterop.XlPageOrientation.xlPortrait)
-            };
+        {
+            new ExcelPaperSize(ExcelInterop.XlPaperSize.xlPaperA4, ExcelInterop.XlPageOrientation.xlPortrait),
+            new ExcelPaperSize(ExcelInterop.XlPaperSize.xlPaperA4, ExcelInterop.XlPageOrientation.xlLandscape),
+            new ExcelPaperSize(ExcelInterop.XlPaperSize.xlPaperA3, ExcelInterop.XlPageOrientation.xlLandscape),
+            new ExcelPaperSize(ExcelInterop.XlPaperSize.xlPaperA3, ExcelInterop.XlPageOrientation.xlPortrait)
+        };
 
         /// <summary>
         /// Zoom ration to use when detecting optimal page size with the <see cref="SetWorkSheetPaperSize"/> method
@@ -135,24 +135,29 @@ namespace OfficeConverter
                 {
                     switch (subKey.GetValue(string.Empty).ToString().ToUpperInvariant())
                     {
-                            // Excel 2003
+                        // Excel 2003
                         case "EXCEL.APPLICATION.11":
                             VersionNumber = 11;
                             break;
 
-                            // Excel 2007
+                        // Excel 2007
                         case "EXCEL.APPLICATION.12":
                             VersionNumber = 12;
                             break;
 
-                            // Excel 2010
+                        // Excel 2010
                         case "EXCEL.APPLICATION.14":
                             VersionNumber = 14;
                             break;
 
-                            // Excel 2013
+                        // Excel 2013
                         case "EXCEL.APPLICATION.15":
                             VersionNumber = 15;
+                            break;
+
+                        // Excel 2016
+                        case "EXCEL.APPLICATION.16":
+                            VersionNumber = 16;
                             break;
 
                         default:
@@ -178,6 +183,8 @@ namespace OfficeConverter
                 case 14:
                 // Excel 2013
                 case 15:
+                //Excel 2016
+                case 16:
                     MaxRows = excelMaxRowsFrom2007AndUp;
                     break;
 
@@ -194,7 +201,7 @@ namespace OfficeConverter
 
         #region CheckIfSystemProfileDesktopDirectoryExists
         /// <summary>
-        /// If you want to run this code on a server the following folders must exists, if they don't
+        /// If you want to run this code on a server then the following folders must exist, if they don't
         /// then you can't use Excel to convert files to PDF
         /// </summary>
         private static void CheckIfSystemProfileDesktopDirectoryExists()
@@ -203,6 +210,7 @@ namespace OfficeConverter
             {
                 var x64DesktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows),
                     @"SysWOW64\config\systemprofile\desktop");
+
                 if (!Directory.Exists(x64DesktopPath))
                 {
                     try
@@ -211,7 +219,7 @@ namespace OfficeConverter
                     }
                     catch (Exception exception)
                     {
-                        throw new OCExcelConfiguration("Can't create directory '" + x64DesktopPath +
+                        throw new OCExcelConfiguration("Can't create folder '" + x64DesktopPath +
                                                        "' Excel needs this folder to work on a server, error: " +
                                                        ExceptionHelpers.GetInnerException(exception));
                     }
@@ -220,6 +228,7 @@ namespace OfficeConverter
 
             var x86DesktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows),
                 @"System32\config\systemprofile\desktop");
+
             if (!Directory.Exists(x86DesktopPath))
             {
                 try
@@ -228,7 +237,7 @@ namespace OfficeConverter
                 }
                 catch (Exception exception)
                 {
-                    throw new OCExcelConfiguration("Can't create directory '" + x86DesktopPath +
+                    throw new OCExcelConfiguration("Can't create folder '" + x86DesktopPath +
                                                    "' Excel needs this folder to work on a server, error: " +
                                                    ExceptionHelpers.GetInnerException(exception));
                 }
@@ -243,6 +252,7 @@ namespace OfficeConverter
         private static void CheckIfPrinterIsInstalled()
         {
             var result = false;
+
             foreach (string printerName in PrinterSettings.InstalledPrinters)
             {
                 // Retrieve the printer settings.
@@ -600,7 +610,7 @@ namespace OfficeConverter
                     foreach (var zoomRatio in ZoomRatios)
                     {
                         // Yes these page counts look lame, but so is Excel 2010 in not updating
-                        // the pages collection otherwis. We need to call the count methods to
+                        // the pages collection otherwise. We need to call the count methods to
                         // make this code work
                         pageSetup.Zoom = zoomRatio;
                         // ReSharper disable once RedundantAssignment
@@ -647,13 +657,12 @@ namespace OfficeConverter
                 Marshal.ReleaseComObject(pages);
                 Marshal.ReleaseComObject(pageSetup);
             }
-
         }
         #endregion
 
         #region Convert
         /// <summary>
-        /// Converts a Excel sheet to PDF
+        /// Converts an Excel sheet to PDF
         /// </summary>
         /// <param name="inputFile">The Excel input file</param>
         /// <param name="outputFile">The PDF output file</param>

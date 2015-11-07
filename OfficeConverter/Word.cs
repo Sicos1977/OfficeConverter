@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using CompoundFileStorage;
 using CompoundFileStorage.Exceptions;
 using Microsoft.Office.Core;
+using Microsoft.Win32;
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
 using WordInterop = Microsoft.Office.Interop.Word;
@@ -15,6 +16,68 @@ namespace OfficeConverter
     /// </summary>
     internal static class Word
     {
+        #region Fields
+        /// <summary>
+        /// Word version number
+        /// </summary>
+        private static readonly int VersionNumber;
+        #endregion
+
+        #region Constructor
+        /// <summary>
+        /// This constructor is called the first time when the <see cref="Convert"/> or
+        /// <see cref="FileIsPasswordProtected"/> method is called. Some checks are done to
+        /// see if all requirements for a succesfull conversion are there.
+        /// </summary>
+        static Word()
+        {
+            try
+            {
+                var baseKey = Registry.ClassesRoot;
+                var subKey = baseKey.OpenSubKey(@"Word.Application\CurVer");
+                if (subKey != null)
+                {
+                    switch (subKey.GetValue(string.Empty).ToString().ToUpperInvariant())
+                    {
+                        // Word 2003
+                        case "WORD.APPLICATION.11":
+                            VersionNumber = 11;
+                            break;
+
+                        // Word 2007
+                        case "WORD.APPLICATION.12":
+                            VersionNumber = 12;
+                            break;
+
+                        // Word 2010
+                        case "WORD.APPLICATION.14":
+                            VersionNumber = 14;
+                            break;
+
+                        // Word 2013
+                        case "WORD.APPLICATION.15":
+                            VersionNumber = 15;
+                            break;
+
+                        // Word 2016
+                        case "WORD.APPLICATION.16":
+                            VersionNumber = 16;
+                            break;
+
+                        default:
+                            throw new OCWordConfiguration("Could not determine WORD version");
+                    }
+                }
+                else
+                    throw new OCWordConfiguration("Could not find registry key WORD.Application\\CurVer");
+            }
+            catch (Exception exception)
+            {
+                throw new OCWordConfiguration("Could not read registry to check WORD version", exception);
+            }
+        }
+        #endregion
+
         #region Convert
         /// <summary>
         /// Converts a Word document to PDF
@@ -24,6 +87,8 @@ namespace OfficeConverter
         /// <returns></returns>
         internal static void Convert(string inputFile, string outputFile)
         {
+            DeleteAutoRecoveryFiles();
+
             WordInterop.ApplicationClass word = null;
             WordInterop.DocumentClass document = null;
 
@@ -183,6 +248,52 @@ namespace OfficeConverter
 
                 return Open(word, inputFile, true);
             }
+        }
+        #endregion
+
+        #region DeleteAutoRecoveryFiles
+        /// <summary>
+        /// This method will delete the automatic created Resiliency key. Word uses this registry key  
+        /// to make entries to corrupted documents. If there are to many entries under this key Word will
+        /// get slower and slower to start. To prevent this we just delete this key when it existst
+        /// </summary>
+        private static void DeleteAutoRecoveryFiles()
+        {
+            // HKEY_CURRENT_USER\Software\Microsoft\Office\14.0\Word\Resiliency\DocumentRecovery
+            var version = string.Empty;
+
+            switch (VersionNumber)
+            {
+                // Word 2003
+                case 11:
+                    version = "11.0";
+                    break;
+
+                // Word 2017
+                case 12:
+                    version = "12.0";
+                    break;
+
+                // Word 2010
+                case 14:
+                    version = "14.0";
+                    break;
+
+                // Word 2013
+                case 15:
+                    version = "15.0";
+                    break;
+
+                // Word 2016
+                case 16:
+                    version = "16.0";
+                    break;
+            }
+
+            var key = @"Software\Microsoft\Office\" + version + @"\Word\Resiliency";
+
+            if (Registry.CurrentUser.OpenSubKey(key, false) != null)
+                Registry.CurrentUser.DeleteSubKeyTree(key);
         }
         #endregion
     }
