@@ -2,9 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Windows.Forms;
+using OfficeConverter;
 
 /*
-   Copyright 2013-2014 Kees van Spelde
+   Copyright 2014-2015 Kees van Spelde
 
    Licensed under The Code Project Open License (CPOL) 1.02;
    you may not use this file except in compliance with the License.
@@ -23,19 +24,24 @@ namespace OfficeConverterTestTool
 {
     public partial class ViewerForm : Form
     {
-        readonly List<string> _tempFolders = new List<string>(); 
+        readonly List<string> _tempFolders = new List<string>();
 
+        #region ViewerForm
         public ViewerForm()
         {
             InitializeComponent();
         }
+        #endregion
 
+        #region ViewerForm_Load
         private void ViewerForm_Load(object sender, EventArgs e)
         {
             Closed += ViewerForm_Closed;
         }
+        #endregion
 
-        void ViewerForm_Closed(object sender, EventArgs e)
+        #region ViewerForm_Closed
+        private void ViewerForm_Closed(object sender, EventArgs e)
         {
             foreach (var tempFolder in _tempFolders)
             {
@@ -43,7 +49,9 @@ namespace OfficeConverterTestTool
                     Directory.Delete(tempFolder, true);
             }
         }
+        #endregion
 
+        #region SelectButton_Click
         private void SelectButton_Click(object sender, EventArgs e)
         {
             // Create an instance of the opeKn file dialog box.
@@ -51,9 +59,9 @@ namespace OfficeConverterTestTool
             {
                 // ReSharper disable once LocalizableElement
                 Filter = "Microsoft Office files|*.DOC;*.DOT;*.DOCM;*.DOCX;*.DOTM;*.ODT;*.RTF;*.MHT;" +
-                                                "*.WPS;*.WRI;*.XLS;*.XLT;*.XLW;*.XLSB;*.XLSM;*.XLSX;" +
-                                                "*.XLTM;*.XLTX;*.CSV;*.ODS;*.POT;*.PPT;*.PPS;*.POTM;" +
-                                                "*.POTX;*.PPSM;*.PPSX;*.PPTM;*.PPTX;*.ODP",
+                         "*.WPS;*.WRI;*.XLS;*.XLT;*.XLW;*.XLSB;*.XLSM;*.XLSX;" +
+                         "*.XLTM;*.XLTX;*.CSV;*.ODS;*.POT;*.PPT;*.PPS;*.POTM;" +
+                         "*.POTX;*.PPSM;*.PPSX;*.PPTM;*.PPTX;*.ODP",
                 FilterIndex = 1,
                 Multiselect = false
             };
@@ -69,8 +77,9 @@ namespace OfficeConverterTestTool
                     tempFolder = GetTemporaryFolder();
                     _tempFolders.Add(tempFolder);
 
-                    var extractor = new OfficeConverter.Converter();
-                    var outputFile = openFileDialog1.FileName.Substring(0, openFileDialog1.FileName.LastIndexOf('.')) + ".pdf";
+                    var extractor = new Converter();
+                    var outputFile = openFileDialog1.FileName.Substring(0, openFileDialog1.FileName.LastIndexOf('.')) +
+                                     ".pdf";
                     OutputTextBox.Text = "Converting...";
                     extractor.Convert(openFileDialog1.FileName, outputFile);
                     OutputTextBox.Clear();
@@ -85,13 +94,16 @@ namespace OfficeConverterTestTool
                 }
             }
         }
+        #endregion
 
+        #region GetTemporaryFolder
         public string GetTemporaryFolder()
         {
             var tempDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             Directory.CreateDirectory(tempDirectory);
             return tempDirectory;
         }
+        #endregion
 
         #region GetInnerException
         /// <summary>
