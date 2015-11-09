@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing.Printing;
 using System.Globalization;
 using System.IO;
@@ -691,6 +692,7 @@ namespace OfficeConverter
                 CheckIfSystemProfileDesktopDirectoryExists();
 
             CheckIfPrinterIsInstalled();
+            DeleteAutoRecoveryFiles();
 
             ExcelInterop.Application excel = null;
             ExcelInterop.Workbook workbook = null;
@@ -1013,6 +1015,59 @@ namespace OfficeConverter
                                               ExceptionHelpers.GetInnerException(exception));
 
                 return Open(excel, inputFile, extension, true);
+            }
+        }
+        #endregion
+
+        #region DeleteAutoRecoveryFiles
+        /// <summary>
+        /// This method will delete the automatic created Resiliency key. Excel uses this registry key  
+        /// to make entries to corrupted workbooks. If there are to many entries under this key Excel will
+        /// get slower and slower to start. To prevent this we just delete this key when it exists
+        /// </summary>
+        private static void DeleteAutoRecoveryFiles()
+        {
+            try
+            {
+                // HKEY_CURRENT_USER\Software\Microsoft\Office\14.0\Excel\Resiliency\DocumentRecovery
+                var version = string.Empty;
+
+                switch (VersionNumber)
+                {
+                    // Word 2003
+                    case 11:
+                        version = "11.0";
+                        break;
+
+                    // Word 2017
+                    case 12:
+                        version = "12.0";
+                        break;
+
+                    // Word 2010
+                    case 14:
+                        version = "14.0";
+                        break;
+
+                    // Word 2013
+                    case 15:
+                        version = "15.0";
+                        break;
+
+                    // Word 2016
+                    case 16:
+                        version = "16.0";
+                        break;
+                }
+
+                var key = @"Software\Microsoft\Office\" + version + @"\Excel\Resiliency";
+
+                if (Registry.CurrentUser.OpenSubKey(key, false) != null)
+                    Registry.CurrentUser.DeleteSubKeyTree(key);
+            }
+            catch (Exception exception)
+            {
+                EventLog.WriteEntry("OfficeConverter", ExceptionHelpers.GetInnerException(exception), EventLogEntryType.Error);
             }
         }
         #endregion

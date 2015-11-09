@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using CompoundFileStorage;
@@ -271,45 +272,52 @@ namespace OfficeConverter
         /// <summary>
         /// This method will delete the automatic created Resiliency key. Word uses this registry key  
         /// to make entries to corrupted documents. If there are to many entries under this key Word will
-        /// get slower and slower to start. To prevent this we just delete this key when it existst
+        /// get slower and slower to start. To prevent this we just delete this key when it exists
         /// </summary>
         private static void DeleteAutoRecoveryFiles()
         {
-            // HKEY_CURRENT_USER\Software\Microsoft\Office\14.0\Word\Resiliency\DocumentRecovery
-            var version = string.Empty;
-
-            switch (VersionNumber)
+            try
             {
-                // Word 2003
-                case 11:
-                    version = "11.0";
-                    break;
+                // HKEY_CURRENT_USER\Software\Microsoft\Office\14.0\Word\Resiliency\DocumentRecovery
+                var version = string.Empty;
 
-                // Word 2017
-                case 12:
-                    version = "12.0";
-                    break;
+                switch (VersionNumber)
+                {
+                    // Word 2003
+                    case 11:
+                        version = "11.0";
+                        break;
 
-                // Word 2010
-                case 14:
-                    version = "14.0";
-                    break;
+                    // Word 2017
+                    case 12:
+                        version = "12.0";
+                        break;
 
-                // Word 2013
-                case 15:
-                    version = "15.0";
-                    break;
+                    // Word 2010
+                    case 14:
+                        version = "14.0";
+                        break;
 
-                // Word 2016
-                case 16:
-                    version = "16.0";
-                    break;
+                    // Word 2013
+                    case 15:
+                        version = "15.0";
+                        break;
+
+                    // Word 2016
+                    case 16:
+                        version = "16.0";
+                        break;
+                }
+
+                var key = @"Software\Microsoft\Office\" + version + @"\Word\Resiliency";
+
+                if (Registry.CurrentUser.OpenSubKey(key, false) != null)
+                    Registry.CurrentUser.DeleteSubKeyTree(key);
             }
-
-            var key = @"Software\Microsoft\Office\" + version + @"\Word\Resiliency";
-
-            if (Registry.CurrentUser.OpenSubKey(key, false) != null)
-                Registry.CurrentUser.DeleteSubKeyTree(key);
+            catch (Exception exception)
+            {
+                EventLog.WriteEntry("OfficeConverter", ExceptionHelpers.GetInnerException(exception), EventLogEntryType.Error);
+            }
         }
         #endregion
     }
