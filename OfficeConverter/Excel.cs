@@ -142,6 +142,7 @@ namespace OfficeConverter
         /// <see cref="FileIsPasswordProtected"/> method is called. Some checks are done to
         /// see if all requirements for a succesfull conversion are there.
         /// </summary>
+        /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine Excel version</exception>
         static Excel()
         {
             try
@@ -178,15 +179,15 @@ namespace OfficeConverter
                             break;
 
                         default:
-                            throw new OCExcelConfiguration("Could not determine Excel version");
+                            throw new OCConfiguration("Could not determine Excel version");
                     }
                 }
                 else
-                    throw new OCExcelConfiguration("Could not find registry key Excel.Application\\CurVer");
+                    throw new OCConfiguration("Could not find registry key Excel.Application\\CurVer");
             }
             catch (Exception exception)
             {
-                throw new OCExcelConfiguration("Could not read registry to check Excel version", exception);
+                throw new OCConfiguration("Could not read registry to check Excel version", exception);
             }
 
             const int excelMaxRowsFrom2003AndBelow = 65535;
@@ -221,6 +222,7 @@ namespace OfficeConverter
         /// If you want to run this code on a server then the following folders must exist, if they don't
         /// then you can't use Excel to convert files to PDF
         /// </summary>
+        /// <exception cref="OCConfiguration">Raised when the needed directory could not be created</exception>
         private static void CheckIfSystemProfileDesktopDirectoryExists()
         {
             if (Environment.Is64BitOperatingSystem)
@@ -236,9 +238,9 @@ namespace OfficeConverter
                     }
                     catch (Exception exception)
                     {
-                        throw new OCExcelConfiguration("Can't create folder '" + x64DesktopPath +
-                                                       "' Excel needs this folder to work on a server, error: " +
-                                                       ExceptionHelpers.GetInnerException(exception));
+                        throw new OCConfiguration("Can't create folder '" + x64DesktopPath +
+                                                  "' Excel needs this folder to work on a server, error: " +
+                                                  ExceptionHelpers.GetInnerException(exception));
                     }
                 }
             }
@@ -254,9 +256,9 @@ namespace OfficeConverter
                 }
                 catch (Exception exception)
                 {
-                    throw new OCExcelConfiguration("Can't create folder '" + x86DesktopPath +
-                                                   "' Excel needs this folder to work on a server, error: " +
-                                                   ExceptionHelpers.GetInnerException(exception));
+                    throw new OCConfiguration("Can't create folder '" + x86DesktopPath +
+                                              "' Excel needs this folder to work on a server, error: " +
+                                              ExceptionHelpers.GetInnerException(exception));
                 }
             }
         }
@@ -266,6 +268,7 @@ namespace OfficeConverter
         /// <summary>
         /// Excel needs a default printer to export to PDF, this method will check if there is one
         /// </summary>
+        /// <exception cref="OCConfiguration">Raised when an default printer does not exists</exception>
         private static void CheckIfPrinterIsInstalled()
         {
             var result = false;
@@ -287,7 +290,7 @@ namespace OfficeConverter
             }
 
             if (!result)
-                throw new OCExcelConfiguration("There is no default printer installed, Excel needs one to export to PDF");
+                throw new OCConfiguration("There is no default printer installed, Excel needs one to export to PDF");
         }
         #endregion
 
@@ -867,7 +870,7 @@ namespace OfficeConverter
                     }
                 }
             }
-            catch (OCExcelConfiguration)
+            catch (OCConfiguration)
             {
                 // If we get an OCExcelConfiguration exception it means we have an unknown encryption
                 // type so we return a false so that Excel itself can figure out if the file is password

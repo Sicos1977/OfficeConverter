@@ -2,6 +2,7 @@
 using System.IO;
 using OfficeConverter.Biff8.Interfaces;
 using OfficeConverter.Exceptions;
+// ReSharper disable InconsistentNaming
 
 /*
    Copyright 2014-2015 Kees van Spelde
@@ -50,6 +51,11 @@ namespace OfficeConverter.Biff8
         #endregion
 
         #region Constructor
+        /// <summary>
+        /// Parses the FilePassRecord
+        /// </summary>
+        /// <param name="inputStream"></param>
+        /// <exception cref="OCConfiguration">Raised when there is a problem with the reading of the filepassrecord</exception>
         public FilePassRecord(Stream inputStream)
         {
             // ReSharper disable once SuspiciousTypeConversion.Global
@@ -61,13 +67,13 @@ namespace OfficeConverter.Biff8
             switch (encryptionType)
             {
                 case EncryptionXor:
-                    throw new OCExcelConfiguration("XOR obfuscation is not supported");
+                    throw new OCConfiguration("XOR obfuscation is not supported");
 
                 case EncryptionOther:
                     break;
                 
                 default:
-                    throw new OCExcelConfiguration("Unknown encryption type " + encryptionType);
+                    throw new OCConfiguration("Unknown encryption type " + encryptionType);
             }
 
             var encryptionInfo = input.ReadUShort();
@@ -79,10 +85,10 @@ namespace OfficeConverter.Biff8
 
                 case EncryptionOtherCapi2:
                 case EncryptionOtherCapi3:
-                    throw new OCExcelConfiguration("CryptoAPI encryption is not supported");
+                    throw new OCConfiguration("CryptoAPI encryption is not supported");
                 
                 default:
-                    throw new OCExcelConfiguration("Unknown encryption info " + encryptionInfo);
+                    throw new OCConfiguration("Unknown encryption info " + encryptionInfo);
             }
 
             input.ReadUShort();

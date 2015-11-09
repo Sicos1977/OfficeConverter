@@ -46,6 +46,7 @@ namespace OfficeConverter
         /// <see cref="FileIsPasswordProtected"/> method is called. Some checks are done to
         /// see if all requirements for a succesfull conversion are there.
         /// </summary>
+        /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine Word version</exception>
         static Word()
         {
             try
@@ -82,15 +83,15 @@ namespace OfficeConverter
                             break;
 
                         default:
-                            throw new OCWordConfiguration("Could not determine WORD version");
+                            throw new OCConfiguration("Could not determine WORD version");
                     }
                 }
                 else
-                    throw new OCWordConfiguration("Could not find registry key WORD.Application\\CurVer");
+                    throw new OCConfiguration("Could not find registry key WORD.Application\\CurVer");
             }
             catch (Exception exception)
             {
-                throw new OCWordConfiguration("Could not read registry to check WORD version", exception);
+                throw new OCConfiguration("Could not read registry to check WORD version", exception);
             }
         }
         #endregion
