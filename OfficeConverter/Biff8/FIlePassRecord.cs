@@ -22,7 +22,6 @@ using OfficeConverter.Exceptions;
 
 namespace OfficeConverter.Biff8
 {
-
     /// <summary>
     /// Used to read the FilePass record
     /// </summary>

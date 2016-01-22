@@ -734,6 +734,13 @@ namespace OfficeConverter
                 // We cannot determine a print area when the document is marked as final so we remove this
                 workbook.Final = false;
 
+                // Fix for "This command is not available in a shared workbook."
+                if (workbook.MultiUserEditing)
+                {
+                    tempFileName = Path.GetTempFileName() + Guid.NewGuid() + Path.GetExtension(inputFile);
+                    workbook.SaveAs(tempFileName, AccessMode: ExcelInterop.XlSaveAsAccessMode.xlExclusive);
+                }
+
                 var usedSheets = 0;
 
                 foreach (var sheetObject in workbook.Sheets)
