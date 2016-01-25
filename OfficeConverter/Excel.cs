@@ -845,11 +845,18 @@ namespace OfficeConverter
                 using (var compoundFile = new CompoundFile(inputFile))
                 {
                     if (compoundFile.RootStorage.ExistsStream("EncryptedPackage")) return true;
-                    if (!compoundFile.RootStorage.ExistsStream("WorkBook"))
-                        throw new OCFileIsCorrupt("Could not find the WorkBook stream in the file '" +
+
+                    var streamName = string.Empty;
+                    if (compoundFile.RootStorage.ExistsStream("WorkBook"))
+                        streamName = "WorkBook";
+                    else if (compoundFile.RootStorage.ExistsStream("Book"))
+                            streamName = "Book";
+
+                    if (string.IsNullOrEmpty(streamName))
+                        throw new OCFileIsCorrupt("Could not find the WorkBook or Book stream in the file '" +
                                                   compoundFile.FileName + "'");
 
-                    var stream = compoundFile.RootStorage.GetStream("WorkBook") as CFStream;
+                    var stream = compoundFile.RootStorage.GetStream(streamName);
                     if (stream == null) return false;
 
                     var bytes = stream.GetData();
