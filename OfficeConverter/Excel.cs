@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing.Printing;
 using System.Globalization;
 using System.IO;
@@ -139,6 +140,7 @@ namespace OfficeConverter
         /// <see cref="IsPasswordProtected"/> method is called. Some checks are done to
         /// see if all requirements for a succesfull conversion are there.
         /// </summary>
+        /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine Excel version</exception>
         static Excel()
         {
             try
@@ -175,15 +177,15 @@ namespace OfficeConverter
                             break;
 
                         default:
-                            throw new OCExcelConfiguration("Could not determine Excel version");
+                            throw new OCConfiguration("Could not determine Excel version");
                     }
                 }
                 else
-                    throw new OCExcelConfiguration("Could not find registry key Excel.Application\\CurVer");
+                    throw new OCConfiguration("Could not find registry key Excel.Application\\CurVer");
             }
             catch (Exception exception)
             {
-                throw new OCExcelConfiguration("Could not read registry to check Excel version", exception);
+                throw new OCConfiguration("Could not read registry to check Excel version", exception);
             }
 
             const int excelMaxRowsFrom2003AndBelow = 65535;
@@ -218,6 +220,7 @@ namespace OfficeConverter
         /// If you want to run this code on a server then the following folders must exist, if they don't
         /// then you can't use Excel to convert files to PDF
         /// </summary>
+        /// <exception cref="OCConfiguration">Raised when the needed directory could not be created</exception>
         private static void CheckIfSystemProfileDesktopDirectoryExists()
         {
             if (Environment.Is64BitOperatingSystem)
@@ -233,9 +236,9 @@ namespace OfficeConverter
                     }
                     catch (Exception exception)
                     {
-                        throw new OCExcelConfiguration("Can't create folder '" + x64DesktopPath +
-                                                       "' Excel needs this folder to work on a server, error: " +
-                                                       ExceptionHelpers.GetInnerException(exception));
+                        throw new OCConfiguration("Can't create folder '" + x64DesktopPath +
+                                                  "' Excel needs this folder to work on a server, error: " +
+                                                  ExceptionHelpers.GetInnerException(exception));
                     }
                 }
             }
@@ -251,9 +254,9 @@ namespace OfficeConverter
                 }
                 catch (Exception exception)
                 {
-                    throw new OCExcelConfiguration("Can't create folder '" + x86DesktopPath +
-                                                   "' Excel needs this folder to work on a server, error: " +
-                                                   ExceptionHelpers.GetInnerException(exception));
+                    throw new OCConfiguration("Can't create folder '" + x86DesktopPath +
+                                              "' Excel needs this folder to work on a server, error: " +
+                                              ExceptionHelpers.GetInnerException(exception));
                 }
             }
         }
@@ -263,6 +266,7 @@ namespace OfficeConverter
         /// <summary>
         /// Excel needs a default printer to export to PDF, this method will check if there is one
         /// </summary>
+        /// <exception cref="OCConfiguration">Raised when an default printer does not exists</exception>
         private static void CheckIfPrinterIsInstalled()
         {
             var result = false;
@@ -284,7 +288,7 @@ namespace OfficeConverter
             }
 
             if (!result)
-                throw new OCExcelConfiguration("There is no default printer installed, Excel needs one to export to PDF");
+                throw new OCConfiguration("There is no default printer installed, Excel needs one to export to PDF");
         }
         #endregion
 
@@ -689,6 +693,7 @@ namespace OfficeConverter
                 CheckIfSystemProfileDesktopDirectoryExists();
 
             CheckIfPrinterIsInstalled();
+            DeleteAutoRecoveryFiles();
 
             ExcelInterop.Application excel = null;
             ExcelInterop.Workbook workbook = null;
@@ -726,6 +731,13 @@ namespace OfficeConverter
 
                 // We cannot determine a print area when the document is marked as final so we remove this
                 workbook.Final = false;
+
+                // Fix for "This command is not available in a shared workbook."
+                if (workbook.MultiUserEditing)
+                {
+                    tempFileName = Path.GetTempFileName() + Guid.NewGuid() + Path.GetExtension(inputFile);
+                    workbook.SaveAs(tempFileName, AccessMode: ExcelInterop.XlSaveAsAccessMode.xlExclusive);
+                }
 
                 var usedSheets = 0;
 
@@ -830,14 +842,13 @@ namespace OfficeConverter
             {
                 using (var compoundFile = new CompoundFile(fileName))
                 {
-                    if (compoundFile.RootStorage.TryGetStream("EncryptedPackage") != null) return true;
+                    if (compoundFile.RootStorage.ExistsStream("EncryptedPackage")) return true;
+                    if (!compoundFile.RootStorage.ExistsStream("WorkBook"))
+                        throw new OCFileIsCorrupt("Could not find the WorkBook stream in the file '" +
+                                                  compoundFile.FileName + "'");
 
-                    var stream = compoundFile.RootStorage.TryGetStream("WorkBook");
-                    if (stream == null)
-                        compoundFile.RootStorage.TryGetStream("Book");
-
-                    if (stream == null)
-                        throw new OCFileIsCorrupt("Could not find the WorkBook or Book stream in the file '" + fileName + "'");
+                    var stream = compoundFile.RootStorage.GetStream("WorkBook") as CFStream;
+                    if (stream == null) return false;
 
                     var bytes = stream.GetData();
                     using (var memoryStream = new MemoryStream(bytes))
@@ -855,9 +866,20 @@ namespace OfficeConverter
 
                         // Search after the BOF for the FilePass record, this starts with 2F hex
                         recordType = binaryReader.ReadUInt16();
-                        return recordType == 0x2F;
+                        if (recordType != 0x2F) return false;
+                        binaryReader.ReadUInt16();
+                        var filePassRecord = new FilePassRecord(memoryStream);
+                        var key = Biff8EncryptionKey.Create(filePassRecord.DocId);
+                        return !key.Validate(filePassRecord.SaltData, filePassRecord.SaltHash);
                     }
                 }
+            }
+            catch (OCExcelConfiguration)
+            {
+                // If we get an OCExcelConfiguration exception it means we have an unknown encryption
+                // type so we return a false so that Excel itself can figure out if the file is password
+                // protected
+                return false;
             }
             catch (CFCorruptedFileException)
             {
@@ -1000,6 +1022,59 @@ namespace OfficeConverter
                                               ExceptionHelpers.GetInnerException(exception));
 
                 return Open(excel, inputFile, extension, true);
+            }
+        }
+        #endregion
+
+        #region DeleteAutoRecoveryFiles
+        /// <summary>
+        /// This method will delete the automatic created Resiliency key. Excel uses this registry key  
+        /// to make entries to corrupted workbooks. If there are to many entries under this key Excel will
+        /// get slower and slower to start. To prevent this we just delete this key when it exists
+        /// </summary>
+        private static void DeleteAutoRecoveryFiles()
+        {
+            try
+            {
+                // HKEY_CURRENT_USER\Software\Microsoft\Office\14.0\Excel\Resiliency\DocumentRecovery
+                var version = string.Empty;
+
+                switch (VersionNumber)
+                {
+                    // Word 2003
+                    case 11:
+                        version = "11.0";
+                        break;
+
+                    // Word 2017
+                    case 12:
+                        version = "12.0";
+                        break;
+
+                    // Word 2010
+                    case 14:
+                        version = "14.0";
+                        break;
+
+                    // Word 2013
+                    case 15:
+                        version = "15.0";
+                        break;
+
+                    // Word 2016
+                    case 16:
+                        version = "16.0";
+                        break;
+                }
+
+                var key = @"Software\Microsoft\Office\" + version + @"\Excel\Resiliency";
+
+                if (Registry.CurrentUser.OpenSubKey(key, false) != null)
+                    Registry.CurrentUser.DeleteSubKeyTree(key);
+            }
+            catch (Exception exception)
+            {
+                EventLog.WriteEntry("OfficeConverter", ExceptionHelpers.GetInnerException(exception), EventLogEntryType.Error);
             }
         }
         #endregion

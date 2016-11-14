@@ -85,8 +85,7 @@
     <Compile Include="Converter.cs" />
     <Compile Include="Excel.cs" />
     <Compile Include="Exceptions\OCCsvFileLimitExceeded.cs" />
-    <Compile Include="Exceptions\OCWordConfiguration.cs" />
-    <Compile Include="Exceptions\OCExcelConfiguration.cs" />
+    <Compile Include="Exceptions\OCConfiguration.cs" />
     <Compile Include="Exceptions\OCFileIsCorrupt.cs" />
     <Compile Include="Exceptions\OCFileContainsNoData.cs" />
     <Compile Include="Exceptions\OCFileIsPasswordProtected.cs" />

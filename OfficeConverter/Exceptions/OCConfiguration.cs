@@ -20,14 +20,14 @@ limitations under the License.
 namespace OfficeConverter.Exceptions
 {
     /// <summary>
-    ///     Raised when there is an Excel configuration problem
+    ///     Raised when there is an Office configuration problem
     /// </summary>
-    public class OCExcelConfiguration : Exception
+    public class OCConfiguration : Exception
     {
-        internal OCExcelConfiguration() { }
+        internal OCConfiguration() { }
 
-        internal OCExcelConfiguration(string message) : base(message) { }
+        internal OCConfiguration(string message) : base(message) { }
 
-        internal OCExcelConfiguration(string message, Exception inner) : base(message, inner) { }
+        internal OCConfiguration(string message, Exception inner) : base(message, inner) { }
     }
 }

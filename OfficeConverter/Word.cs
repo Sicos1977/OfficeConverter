@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using Microsoft.Office.Core;
@@ -44,6 +45,7 @@ namespace OfficeConverter
         /// <see cref="IsPasswordProtected"/> method is called. Some checks are done to
         /// see if all requirements for a succesfull conversion are there.
         /// </summary>
+        /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine Word version</exception>
         static Word()
         {
             try
@@ -80,15 +82,15 @@ namespace OfficeConverter
                             break;
 
                         default:
-                            throw new OCWordConfiguration("Could not determine WORD version");
+                            throw new OCConfiguration("Could not determine WORD version");
                     }
                 }
                 else
-                    throw new OCWordConfiguration("Could not find registry key WORD.Application\\CurVer");
+                    throw new OCConfiguration("Could not find registry key WORD.Application\\CurVer");
             }
             catch (Exception exception)
             {
-                throw new OCWordConfiguration("Could not read registry to check WORD version", exception);
+                throw new OCConfiguration("Could not read registry to check WORD version", exception);
             }
         }
         #endregion
@@ -270,45 +272,52 @@ namespace OfficeConverter
         /// <summary>
         /// This method will delete the automatic created Resiliency key. Word uses this registry key  
         /// to make entries to corrupted documents. If there are to many entries under this key Word will
-        /// get slower and slower to start. To prevent this we just delete this key when it existst
+        /// get slower and slower to start. To prevent this we just delete this key when it exists
         /// </summary>
         private static void DeleteAutoRecoveryFiles()
         {
-            // HKEY_CURRENT_USER\Software\Microsoft\Office\14.0\Word\Resiliency\DocumentRecovery
-            var version = string.Empty;
-
-            switch (VersionNumber)
+            try
             {
-                // Word 2003
-                case 11:
-                    version = "11.0";
-                    break;
+                // HKEY_CURRENT_USER\Software\Microsoft\Office\14.0\Word\Resiliency\DocumentRecovery
+                var version = string.Empty;
 
-                // Word 2017
-                case 12:
-                    version = "12.0";
-                    break;
+                switch (VersionNumber)
+                {
+                    // Word 2003
+                    case 11:
+                        version = "11.0";
+                        break;
 
-                // Word 2010
-                case 14:
-                    version = "14.0";
-                    break;
+                    // Word 2017
+                    case 12:
+                        version = "12.0";
+                        break;
 
-                // Word 2013
-                case 15:
-                    version = "15.0";
-                    break;
+                    // Word 2010
+                    case 14:
+                        version = "14.0";
+                        break;
 
-                // Word 2016
-                case 16:
-                    version = "16.0";
-                    break;
+                    // Word 2013
+                    case 15:
+                        version = "15.0";
+                        break;
+
+                    // Word 2016
+                    case 16:
+                        version = "16.0";
+                        break;
+                }
+
+                var key = @"Software\Microsoft\Office\" + version + @"\Word\Resiliency";
+
+                if (Registry.CurrentUser.OpenSubKey(key, false) != null)
+                    Registry.CurrentUser.DeleteSubKeyTree(key);
             }
-
-            var key = @"Software\Microsoft\Office\" + version + @"\Word\Resiliency";
-
-            if (Registry.CurrentUser.OpenSubKey(key, false) != null)
-                Registry.CurrentUser.DeleteSubKeyTree(key);
+            catch (Exception exception)
+            {
+                EventLog.WriteEntry("OfficeConverter", ExceptionHelpers.GetInnerException(exception), EventLogEntryType.Error);
+            }
         }
         #endregion
     }
