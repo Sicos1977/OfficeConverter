@@ -5,13 +5,11 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using CompoundFileStorage;
-using CompoundFileStorage.Exceptions;
 using Microsoft.Office.Core;
 using Microsoft.Win32;
-using OfficeConverter.Biff8;
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
+using OpenMcdf;
 using ExcelInterop = Microsoft.Office.Interop.Excel;
 
 /*
@@ -138,7 +136,7 @@ namespace OfficeConverter
         #region Constructor
         /// <summary>
         /// This constructor is called the first time when the <see cref="Convert"/> or
-        /// <see cref="FileIsPasswordProtected"/> method is called. Some checks are done to
+        /// <see cref="IsPasswordProtected"/> method is called. Some checks are done to
         /// see if all requirements for a succesfull conversion are there.
         /// </summary>
         static Excel()
@@ -819,26 +817,27 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region FileIsPasswordProtected
+        #region IsPasswordProtected
         /// <summary>
         /// Returns true when the Excel file is password protected
         /// </summary>
-        /// <param name="inputFile">The Excel file to check</param>
+        /// <param name="fileName"></param>
         /// <returns></returns>
         /// <exception cref="OCFileIsCorrupt">Raised when the file is corrupt</exception>
-        internal static bool FileIsPasswordProtected(string inputFile)
+        public static bool IsPasswordProtected(string fileName)
         {
             try
             {
-                using (var compoundFile = new CompoundFile(inputFile))
+                using (var compoundFile = new CompoundFile(fileName))
                 {
-                    if (compoundFile.RootStorage.ExistsStream("EncryptedPackage")) return true;
-                    if (!compoundFile.RootStorage.ExistsStream("WorkBook"))
-                        throw new OCFileIsCorrupt("Could not find the WorkBook stream in the file '" +
-                                                  compoundFile.FileName + "'");
+                    if (compoundFile.RootStorage.TryGetStream("EncryptedPackage") != null) return true;
 
-                    var stream = compoundFile.RootStorage.GetStream("WorkBook") as CFStream;
-                    if (stream == null) return false;
+                    var stream = compoundFile.RootStorage.TryGetStream("WorkBook");
+                    if (stream == null)
+                        compoundFile.RootStorage.TryGetStream("Book");
+
+                    if (stream == null)
+                        throw new OCFileIsCorrupt("Could not find the WorkBook or Book stream in the file '" + fileName + "'");
 
                     var bytes = stream.GetData();
                     using (var memoryStream = new MemoryStream(bytes))
@@ -849,32 +848,20 @@ namespace OfficeConverter
 
                         // Something seems to be wrong, we would expect a BOF but for some reason it isn't so stop it
                         if (recordType != 0x809)
-                            throw new OCFileIsCorrupt("The file '" + Path.GetFileName(compoundFile.FileName) +
-                                                      "' is corrupt");
+                            throw new OCFileIsCorrupt("The file '" + fileName + "' is corrupt");
 
                         var recordLength = binaryReader.ReadUInt16();
                         binaryReader.BaseStream.Position += recordLength;
 
                         // Search after the BOF for the FilePass record, this starts with 2F hex
                         recordType = binaryReader.ReadUInt16();
-                        if (recordType != 0x2F) return false;
-                        binaryReader.ReadUInt16();
-                        var filePassRecord = new FilePassRecord(memoryStream);
-                        var key = Biff8EncryptionKey.Create(filePassRecord.DocId);
-                        return !key.Validate(filePassRecord.SaltData, filePassRecord.SaltHash);
+                        return recordType == 0x2F;
                     }
                 }
             }
-            catch (OCExcelConfiguration)
-            {
-                // If we get an OCExcelConfiguration exception it means we have an unknown encryption
-                // type so we return a false so that Excel itself can figure out if the file is password
-                // protected
-                return false;
-            }
             catch (CFCorruptedFileException)
             {
-                throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' is corrupt");
+                throw new OCFileIsCorrupt("The file '" + Path.GetFileName(fileName) + "' is corrupt");
             }
             catch (CFFileFormatException)
             {

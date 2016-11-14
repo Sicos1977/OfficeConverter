@@ -1,12 +1,11 @@
 ﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
-using CompoundFileStorage;
-using CompoundFileStorage.Exceptions;
 using Microsoft.Office.Core;
 using Microsoft.Win32;
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
+using OpenMcdf;
 using WordInterop = Microsoft.Office.Interop.Word;
 
 /*
@@ -42,7 +41,7 @@ namespace OfficeConverter
         #region Constructor
         /// <summary>
         /// This constructor is called the first time when the <see cref="Convert"/> or
-        /// <see cref="FileIsPasswordProtected"/> method is called. Some checks are done to
+        /// <see cref="IsPasswordProtected"/> method is called. Some checks are done to
         /// see if all requirements for a succesfull conversion are there.
         /// </summary>
         static Word()
@@ -131,7 +130,7 @@ namespace OfficeConverter
                 word.Options.UpdateLinksAtOpen = false;
                 word.Options.UpdateLinksAtPrint = false;
                 
-                document = (WordInterop.DocumentClass)Open(word, inputFile, false);
+                document = (WordInterop.DocumentClass) Open(word, inputFile, false);
 
                 // Do not remove this line!!
                 // This is yet another solution to a weird Office problem. Sometimes there
@@ -166,26 +165,26 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region FileIsPasswordProtected
+        #region IsPasswordProtected
         /// <summary>
         /// Returns true when the Word file is password protected
         /// </summary>
-        /// <param name="inputFile">The Word file to check</param>
+        /// <param name="fileName"></param>
         /// <returns></returns>
         /// <exception cref="OCFileIsCorrupt">Raised when the file is corrupt</exception>
-        internal static bool FileIsPasswordProtected(string inputFile)
+        public static bool IsPasswordProtected(string fileName)
         {
             try
             {
-                using (var compoundFile = new CompoundFile(inputFile))
+                using (var compoundFile = new CompoundFile(fileName))
                 {
-                    if (compoundFile.RootStorage.ExistsStream("EncryptedPackage")) return true;
-                    if (!compoundFile.RootStorage.ExistsStream("WordDocument"))
-                        throw new OCFileIsCorrupt("Could not find the WordDocument stream in the file '" +
-                                                  compoundFile.FileName + "'");
+                    if (compoundFile.RootStorage.TryGetStream("EncryptedPackage") != null) return true;
 
-                    var stream = compoundFile.RootStorage.GetStream("WordDocument") as CFStream;
-                    if (stream == null) return false;
+                    var stream = compoundFile.RootStorage.TryGetStream("WordDocument");
+
+                    if (stream == null)
+                        throw new OCFileIsCorrupt("Could not find the WordDocument stream in the file '" + fileName +
+                                                  "'");
 
                     var bytes = stream.GetData();
                     using (var memoryStream = new MemoryStream(bytes))
@@ -207,7 +206,7 @@ namespace OfficeConverter
             }
             catch (CFCorruptedFileException)
             {
-                throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' is corrupt");
+                throw new OCFileIsCorrupt("The file '" + Path.GetFileName(fileName) + "' is corrupt");
             }
             catch (CFFileFormatException)
             {
@@ -218,13 +217,13 @@ namespace OfficeConverter
         #endregion
 
         #region Open
-        /// <summary>
-        /// Opens the <paramref name="inputFile"/> and returns it as an <see cref="WordInterop.Document"/> object
-        /// </summary>
-        /// <param name="word">The <see cref="WordInterop.Application"/></param>
-        /// <param name="inputFile">The file to open</param>
-        /// <param name="repairMode">When true the <paramref name="inputFile"/> is opened in repair mode</param>
-        /// <returns></returns>
+            /// <summary>
+            /// Opens the <paramref name="inputFile"/> and returns it as an <see cref="WordInterop.Document"/> object
+            /// </summary>
+            /// <param name="word">The <see cref="WordInterop.Application"/></param>
+            /// <param name="inputFile">The file to open</param>
+            /// <param name="repairMode">When true the <paramref name="inputFile"/> is opened in repair mode</param>
+            /// <returns></returns>
         private static WordInterop.Document Open(WordInterop._Application word,
                                                 string inputFile,
                                                 bool repairMode)

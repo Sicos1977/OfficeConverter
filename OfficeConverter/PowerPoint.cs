@@ -1,11 +1,10 @@
 ﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
-using CompoundFileStorage;
-using CompoundFileStorage.Exceptions;
 using Microsoft.Office.Core;
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
+using OpenMcdf;
 using PowerPointInterop = Microsoft.Office.Interop.PowerPoint;
 
 /*
@@ -73,21 +72,20 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region FileIsPasswordProtected
+        #region IsPasswordProtected
         /// <summary>
         /// Returns true when the binary PowerPoint file is password protected
         /// </summary>
-        /// <param name="inputFile">The PowerPoint file to check</param>
+        /// <param name="fileName"></param>
         /// <returns></returns>
-        internal static bool FileIsPasswordProtected(string inputFile)
+        internal static bool IsPasswordProtected(string fileName)
         {
             try
             {
-                using (var compoundFile = new CompoundFile(inputFile))
+                using (var compoundFile = new CompoundFile(fileName))
                 {
-                    if (compoundFile.RootStorage.ExistsStream("EncryptedPackage")) return true;
-                    if (!compoundFile.RootStorage.ExistsStream("Current User")) return false;
-                    var stream = compoundFile.RootStorage.GetStream("Current User") as CFStream;
+                    if (compoundFile.RootStorage.TryGetStream("EncryptedPackage") != null) return true;
+                    var stream = compoundFile.RootStorage.TryGetStream("Current User");
                     if (stream == null) return false;
 
                     using (var memoryStream = new MemoryStream(stream.GetData()))
@@ -122,7 +120,7 @@ namespace OfficeConverter
             }
             catch (CFCorruptedFileException)
             {
-                throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' is corrupt");
+                throw new OCFileIsCorrupt("The file '" + Path.GetFileName(fileName) + "' is corrupt");
             }
             catch (CFFileFormatException)
             {
@@ -141,18 +139,19 @@ namespace OfficeConverter
         /// <param name="repairMode">When true the <paramref name="inputFile"/> is opened in repair mode</param>
         /// <returns></returns>
         /// <exception cref="OCFileIsCorrupt">Raised when the <paramref name="inputFile"/> is corrupt and can't be opened in repair mode</exception>
-        private static PowerPointInterop.Presentation Open(PowerPointInterop._Application powerPoint,
-                                                           string inputFile,
-                                                           bool repairMode)
+        private static PowerPointInterop.Presentation Open(PowerPointInterop._Application powerPoint, string inputFile, bool repairMode)
         {
             try
             {
-                return powerPoint.Presentations.Open(inputFile, MsoTriState.msoTrue, MsoTriState.msoTrue, MsoTriState.msoFalse);
+                return powerPoint.Presentations.Open(inputFile, MsoTriState.msoTrue, MsoTriState.msoTrue,
+                    MsoTriState.msoFalse);
             }
             catch (Exception exception)
             {
                 if (repairMode)
-                    throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) + "' seems to be corrupt, error: " + ExceptionHelpers.GetInnerException(exception));
+                    throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) +
+                                              "' seems to be corrupt, error: " +
+                                              ExceptionHelpers.GetInnerException(exception));
 
                 return Open(powerPoint, inputFile, true);
             }

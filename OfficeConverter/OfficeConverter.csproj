@@ -58,9 +58,6 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="CompoundFileStorage">
-      <HintPath>..\packages\CompoundFileStorage.1.0.0\lib\CompoundFileStorage.dll</HintPath>
-    </Reference>
     <Reference Include="ICSharpCode.SharpZipLib">
       <HintPath>..\packages\SharpZipLib.0.86.0\lib\20\ICSharpCode.SharpZipLib.dll</HintPath>
     </Reference>
@@ -76,20 +73,16 @@
     <Reference Include="Office, Version=14.0.0.0, Culture=neutral, PublicKeyToken=71e9bce111e9429c, processorArchitecture=MSIL">
       <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
+    <Reference Include="OpenMcdf, Version=2.0.5739.40493, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\OpenMcdf.2.0.5739.40493\lib\OpenMcdf.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Biff8\FIlePassRecord.cs" />
-    <Compile Include="Biff8\LittleEndianOutputStream.cs" />
     <Compile Include="Converter.cs" />
-    <Compile Include="Biff8\Arrays.cs" />
-    <Compile Include="Biff8\Biff8EncryptionKey.cs" />
-    <Compile Include="Biff8\Interfaces\IBiffHeaderInput.cs" />
-    <Compile Include="Biff8\Interfaces\ILittleEndianInput.cs" />
-    <Compile Include="Biff8\Interfaces\ILittleEndianOutput.cs" />
-    <Compile Include="Biff8\LittleEndianInputStream.cs" />
     <Compile Include="Excel.cs" />
     <Compile Include="Exceptions\OCCsvFileLimitExceeded.cs" />
     <Compile Include="Exceptions\OCWordConfiguration.cs" />
@@ -98,10 +91,8 @@
     <Compile Include="Exceptions\OCFileContainsNoData.cs" />
     <Compile Include="Exceptions\OCFileIsPasswordProtected.cs" />
     <Compile Include="Exceptions\OCFileTypeNotSupported.cs" />
-    <Compile Include="Biff8\Biff8RC4.cs" />
     <Compile Include="Helpers\ExceptionHelpers.cs" />
     <Compile Include="Helpers\FileManager.cs" />
-    <Compile Include="Biff8\RC4.cs" />
     <Compile Include="Helpers\NativeMethods.cs" />
     <Compile Include="PowerPoint.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -146,7 +146,7 @@ namespace OfficeConverter
                 case ".DOCM":
                 case ".DOCX":
                 case ".DOTM":
-                    if (Word.FileIsPasswordProtected(inputFile))
+                    if (Word.IsPasswordProtected(inputFile))
                         throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
                                                             "' is password protected");
 
@@ -176,7 +176,7 @@ namespace OfficeConverter
                 case ".XLSX":
                 case ".XLTM":
                 case ".XLTX":
-                    if (Excel.FileIsPasswordProtected(inputFile))
+                    if (Excel.IsPasswordProtected(inputFile))
                         throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
                                                             "' is password protected");
                     Excel.Convert(inputFile, outputFile);
@@ -203,7 +203,7 @@ namespace OfficeConverter
                 case ".PPSX":
                 case ".PPTM":
                 case ".PPTX":
-                    if (PowerPoint.FileIsPasswordProtected(inputFile))
+                    if (PowerPoint.IsPasswordProtected(inputFile))
                         throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) + "' is password protected");
 
                     PowerPoint.Convert(inputFile, outputFile);
