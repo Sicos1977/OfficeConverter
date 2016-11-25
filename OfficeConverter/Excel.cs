@@ -842,13 +842,15 @@ namespace OfficeConverter
             {
                 using (var compoundFile = new CompoundFile(fileName))
                 {
-                    if (compoundFile.RootStorage.ExistsStream("EncryptedPackage")) return true;
-                    if (!compoundFile.RootStorage.ExistsStream("WorkBook"))
-                        throw new OCFileIsCorrupt("Could not find the WorkBook stream in the file '" +
-                                                  compoundFile.FileName + "'");
+                    if (compoundFile.RootStorage.TryGetStream("EncryptedPackage") != null) return true;
 
-                    var stream = compoundFile.RootStorage.GetStream("WorkBook") as CFStream;
-                    if (stream == null) return false;
+                    var stream = compoundFile.RootStorage.TryGetStream("WorkBook");
+                    if (stream == null)
+                        compoundFile.RootStorage.TryGetStream("Book");
+
+                    if (stream == null)
+                        throw new OCFileIsCorrupt("Could not find the WorkBook or Book stream in the file '" + fileName +
+                                                  "'");
 
                     var bytes = stream.GetData();
                     using (var memoryStream = new MemoryStream(bytes))
@@ -866,20 +868,9 @@ namespace OfficeConverter
 
                         // Search after the BOF for the FilePass record, this starts with 2F hex
                         recordType = binaryReader.ReadUInt16();
-                        if (recordType != 0x2F) return false;
-                        binaryReader.ReadUInt16();
-                        var filePassRecord = new FilePassRecord(memoryStream);
-                        var key = Biff8EncryptionKey.Create(filePassRecord.DocId);
-                        return !key.Validate(filePassRecord.SaltData, filePassRecord.SaltHash);
+                        return recordType == 0x2F;
                     }
                 }
-            }
-            catch (OCExcelConfiguration)
-            {
-                // If we get an OCExcelConfiguration exception it means we have an unknown encryption
-                // type so we return a false so that Excel itself can figure out if the file is password
-                // protected
-                return false;
             }
             catch (CFCorruptedFileException)
             {
