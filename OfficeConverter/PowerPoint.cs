@@ -28,7 +28,7 @@ using PowerPointInterop = Microsoft.Office.Interop.PowerPoint;
 namespace OfficeConverter
 {
     /// <summary>
-    /// This class is used as a placeholder for al PowerPoint related methods
+    /// This class is used as a placeholder for all PowerPoint related methods
     /// </summary>
     internal static class PowerPoint
     {

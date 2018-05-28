@@ -28,7 +28,7 @@ using WordInterop = Microsoft.Office.Interop.Word;
 namespace OfficeConverter
 {
     /// <summary>
-    /// This class is used as a placeholder for al Word related methods
+    /// This class is used as a placeholder for all Word related methods
     /// </summary>
     internal static class Word
     {

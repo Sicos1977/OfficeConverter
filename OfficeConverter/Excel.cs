@@ -32,7 +32,7 @@ using ExcelInterop = Microsoft.Office.Interop.Excel;
 namespace OfficeConverter
 {
     /// <summary>
-    /// This class is used as a placeholder for al Excel related methods
+    /// This class is used as a placeholder for all Excel related methods
     /// </summary>
     internal static class Excel
     {
