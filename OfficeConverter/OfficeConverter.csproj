@@ -93,6 +93,7 @@
     <Compile Include="Helpers\ExceptionHelpers.cs" />
     <Compile Include="Helpers\FileManager.cs" />
     <Compile Include="Helpers\NativeMethods.cs" />
+    <Compile Include="LibreOffice.cs" />
     <Compile Include="PowerPoint.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Word.cs" />
