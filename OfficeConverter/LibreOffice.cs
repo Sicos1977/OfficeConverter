@@ -1,13 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading;
+using uno;
+using uno.util;
+using unoidl.com.sun.star.beans;
 
+// Libreoffice assemblies
 using unoidl.com.sun.star.lang;
-using unoidl.com.sun.star.uno;
 using unoidl.com.sun.star.frame;
 
 namespace OfficeConverter
@@ -73,7 +73,7 @@ namespace OfficeConverter
             }
             finally
             {
-                if (xComponent != null) xComponent.dispose();
+                xComponent?.dispose();
             }
         }
 
