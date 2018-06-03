@@ -23,44 +23,48 @@ namespace OfficeConverter
     /// </remarks>
     internal static class LibreOffice
     {
-        private static void StartOpenOffice()
+        #region Start
+        /// <summary>
+        /// Checks if LibreOffice is started and if not starts it
+        /// </summary>
+        private static void Start()
         {
-            var ps = Process.GetProcessesByName("soffice.exe");
-            if (ps.Length != 0)
+            var getProcess = Process.GetProcessesByName("soffice.exe");
+            if (getProcess.Length != 0)
                 throw new InvalidProgramException("OpenOffice not found.  Is OpenOffice installed?");
-            if (ps.Length > 0)
+
+            if (getProcess.Length > 0)
                 return;
-            var p = new Process
+
+            var startProcess = new Process
             {
                 StartInfo =
-                        {
-                            Arguments = "-headless -nofirststartwizard",
-                            FileName = "soffice.exe",
-                            CreateNoWindow = true
-                        }
+                {
+                    Arguments = "-headless -nofirststartwizard",
+                    FileName = "soffice.exe",
+                    CreateNoWindow = true
+                }
             };
-            var result = p.Start();
 
-            if (result == false)
+            if (!startProcess.Start())
                 throw new InvalidProgramException("OpenOffice failed to start.");
         }
+        #endregion
 
         public static void ConvertToPdf(string inputFile, string outputFile)
         {
-            if (ConvertExtensionToFilterType(Path.GetExtension(inputFile)) == null)
+            if (GetFilterType(Path.GetExtension(inputFile)) == null)
                 throw new InvalidProgramException("Unknown file type for OpenOffice. File = " + inputFile);
 
-            StartOpenOffice();
+            Start();
 
-            //Get a ComponentContext
-            var xLocalContext = Bootstrap.bootstrap();
-            //Get MultiServiceFactory
-            var xRemoteFactory = (XMultiServiceFactory) xLocalContext.getServiceManager();
-            //Get a CompontLoader
-            var aLoader = (XComponentLoader)xRemoteFactory.createInstance("com.sun.star.frame.Desktop");
-            //Load the sourcefile
+            var bootstrap = Bootstrap.bootstrap();
+            // ReSharper disable once SuspiciousTypeConversion.Global
+            var remoteFactory = (XMultiServiceFactory)bootstrap.getServiceManager();
+            var aLoader = (XComponentLoader) remoteFactory.createInstance("com.sun.star.frame.Desktop");
 
             XComponent xComponent = null;
+
             try
             {
                 xComponent = InitDocument(aLoader, PathConverter(inputFile), "_blank");
@@ -94,17 +98,27 @@ namespace OfficeConverter
             var propertyValues = new PropertyValue[2];
             // Setting the flag for overwriting
             propertyValues[1] = new PropertyValue { Name = "Overwrite", Value = new Any(true) };
-            //// Setting the filter name
+            // Setting the filter name
             propertyValues[0] = new PropertyValue
             {
                 Name = "FilterName",
-                Value = new Any(ConvertExtensionToFilterType(Path.GetExtension(sourceFile)))
+                Value = new Any(GetFilterType(sourceFile))
             };
+            // ReSharper disable once SuspiciousTypeConversion.Global
             ((XStorable)xComponent).storeToURL(destinationFile, propertyValues);
         }
 
-        public static string ConvertExtensionToFilterType(string extension)
+        #region GetFilterType
+        /// <summary>
+        /// Returns the filter that is needed to convert the given <paramref name="fileName"/>,
+        /// <c>null</c> is returned when the file cannot be converted
+        /// </summary>
+        /// <param name="fileName">The file to check</param>
+        /// <returns></returns>
+        public static string GetFilterType(string fileName)
         {
+            var extension = Path.GetExtension(fileName);
+
             switch (extension)
             {
                 case ".doc":
@@ -118,11 +132,13 @@ namespace OfficeConverter
                 case ".wps":
                 case ".wpd":
                     return "writer_pdf_Export";
+
                 case ".xls":
                 case ".xlsb":
                 case ".xlsx":
                 case ".ods":
                     return "calc_pdf_Export";
+
                 case ".ppt":
                 case ".pptx":
                 case ".odp":
@@ -132,5 +148,6 @@ namespace OfficeConverter
                     return null;
             }
         }
+        #endregion
     }
 }
