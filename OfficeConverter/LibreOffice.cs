@@ -67,13 +67,13 @@ namespace OfficeConverter
 
             try
             {
-                xComponent = InitDocument(aLoader, PathConverter(inputFile), "_blank");
+                xComponent = InitDocument(aLoader, inputFile, "_blank");
                 //Wait for loading
-                while (xComponent == null)
-                    Thread.Sleep(1000);
+                //while (xComponent == null)
+                //    Thread.Sleep(1000);
 
                 // save/export the document
-                SaveDocument(xComponent, inputFile, PathConverter(outputFile));
+                SaveDocument(xComponent, inputFile, outputFile);
             }
             finally
             {
@@ -136,6 +136,7 @@ namespace OfficeConverter
                 case ".xls":
                 case ".xlsb":
                 case ".xlsx":
+                case ".xlsm":
                 case ".ods":
                     return "calc_pdf_Export";
 

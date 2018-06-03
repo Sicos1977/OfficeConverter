@@ -31,12 +31,13 @@
             this.SelectButton = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
             this.OutputTextBox = new System.Windows.Forms.TextBox();
+            this.LibreOfficeCheckBox = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // SelectButton
             // 
             this.SelectButton.Location = new System.Drawing.Point(24, 21);
-            this.SelectButton.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.SelectButton.Margin = new System.Windows.Forms.Padding(4);
             this.SelectButton.Name = "SelectButton";
             this.SelectButton.Size = new System.Drawing.Size(184, 44);
             this.SelectButton.TabIndex = 6;
@@ -57,22 +58,35 @@
             // OutputTextBox
             // 
             this.OutputTextBox.Location = new System.Drawing.Point(20, 121);
-            this.OutputTextBox.Margin = new System.Windows.Forms.Padding(6, 6, 6, 6);
+            this.OutputTextBox.Margin = new System.Windows.Forms.Padding(6);
             this.OutputTextBox.Multiline = true;
             this.OutputTextBox.Name = "OutputTextBox";
             this.OutputTextBox.Size = new System.Drawing.Size(766, 216);
             this.OutputTextBox.TabIndex = 9;
+            // 
+            // LibreOfficeCheckBox
+            // 
+            this.LibreOfficeCheckBox.AutoSize = true;
+            this.LibreOfficeCheckBox.Checked = global::OfficeConverterTestTool.Properties.Settings.Default.UseLibreOffice;
+            this.LibreOfficeCheckBox.DataBindings.Add(new System.Windows.Forms.Binding("Checked", global::OfficeConverterTestTool.Properties.Settings.Default, "UseLibreOffice", true, System.Windows.Forms.DataSourceUpdateMode.OnPropertyChanged));
+            this.LibreOfficeCheckBox.Location = new System.Drawing.Point(248, 30);
+            this.LibreOfficeCheckBox.Name = "LibreOfficeCheckBox";
+            this.LibreOfficeCheckBox.Size = new System.Drawing.Size(198, 29);
+            this.LibreOfficeCheckBox.TabIndex = 10;
+            this.LibreOfficeCheckBox.Text = "Use Libre Office";
+            this.LibreOfficeCheckBox.UseVisualStyleBackColor = true;
             // 
             // ViewerForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(12F, 25F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(804, 354);
+            this.Controls.Add(this.LibreOfficeCheckBox);
             this.Controls.Add(this.OutputTextBox);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.SelectButton);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
-            this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.Margin = new System.Windows.Forms.Padding(4);
             this.MaximizeBox = false;
             this.Name = "ViewerForm";
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
@@ -88,6 +102,7 @@
         private System.Windows.Forms.Button SelectButton;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.TextBox OutputTextBox;
+        private System.Windows.Forms.CheckBox LibreOfficeCheckBox;
     }
 }
 
