@@ -78,8 +78,7 @@ namespace OfficeConverterTestTool
                     _tempFolders.Add(tempFolder);
 
                     var extractor = new Converter();
-                    var outputFile = openFileDialog1.FileName.Substring(0, openFileDialog1.FileName.LastIndexOf('.')) +
-                                     ".pdf";
+                    var outputFile = openFileDialog1.FileName.Substring(0, openFileDialog1.FileName.LastIndexOf('.')) + ".pdf";
                     OutputTextBox.Text = @"Converting...";
                     extractor.Convert(openFileDialog1.FileName, outputFile, LibreOfficeCheckBox.Checked);
                     OutputTextBox.Clear();

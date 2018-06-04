@@ -5,13 +5,46 @@ using System.Threading;
 using uno;
 using uno.util;
 using unoidl.com.sun.star.beans;
+using unoidl.com.sun.star.bridge;
 
 // Libreoffice assemblies
 using unoidl.com.sun.star.lang;
 using unoidl.com.sun.star.frame;
+using unoidl.com.sun.star.uno;
 
 namespace OfficeConverter
 {
+    /*
+
+
+        XComponentContext xLocalContext = uno.util.Bootstrap.defaultBootstrap_InitialComponentContext();
+        XMultiComponentFactory xLocalServiceManager = xLocalContext.getServiceManager();
+        XUnoUrlResolver xUrlResolver = (XUnoUrlResolver) xLocalServiceManager.createInstanceWithContext(
+            "com.sun.star.bridge.UnoUrlResolver", xLocalContext);
+
+
+        int i = 0;
+        while (i < 20) {
+            try
+            {
+                xContext = (XComponentContext)xUrlResolver.resolve(
+                    "uno:pipe,name=officepipe1;urp;StarOffice.ComponentContext");
+                if (xContext != null)
+                    break;
+            } catch (unoidl.com.sun.star.connection.NoConnectException) {
+                System.Threading.Thread.Sleep(100);
+            }
+            i++;
+        }
+        if (xContext == null)
+            return;
+
+        XMultiServiceFactory xMsf = (XMultiServiceFactory) xContext.getServiceManager();
+
+        Object desktop = xMsf.createInstance("com.sun.star.frame.Desktop");
+        XComponentLoader xLoader = (XComponentLoader)desktop;
+    */
+
     /// <summary>
     /// This class is used as a placeholder for all Libre office related methods
     /// </summary>
@@ -23,31 +56,56 @@ namespace OfficeConverter
     /// </remarks>
     internal static class LibreOffice
     {
+        #region Fields
+        private static Process _libreOfficeProcess;
+        #endregion
+
+        #region Properties
+        /// <summary>
+        /// Returns the full path to LibreOffice, when not found <c>null</c> is returned
+        /// </summary>
+        private static string GetInstallPath
+        {
+            get
+            {
+                using (var regkey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\LibreOffice\UNO\InstallPath", false))
+                {
+                    var installPath = (string) regkey?.GetValue(string.Empty);
+                    return installPath;
+                }
+            }
+        }
+        #endregion
+
         #region Start
         /// <summary>
         /// Checks if LibreOffice is started and if not starts it
         /// </summary>
         private static void Start()
         {
-            var getProcess = Process.GetProcessesByName("soffice.exe");
-            if (getProcess.Length != 0)
-                throw new InvalidProgramException("OpenOffice not found.  Is OpenOffice installed?");
+            var installPath = GetInstallPath;
+            if (string.IsNullOrEmpty(installPath))
+                throw new InvalidProgramException("LibreOffice not installed");
 
-            if (getProcess.Length > 0)
-                return;
+            var path = installPath.Replace('\\', '/');
 
-            var startProcess = new Process
+            Environment.SetEnvironmentVariable("URE_BOOTSTRAP", "vnd.sun.star.pathname:" + path + "/fundamental.ini");
+
+            var process = new Process
             {
                 StartInfo =
                 {
-                    Arguments = "-headless -nofirststartwizard",
-                    FileName = "soffice.exe",
+                    Arguments =
+                        "-nodefault -nologo -nofirststartwizard -accept=pipe,name=officepipe1;urp;StarOffice.ServiceManager",
+                    FileName = installPath + @"\soffice.exe",
                     CreateNoWindow = true
                 }
             };
 
-            if (!startProcess.Start())
-                throw new InvalidProgramException("OpenOffice failed to start.");
+            if (!process.Start())
+                throw new InvalidProgramException("Could not start LibreOffice");
+
+            _libreOfficeProcess = process;
         }
         #endregion
 
@@ -56,17 +114,23 @@ namespace OfficeConverter
             if (GetFilterType(Path.GetExtension(inputFile)) == null)
                 throw new InvalidProgramException("Unknown file type for OpenOffice. File = " + inputFile);
 
-            Start();
-
-            var bootstrap = Bootstrap.bootstrap();
-            // ReSharper disable once SuspiciousTypeConversion.Global
-            var remoteFactory = (XMultiServiceFactory)bootstrap.getServiceManager();
-            var aLoader = (XComponentLoader) remoteFactory.createInstance("com.sun.star.frame.Desktop");
 
             XComponent xComponent = null;
 
             try
             {
+                Start();
+
+                //var xLocalContext = Bootstrap.defaultBootstrap_InitialComponentContext();
+                //var xLocalServiceManager = xLocalContext.getServiceManager();
+                //var xUrlResolver = (XUnoUrlResolver)xLocalServiceManager.createInstanceWithContext(
+                //    "com.sun.star.bridge.UnoUrlResolver", xLocalContext);
+
+                var bootstrap = Bootstrap.defaultBootstrap_InitialComponentContext();
+                // ReSharper disable once SuspiciousTypeConversion.Global
+                var remoteFactory = (XMultiServiceFactory)bootstrap.getServiceManager();
+                var aLoader = (XComponentLoader)remoteFactory.createInstance("com.sun.star.frame.Desktop");
+
                 xComponent = InitDocument(aLoader, inputFile, "_blank");
                 //Wait for loading
                 //while (xComponent == null)
@@ -78,6 +142,12 @@ namespace OfficeConverter
             finally
             {
                 xComponent?.dispose();
+
+                if (_libreOfficeProcess != null)
+                {
+                    _libreOfficeProcess.Kill();
+                    _libreOfficeProcess = null;
+                }
             }
         }
 
