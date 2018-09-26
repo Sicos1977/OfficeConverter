@@ -14,37 +14,6 @@ using unoidl.com.sun.star.uno;
 
 namespace OfficeConverter
 {
-    /*
-
-
-        XComponentContext xLocalContext = uno.util.Bootstrap.defaultBootstrap_InitialComponentContext();
-        XMultiComponentFactory xLocalServiceManager = xLocalContext.getServiceManager();
-        XUnoUrlResolver xUrlResolver = (XUnoUrlResolver) xLocalServiceManager.createInstanceWithContext(
-            "com.sun.star.bridge.UnoUrlResolver", xLocalContext);
-
-
-        int i = 0;
-        while (i < 20) {
-            try
-            {
-                xContext = (XComponentContext)xUrlResolver.resolve(
-                    "uno:pipe,name=officepipe1;urp;StarOffice.ComponentContext");
-                if (xContext != null)
-                    break;
-            } catch (unoidl.com.sun.star.connection.NoConnectException) {
-                System.Threading.Thread.Sleep(100);
-            }
-            i++;
-        }
-        if (xContext == null)
-            return;
-
-        XMultiServiceFactory xMsf = (XMultiServiceFactory) xContext.getServiceManager();
-
-        Object desktop = xMsf.createInstance("com.sun.star.frame.Desktop");
-        XComponentLoader xLoader = (XComponentLoader)desktop;
-    */
-
     /// <summary>
     /// This class is used as a placeholder for all Libre office related methods
     /// </summary>
@@ -90,13 +59,14 @@ namespace OfficeConverter
             var path = installPath.Replace('\\', '/');
 
             Environment.SetEnvironmentVariable("URE_BOOTSTRAP", "vnd.sun.star.pathname:" + path + "/fundamental.ini");
+            Environment.SetEnvironmentVariable("PATH", Environment.GetEnvironmentVariable("PATH") + @";" + path, EnvironmentVariableTarget.Process);
 
             var process = new Process
             {
                 StartInfo =
                 {
                     Arguments =
-                        "--invisible --headless -nodefault -nologo -nofirststartwizard -accept=pipe,name=officepipe1;urp;StarOffice.ServiceManager",
+                        "--headless -nodefault -nologo -nofirststartwizard -accept=pipe,name=officepipe1;urp;StarOffice.ServiceManager",
                     FileName = installPath + @"\soffice.exe",
                     CreateNoWindow = true
                 }
@@ -109,11 +79,28 @@ namespace OfficeConverter
         }
         #endregion
 
+        #region ConvertToUrl
+        /// <summary>
+        /// Convert the give file path to the format LibreOffice needs
+        /// </summary>
+        /// <param name="file"></param>
+        /// <returns></returns>
+        public static string ConvertToUrl(string file)
+        {
+            return $"file:///{file.Replace(@"\", "/")}";
+        }
+        #endregion
+
+        #region ConvertToPdf
+        /// <summary>
+        /// Converts the given <paramref name="inputFile"/> to PDF format and saves it as <paramref name="outputFile"/>
+        /// </summary>
+        /// <param name="inputFile">The input file</param>
+        /// <param name="outputFile">The output file</param>
         public static void ConvertToPdf(string inputFile, string outputFile)
         {
             if (GetFilterType(Path.GetExtension(inputFile)) == null)
                 throw new InvalidProgramException("Unknown file type for OpenOffice. File = " + inputFile);
-
 
             XComponent xComponent = null;
 
@@ -123,19 +110,17 @@ namespace OfficeConverter
 
                 //var bootstrap = Bootstrap.defaultBootstrap_InitialComponentContext();
                 var bootstrap = uno.util.Bootstrap.bootstrap();
+               
                 // ReSharper disable once SuspiciousTypeConversion.Global
                 var remoteFactory = (XMultiServiceFactory)bootstrap.getServiceManager();
                 var aLoader = (XComponentLoader)remoteFactory.createInstance("com.sun.star.frame.Desktop");
-
-                xComponent = InitDocument(aLoader, $"file:///{inputFile}", "_blank");
-                //Wait for loading
-                //while (xComponent == null)
-                //    Thread.Sleep(10);
-
+                xComponent = InitDocument(aLoader, ConvertToUrl(inputFile), "_blank");
+      
                 // Save/export the document
                 // http://herbertniemeyerblog.blogspot.com/2011/11/have-to-start-somewhere.html
+                // https://forum.openoffice.org/en/forum/viewtopic.php?t=73098
 
-                SaveDocument(xComponent, inputFile, outputFile);
+                ExportToPdf(xComponent, inputFile, outputFile);
             }
             finally
             {
@@ -148,12 +133,21 @@ namespace OfficeConverter
                 }
             }
         }
+        #endregion
 
+        #region InitDocument
+        /// <summary>
+        /// Creates a new document in LibreOffice and opens the given <paramref name="file"/>
+        /// </summary>
+        /// <param name="aLoader"></param>
+        /// <param name="file"></param>
+        /// <param name="target"></param>
+        /// <returns></returns>
         private static XComponent InitDocument(XComponentLoader aLoader, string file, string target)
         {
             var openProps = new PropertyValue[2];
-            openProps[0] = new PropertyValue { Name = "Hidden", Value = new Any(false) };
-            openProps[0] = new PropertyValue { Name = "ReadOnly", Value = new Any(true) };
+            openProps[0] = new PropertyValue { Name = "Hidden", Value = new Any(true) };
+            openProps[1] = new PropertyValue { Name = "ReadOnly", Value = new Any(true) };
 
             var xComponent = aLoader.loadComponentFromURL(
                 file, target, 0,
@@ -161,8 +155,16 @@ namespace OfficeConverter
 
             return xComponent;
         }
+        #endregion
 
-        private static void SaveDocument(XComponent xComponent, string sourceFile, string destinationFile)
+        #region SaveDocument
+        /// <summary>
+        /// Exports the loaded document to PDF format
+        /// </summary>
+        /// <param name="xComponent"></param>
+        /// <param name="sourceFile"></param>
+        /// <param name="destinationFile"></param>
+        private static void ExportToPdf(XComponent xComponent, string sourceFile, string destinationFile)
         {
             var propertyValues = new PropertyValue[2];
 
@@ -177,8 +179,9 @@ namespace OfficeConverter
             propertyValues[1] = new PropertyValue { Name = "Overwrite", Value = new Any(true) };
 
             // ReSharper disable once SuspiciousTypeConversion.Global
-            ((XStorable)xComponent).storeToURL($"file:///{destinationFile}", propertyValues);
+            ((XStorable)xComponent).storeToURL(ConvertToUrl(destinationFile), propertyValues);
         }
+        #endregion
 
         #region GetFilterType
         /// <summary>
