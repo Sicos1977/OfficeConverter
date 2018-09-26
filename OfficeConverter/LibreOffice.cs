@@ -96,7 +96,7 @@ namespace OfficeConverter
                 StartInfo =
                 {
                     Arguments =
-                        "-nodefault -nologo -nofirststartwizard -accept=pipe,name=officepipe1;urp;StarOffice.ServiceManager",
+                        "--invisible --headless -nodefault -nologo -nofirststartwizard -accept=pipe,name=officepipe1;urp;StarOffice.ServiceManager",
                     FileName = installPath + @"\soffice.exe",
                     CreateNoWindow = true
                 }
@@ -121,29 +121,27 @@ namespace OfficeConverter
             {
                 Start();
 
-                //var xLocalContext = Bootstrap.defaultBootstrap_InitialComponentContext();
-                //var xLocalServiceManager = xLocalContext.getServiceManager();
-                //var xUrlResolver = (XUnoUrlResolver)xLocalServiceManager.createInstanceWithContext(
-                //    "com.sun.star.bridge.UnoUrlResolver", xLocalContext);
-
-                var bootstrap = Bootstrap.defaultBootstrap_InitialComponentContext();
+                //var bootstrap = Bootstrap.defaultBootstrap_InitialComponentContext();
+                var bootstrap = uno.util.Bootstrap.bootstrap();
                 // ReSharper disable once SuspiciousTypeConversion.Global
                 var remoteFactory = (XMultiServiceFactory)bootstrap.getServiceManager();
                 var aLoader = (XComponentLoader)remoteFactory.createInstance("com.sun.star.frame.Desktop");
 
-                xComponent = InitDocument(aLoader, inputFile, "_blank");
+                xComponent = InitDocument(aLoader, $"file:///{inputFile}", "_blank");
                 //Wait for loading
                 //while (xComponent == null)
-                //    Thread.Sleep(1000);
+                //    Thread.Sleep(10);
 
-                // save/export the document
+                // Save/export the document
+                // http://herbertniemeyerblog.blogspot.com/2011/11/have-to-start-somewhere.html
+
                 SaveDocument(xComponent, inputFile, outputFile);
             }
             finally
             {
                 xComponent?.dispose();
 
-                if (_libreOfficeProcess != null)
+                if (_libreOfficeProcess != null && !_libreOfficeProcess.HasExited)
                 {
                     _libreOfficeProcess.Kill();
                     _libreOfficeProcess = null;
@@ -153,8 +151,9 @@ namespace OfficeConverter
 
         private static XComponent InitDocument(XComponentLoader aLoader, string file, string target)
         {
-            var openProps = new PropertyValue[1];
-            openProps[0] = new PropertyValue { Name = "Hidden", Value = new Any(true) };
+            var openProps = new PropertyValue[2];
+            openProps[0] = new PropertyValue { Name = "Hidden", Value = new Any(false) };
+            openProps[0] = new PropertyValue { Name = "ReadOnly", Value = new Any(true) };
 
             var xComponent = aLoader.loadComponentFromURL(
                 file, target, 0,
@@ -166,16 +165,19 @@ namespace OfficeConverter
         private static void SaveDocument(XComponent xComponent, string sourceFile, string destinationFile)
         {
             var propertyValues = new PropertyValue[2];
-            // Setting the flag for overwriting
-            propertyValues[1] = new PropertyValue { Name = "Overwrite", Value = new Any(true) };
+
             // Setting the filter name
             propertyValues[0] = new PropertyValue
             {
                 Name = "FilterName",
                 Value = new Any(GetFilterType(sourceFile))
             };
+            
+            // Setting the flag for overwriting
+            propertyValues[1] = new PropertyValue { Name = "Overwrite", Value = new Any(true) };
+
             // ReSharper disable once SuspiciousTypeConversion.Global
-            ((XStorable)xComponent).storeToURL(destinationFile, propertyValues);
+            ((XStorable)xComponent).storeToURL($"file:///{destinationFile}", propertyValues);
         }
 
         #region GetFilterType
