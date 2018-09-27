@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using ICSharpCode.SharpZipLib.Zip;
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
@@ -207,11 +208,21 @@ namespace OfficeConverter
             var extension = Path.GetExtension(inputFile);
             extension = extension?.ToUpperInvariant();
 
-            if (useLibreOffice)
-            {
-                LibreOffice.ConvertToPdf(inputFile, outputFile);
+            //if (useLibreOffice)
+            //{
+                //for (var j = 1; j < 100; j++)
+                //{
+                //    var i = 0;
+                //    Parallel.For(i, 4, m =>
+                //    {
+                //        i++;
+                //        new LibreOffice().ConvertToPdf($"d:\\{i}.docx", $"d:\\{i}_{Guid.NewGuid()}.pdf");
+                //    });
+                //}
+
+                new LibreOffice().ConvertToPdf(inputFile, outputFile);
                 return;
-            }
+            //}
 
             switch (extension)
             {

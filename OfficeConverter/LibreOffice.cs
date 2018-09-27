@@ -2,11 +2,14 @@
 using System.Diagnostics;
 using System.IO;
 using uno;
+using uno.util;
 using unoidl.com.sun.star.beans;
+using unoidl.com.sun.star.bridge;
 
 // Libreoffice assemblies
 using unoidl.com.sun.star.lang;
 using unoidl.com.sun.star.frame;
+using unoidl.com.sun.star.ucb;
 
 namespace OfficeConverter
 {
@@ -18,17 +21,19 @@ namespace OfficeConverter
     /// - https://api.libreoffice.org/docs/install.html
     /// - https://www.libreoffice.org/download/download/
     /// </remarks>
-    internal static class LibreOffice
+    internal class LibreOffice
     {
         #region Fields
-        private static Process _libreOfficeProcess;
+        private Process _libreOfficeProcess;
+        private string _userFolder;
+        private string _pipeName;
         #endregion
 
         #region Properties
         /// <summary>
         /// Returns the full path to LibreOffice, when not found <c>null</c> is returned
         /// </summary>
-        private static string GetInstallPath
+        private string GetInstallPath
         {
             get
             {
@@ -45,23 +50,24 @@ namespace OfficeConverter
         /// <summary>
         /// Checks if LibreOffice is started and if not starts it
         /// </summary>
-        private static void Start()
+        private void Start()
         {
             var installPath = GetInstallPath;
             if (string.IsNullOrEmpty(installPath))
                 throw new InvalidProgramException("LibreOffice not installed");
 
-            var path = installPath.Replace('\\', '/');
+            //var path = installPath.Replace('\\', '/');
 
-            Environment.SetEnvironmentVariable("URE_BOOTSTRAP", "vnd.sun.star.pathname:" + path + "/fundamental.ini");
-            Environment.SetEnvironmentVariable("PATH", Environment.GetEnvironmentVariable("PATH") + @";" + path, EnvironmentVariableTarget.Process);
+            //Environment.SetEnvironmentVariable("URE_BOOTSTRAP", "vnd.sun.star.pathname:" + path + "/fundamental.ini");
+            //Environment.SetEnvironmentVariable("PATH", Environment.GetEnvironmentVariable("PATH") + @";" + path, EnvironmentVariableTarget.Process);
+
 
             var process = new Process
             {
                 StartInfo =
                 {
                     Arguments =
-                        "--headless -nodefault -nologo -nofirststartwizard",
+                        $"--headless -nodefault -nologo -nofirststartwizard -env:UserInstallation=file:///{_userFolder} --accept='pipe,name={_pipeName};urp;StarOffice.ComponentContext",
                     FileName = installPath + @"\soffice.exe",
                     CreateNoWindow = true
                 }
@@ -80,7 +86,7 @@ namespace OfficeConverter
         /// </summary>
         /// <param name="file"></param>
         /// <returns></returns>
-        public static string ConvertToUrl(string file)
+        public string ConvertToUrl(string file)
         {
             return $"file:///{file.Replace(@"\", "/")}";
         }
@@ -92,7 +98,7 @@ namespace OfficeConverter
         /// </summary>
         /// <param name="inputFile">The input file</param>
         /// <param name="outputFile">The output file</param>
-        public static void ConvertToPdf(string inputFile, string outputFile)
+        public void ConvertToPdf(string inputFile, string outputFile)
         {
             if (GetFilterType(Path.GetExtension(inputFile)) == null)
                 throw new InvalidProgramException("Unknown file type for OpenOffice. File = " + inputFile);
@@ -101,16 +107,24 @@ namespace OfficeConverter
 
             try
             {
+                var guid = Guid.NewGuid().ToString().Replace("-", string.Empty);
+                _userFolder = $"d:/{guid}";
+                //_pipeName = guid;
+                _pipeName = "keeshispipe";
+                Directory.CreateDirectory(_userFolder);
+
                 Start();
 
-                //var bootstrap = Bootstrap.defaultBootstrap_InitialComponentContext();
-                var bootstrap = uno.util.Bootstrap.bootstrap();
-               
+                var bootstrap = Bootstrap.defaultBootstrap_InitialComponentContext();
+                //var bootstrap = uno.util.Bootstrap.bootstrap();
+                
                 // ReSharper disable once SuspiciousTypeConversion.Global
-                var remoteFactory = (XMultiServiceFactory)bootstrap.getServiceManager();
-                var aLoader = (XComponentLoader)remoteFactory.createInstance("com.sun.star.frame.Desktop");
+                var remoteFactory = bootstrap.getServiceManager();
+                var resolver = (XUnoUrlResolver) remoteFactory.createInstanceWithContext("com.sun.star.bridge.UnoUrlResolver", bootstrap);
+                var remoteContext = (XMultiServiceFactory) resolver.resolve($"uno:pipe,name={_pipeName};urp;StarOffice.ComponentContext");
+                var aLoader = (XComponentLoader) remoteContext.createInstance("com.sun.star.frame.Desktop");
                 xComponent = InitDocument(aLoader, ConvertToUrl(inputFile), "_blank");
-      
+
                 // Save/export the document
                 // http://herbertniemeyerblog.blogspot.com/2011/11/have-to-start-somewhere.html
                 // https://forum.openoffice.org/en/forum/viewtopic.php?t=73098
@@ -126,6 +140,9 @@ namespace OfficeConverter
                     _libreOfficeProcess.Kill();
                     _libreOfficeProcess = null;
                 }
+
+                if (!string.IsNullOrEmpty(_userFolder))
+                    Directory.Delete(_userFolder, true);
             }
         }
         #endregion
@@ -138,7 +155,7 @@ namespace OfficeConverter
         /// <param name="file"></param>
         /// <param name="target"></param>
         /// <returns></returns>
-        private static XComponent InitDocument(XComponentLoader aLoader, string file, string target)
+        private XComponent InitDocument(XComponentLoader aLoader, string file, string target)
         {
             var openProps = new PropertyValue[2];
             openProps[0] = new PropertyValue { Name = "Hidden", Value = new Any(true) };
@@ -159,7 +176,7 @@ namespace OfficeConverter
         /// <param name="xComponent"></param>
         /// <param name="sourceFile"></param>
         /// <param name="destinationFile"></param>
-        private static void ExportToPdf(XComponent xComponent, string sourceFile, string destinationFile)
+        private  void ExportToPdf(XComponent xComponent, string sourceFile, string destinationFile)
         {
             var propertyValues = new PropertyValue[3];
             var filterData = new PropertyValue[5];
@@ -222,7 +239,7 @@ namespace OfficeConverter
         /// </summary>
         /// <param name="fileName">The file to check</param>
         /// <returns></returns>
-        public static string GetFilterType(string fileName)
+        public string GetFilterType(string fileName)
         {
             var extension = Path.GetExtension(fileName);
 
