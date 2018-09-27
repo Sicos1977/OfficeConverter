@@ -1,16 +1,12 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.Threading;
 using uno;
-using uno.util;
 using unoidl.com.sun.star.beans;
-using unoidl.com.sun.star.bridge;
 
 // Libreoffice assemblies
 using unoidl.com.sun.star.lang;
 using unoidl.com.sun.star.frame;
-using unoidl.com.sun.star.uno;
 
 namespace OfficeConverter
 {
@@ -21,7 +17,6 @@ namespace OfficeConverter
     /// - https://api.libreoffice.org/examples/examples.html
     /// - https://api.libreoffice.org/docs/install.html
     /// - https://www.libreoffice.org/download/download/
-    /// - https://github.com/dmazz55/Pdfvert/blob/master/Source/Pdfvert/Utilities/OpenOfficeUtility.cs
     /// </remarks>
     internal static class LibreOffice
     {
@@ -66,7 +61,7 @@ namespace OfficeConverter
                 StartInfo =
                 {
                     Arguments =
-                        "--headless -nodefault -nologo -nofirststartwizard -accept=pipe,name=officepipe1;urp;StarOffice.ServiceManager",
+                        "--headless -nodefault -nologo -nofirststartwizard",
                     FileName = installPath + @"\soffice.exe",
                     CreateNoWindow = true
                 }
@@ -166,7 +161,38 @@ namespace OfficeConverter
         /// <param name="destinationFile"></param>
         private static void ExportToPdf(XComponent xComponent, string sourceFile, string destinationFile)
         {
-            var propertyValues = new PropertyValue[2];
+            var propertyValues = new PropertyValue[3];
+            var filterData = new PropertyValue[5];
+
+            filterData[0] = new PropertyValue
+            {
+                Name = "UseLosslessCompression",
+                Value = new Any(false)
+            };
+
+            filterData[1] = new PropertyValue
+            {
+                Name = "Quality",
+                Value = new Any(90)
+            };
+
+            filterData[2] = new PropertyValue
+            {
+                Name = "ReduceImageResolution",
+                Value = new Any(true)
+            };
+
+            filterData[3] = new PropertyValue
+            {
+                Name = "MaxImageResolution",
+                Value = new Any(300)
+            };
+
+            filterData[4] = new PropertyValue
+            {
+                Name = "ExportBookmarks",
+                Value = new Any(false)
+            };
 
             // Setting the filter name
             propertyValues[0] = new PropertyValue
@@ -178,6 +204,12 @@ namespace OfficeConverter
             // Setting the flag for overwriting
             propertyValues[1] = new PropertyValue { Name = "Overwrite", Value = new Any(true) };
 
+            var polymorphicType = PolymorphicType.GetType(
+                typeof(PropertyValue[]),
+                "unoidl.com.sun.star.beans.PropertyValue[]");
+
+            propertyValues[2] = new PropertyValue { Name = "FilterData",  Value = new Any(polymorphicType, filterData) };
+            
             // ReSharper disable once SuspiciousTypeConversion.Global
             ((XStorable)xComponent).storeToURL(ConvertToUrl(destinationFile), propertyValues);
         }
