@@ -57,11 +57,14 @@ namespace OfficeConverter
             if (string.IsNullOrEmpty(installPath))
                 throw new InvalidProgramException("LibreOffice not installed");
 
-            //var path = installPath.Replace('\\', '/');
+            var path = installPath.Replace('\\', '/');
 
-            //Environment.SetEnvironmentVariable("URE_BOOTSTRAP", "vnd.sun.star.pathname:" + path + "/fundamental.ini");
-            //Environment.SetEnvironmentVariable("PATH", Environment.GetEnvironmentVariable("PATH") + @";" + path, EnvironmentVariableTarget.Process);
+            Environment.SetEnvironmentVariable("URE_BOOTSTRAP", "vnd.sun.star.pathname:" + path + "/fundamental.ini");
+            var environmentPath = Environment.GetEnvironmentVariable("PATH");
 
+            if (environmentPath != null && !environmentPath.Contains(path))
+                Environment.SetEnvironmentVariable("PATH", Environment.GetEnvironmentVariable("PATH") + @";" + path,
+                    EnvironmentVariableTarget.Process);
 
             var process = new Process
             {
