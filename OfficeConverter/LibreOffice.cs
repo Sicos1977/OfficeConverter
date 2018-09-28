@@ -70,8 +70,9 @@ namespace OfficeConverter
             {
                 StartInfo =
                 {
+                    // -env:UserInstallation=file:///{_userFolder}
                     Arguments =
-                        $"-invisible -nofirststartwizard -minimized -nologo -nolockcheck -env:UserInstallation=file:///{_userFolder} --accept=pipe,name={_pipeName};urp;StarOffice.ComponentContext",
+                        $"-invisible -nofirststartwizard -minimized -nologo -nolockcheck --accept=pipe,name={_pipeName};urp;StarOffice.ComponentContext",
                     FileName = installPath + @"\soffice.exe",
                     CreateNoWindow = true
                 }
@@ -115,15 +116,36 @@ namespace OfficeConverter
                 _userFolder = $"d:/{guid}";
                 _pipeName = guid;
                 //_pipeName = "keeshispipe";
-                Directory.CreateDirectory(_userFolder);
+                //Directory.CreateDirectory(_userFolder);
 
                 Start();
 
                 var localContext = Bootstrap.defaultBootstrap_InitialComponentContext();
                 var localServiceManager = localContext.getServiceManager();
                 var urlResolver = (XUnoUrlResolver) localServiceManager.createInstanceWithContext("com.sun.star.bridge.UnoUrlResolver", localContext);
-                Thread.Sleep(1000);
-                var remoteContext = (XComponentContext) urlResolver.resolve($"uno:pipe,name={_pipeName};urp;StarOffice.ComponentContext");
+                XComponentContext remoteContext;
+
+                var i = 0;
+
+                while (true)
+                {
+                    try
+                    {
+                        remoteContext =
+                            (XComponentContext) urlResolver.resolve(
+                                $"uno:pipe,name={_pipeName};urp;StarOffice.ComponentContext");
+
+                        break;
+                    }
+                    catch (System.Exception exception)
+                    {
+                        if (i == 20 || !exception.Message.Contains("couldn't connect to pipe")) throw;
+                        Thread.Sleep(100);
+                        i++;
+                    }
+                }
+
+                // ReSharper disable once SuspiciousTypeConversion.Global
                 var remoteFactory = (XMultiServiceFactory) remoteContext.getServiceManager();
                 var componentLoader = (XComponentLoader) remoteFactory.createInstance("com.sun.star.frame.Desktop"); 
                 component = InitDocument(componentLoader, ConvertToUrl(inputFile), "_blank");
@@ -141,11 +163,21 @@ namespace OfficeConverter
                 if (_libreOfficeProcess != null && !_libreOfficeProcess.HasExited)
                 {
                     _libreOfficeProcess.Kill();
+
+                    while(!_libreOfficeProcess.HasExited)
+                        Thread.Sleep(100);
+
                     _libreOfficeProcess = null;
                 }
 
-                if (!string.IsNullOrEmpty(_userFolder))
-                    Directory.Delete(_userFolder, true);
+                try
+                {
+                    if (!string.IsNullOrEmpty(_userFolder))
+                        Directory.Delete(_userFolder, true);
+                }
+                catch
+                {
+                }
             }
         }
         #endregion

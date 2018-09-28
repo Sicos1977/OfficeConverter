@@ -210,17 +210,17 @@ namespace OfficeConverter
 
             //if (useLibreOffice)
             //{
-                //for (var j = 1; j < 100; j++)
-                //{
-                //    var i = 0;
-                //    Parallel.For(i, 4, m =>
-                //    {
-                //        i++;
-                //        new LibreOffice().ConvertToPdf($"d:\\{i}.docx", $"d:\\{i}_{Guid.NewGuid()}.pdf");
-                //    });
-                //}
+                for (var j = 1; j < 100; j++)
+                {
+                    var i = 0;
+                    Parallel.For(i, 4, m =>
+                    {
+                        i++;
+                        new LibreOffice().ConvertToPdf($"d:\\{i}.docx", $"d:\\{i}_{Guid.NewGuid()}.pdf");
+                    });
+                }
 
-                new LibreOffice().ConvertToPdf(inputFile, outputFile);
+                //new LibreOffice().ConvertToPdf(inputFile, outputFile);
                 return;
             //}
 
