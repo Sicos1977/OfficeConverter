@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
 using uno;
 using uno.util;
 using unoidl.com.sun.star.beans;
@@ -10,6 +11,7 @@ using unoidl.com.sun.star.bridge;
 using unoidl.com.sun.star.lang;
 using unoidl.com.sun.star.frame;
 using unoidl.com.sun.star.ucb;
+using unoidl.com.sun.star.uno;
 
 namespace OfficeConverter
 {
@@ -67,7 +69,7 @@ namespace OfficeConverter
                 StartInfo =
                 {
                     Arguments =
-                        $"--headless -nodefault -nologo -nofirststartwizard -env:UserInstallation=file:///{_userFolder} --accept='pipe,name={_pipeName};urp;StarOffice.ComponentContext",
+                        $"-invisible -nofirststartwizard -minimized -nologo -nolockcheck -env:UserInstallation=file:///{_userFolder} --accept=pipe,name={_pipeName};urp;StarOffice.ComponentContext",
                     FileName = installPath + @"\soffice.exe",
                     CreateNoWindow = true
                 }
@@ -103,37 +105,36 @@ namespace OfficeConverter
             if (GetFilterType(Path.GetExtension(inputFile)) == null)
                 throw new InvalidProgramException("Unknown file type for OpenOffice. File = " + inputFile);
 
-            XComponent xComponent = null;
+            XComponent component = null;
 
             try
             {
                 var guid = Guid.NewGuid().ToString().Replace("-", string.Empty);
                 _userFolder = $"d:/{guid}";
-                //_pipeName = guid;
-                _pipeName = "keeshispipe";
+                _pipeName = guid;
+                //_pipeName = "keeshispipe";
                 Directory.CreateDirectory(_userFolder);
 
                 Start();
 
-                var bootstrap = Bootstrap.defaultBootstrap_InitialComponentContext();
-                //var bootstrap = uno.util.Bootstrap.bootstrap();
-                
-                // ReSharper disable once SuspiciousTypeConversion.Global
-                var remoteFactory = bootstrap.getServiceManager();
-                var resolver = (XUnoUrlResolver) remoteFactory.createInstanceWithContext("com.sun.star.bridge.UnoUrlResolver", bootstrap);
-                var remoteContext = (XMultiServiceFactory) resolver.resolve($"uno:pipe,name={_pipeName};urp;StarOffice.ComponentContext");
-                var aLoader = (XComponentLoader) remoteContext.createInstance("com.sun.star.frame.Desktop");
-                xComponent = InitDocument(aLoader, ConvertToUrl(inputFile), "_blank");
+                var localContext = Bootstrap.defaultBootstrap_InitialComponentContext();
+                var localServiceManager = localContext.getServiceManager();
+                var urlResolver = (XUnoUrlResolver) localServiceManager.createInstanceWithContext("com.sun.star.bridge.UnoUrlResolver", localContext);
+                Thread.Sleep(1000);
+                var remoteContext = (XComponentContext) urlResolver.resolve($"uno:pipe,name={_pipeName};urp;StarOffice.ComponentContext");
+                var remoteFactory = (XMultiServiceFactory) remoteContext.getServiceManager();
+                var componentLoader = (XComponentLoader) remoteFactory.createInstance("com.sun.star.frame.Desktop"); 
+                component = InitDocument(componentLoader, ConvertToUrl(inputFile), "_blank");
 
                 // Save/export the document
                 // http://herbertniemeyerblog.blogspot.com/2011/11/have-to-start-somewhere.html
                 // https://forum.openoffice.org/en/forum/viewtopic.php?t=73098
 
-                ExportToPdf(xComponent, inputFile, outputFile);
+                ExportToPdf(component, inputFile, outputFile);
             }
             finally
             {
-                xComponent?.dispose();
+                component?.dispose();
 
                 if (_libreOfficeProcess != null && !_libreOfficeProcess.HasExited)
                 {
@@ -161,7 +162,7 @@ namespace OfficeConverter
             openProps[0] = new PropertyValue { Name = "Hidden", Value = new Any(true) };
             openProps[1] = new PropertyValue { Name = "ReadOnly", Value = new Any(true) };
 
-            var xComponent = aLoader.loadComponentFromURL(
+            var xComponent = ((XComponentLoader) aLoader).loadComponentFromURL(
                 file, target, 0,
                 openProps);
 
