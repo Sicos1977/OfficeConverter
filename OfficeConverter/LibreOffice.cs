@@ -10,7 +10,6 @@ using unoidl.com.sun.star.bridge;
 // Libreoffice assemblies
 using unoidl.com.sun.star.lang;
 using unoidl.com.sun.star.frame;
-using unoidl.com.sun.star.ucb;
 using unoidl.com.sun.star.uno;
 
 namespace OfficeConverter
@@ -162,7 +161,7 @@ namespace OfficeConverter
             openProps[0] = new PropertyValue { Name = "Hidden", Value = new Any(true) };
             openProps[1] = new PropertyValue { Name = "ReadOnly", Value = new Any(true) };
 
-            var xComponent = ((XComponentLoader) aLoader).loadComponentFromURL(
+            var xComponent = aLoader.loadComponentFromURL(
                 file, target, 0,
                 openProps);
 
