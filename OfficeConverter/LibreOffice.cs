@@ -11,6 +11,7 @@ using unoidl.com.sun.star.bridge;
 using unoidl.com.sun.star.lang;
 using unoidl.com.sun.star.frame;
 using unoidl.com.sun.star.uno;
+using unoidl.com.sun.star.util;
 
 namespace OfficeConverter
 {
@@ -61,6 +62,8 @@ namespace OfficeConverter
 
             Environment.SetEnvironmentVariable("URE_BOOTSTRAP", "vnd.sun.star.pathname:" + path + "/fundamental.ini");
             var environmentPath = Environment.GetEnvironmentVariable("PATH");
+
+            Environment.SetEnvironmentVariable("UNO_PATH", path, EnvironmentVariableTarget.Process);
 
             if (environmentPath != null && !environmentPath.Contains(path))
                 Environment.SetEnvironmentVariable("PATH", Environment.GetEnvironmentVariable("PATH") + @";" + path,
@@ -155,6 +158,8 @@ namespace OfficeConverter
                 // https://forum.openoffice.org/en/forum/viewtopic.php?t=73098
 
                 ExportToPdf(component, inputFile, outputFile);
+
+                CloseDocument(component);
             }
             finally
             {
@@ -208,10 +213,10 @@ namespace OfficeConverter
         /// <summary>
         /// Exports the loaded document to PDF format
         /// </summary>
-        /// <param name="xComponent"></param>
+        /// <param name="component"></param>
         /// <param name="sourceFile"></param>
         /// <param name="destinationFile"></param>
-        private  void ExportToPdf(XComponent xComponent, string sourceFile, string destinationFile)
+        private  void ExportToPdf(XComponent component, string sourceFile, string destinationFile)
         {
             var propertyValues = new PropertyValue[3];
             var filterData = new PropertyValue[5];
@@ -263,7 +268,18 @@ namespace OfficeConverter
             propertyValues[2] = new PropertyValue { Name = "FilterData",  Value = new Any(polymorphicType, filterData) };
             
             // ReSharper disable once SuspiciousTypeConversion.Global
-            ((XStorable)xComponent).storeToURL(ConvertToUrl(destinationFile), propertyValues);
+            ((XStorable)component).storeToURL(ConvertToUrl(destinationFile), propertyValues);
+        }
+        #endregion
+
+        #region CloseDocument
+        /// <summary>
+        /// Closes the document and frees any used resources
+        /// </summary>
+        private void CloseDocument(XComponent component)
+        {
+            var closeable = (XCloseable)component;
+            closeable?.close(false);
         }
         #endregion
 
