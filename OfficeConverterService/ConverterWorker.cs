@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.ServiceModel;
 using System.ServiceModel.Description;
 using System.Threading;
@@ -12,7 +11,7 @@ namespace OfficeConverterService
     /// Deze classe start de verschillende onderdelen van de Email2Storage recognition service.
     /// Tot op heden is dit alleen de FileReader classe
     /// </summary>
-    internal class RecognitionWorker
+    internal class ConverterWorker
     {
         #region Fields
         /// <summary>
@@ -64,10 +63,10 @@ namespace OfficeConverterService
         /// <param name="enableMetadata">When set to <c>true</c> then metadata discovery is enabled</param>
         /// <param name="maxMessageSize">The max message size</param>
         /// <param name="changeTimeout">Interval in secondens before the service checks if something has changed inside the database </param>
-        internal RecognitionWorker(string converterBaseAddress, 
-                                   bool enableMetadata, 
-                                   long maxMessageSize,
-                                   int changeTimeout)
+        internal ConverterWorker(string converterBaseAddress, 
+                                 bool enableMetadata, 
+                                 long maxMessageSize,
+                                 int changeTimeout)
         {
             _converterBaseAddress = new Uri(converterBaseAddress);
             _enableMetadata = enableMetadata;
