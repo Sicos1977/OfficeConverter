@@ -743,60 +743,59 @@ namespace OfficeConverter
 
                 foreach (var sheetObject in workbook.Sheets)
                 {
-                    var sheet = sheetObject as ExcelInterop.Worksheet;
-
-                    if (sheet != null)
+                    switch (sheetObject)
                     {
-                        var protection = sheet.Protection;
-                        var activeWindow = excel.ActiveWindow;
+                        //case ExcelInterop.Worksheet sheet when sheet.Visible != ExcelInterop.XlSheetVisibility.xlSheetVisible:
+                        //    continue;
 
-                        try
-                        {
-                            // ReSharper disable once RedundantCast
-                            ((Microsoft.Office.Interop.Excel._Worksheet)sheet).Activate();
-                            if (!sheet.ProtectContents || protection.AllowFormattingColumns)
-                                if (activeWindow.View != ExcelInterop.XlWindowView.xlPageLayoutView)
-                                    sheet.Columns.AutoFit();
+                        case ExcelInterop.Worksheet sheet:
+                            var protection = sheet.Protection;
+                            var activeWindow = excel.ActiveWindow;
 
-                        }
-                        catch (COMException)
-                        {
-                            // Do nothing, this sometimes failes and there is nothing we can do about it
-                        }
-                        finally
-                        {
-                            Marshal.ReleaseComObject(activeWindow);
-                            Marshal.ReleaseComObject(protection);
-                        }
+                            try
+                            {
+                                // ReSharper disable once RedundantCast
+                                ((Microsoft.Office.Interop.Excel._Worksheet)sheet).Activate();
+                                if (!sheet.ProtectContents || protection.AllowFormattingColumns)
+                                    if (activeWindow.View != ExcelInterop.XlWindowView.xlPageLayoutView)
+                                        sheet.Columns.AutoFit();
 
-                        var printArea = GetWorksheetPrintArea(sheet);
+                            }
+                            catch (COMException)
+                            {
+                                // Do nothing, this sometimes failes and there is nothing we can do about it
+                            }
+                            finally
+                            {
+                                Marshal.ReleaseComObject(activeWindow);
+                                Marshal.ReleaseComObject(protection);
+                            }
 
-                        switch (printArea)
-                        {
-                            case "shapes":
-                                SetWorkSheetPaperSize(sheet, string.Empty);
-                                usedSheets += 1;
-                                break;
+                            var printArea = GetWorksheetPrintArea(sheet);
 
-                            case "":
-                                break;
+                            switch (printArea)
+                            {
+                                case "shapes":
+                                    SetWorkSheetPaperSize(sheet, string.Empty);
+                                    usedSheets += 1;
+                                    break;
 
-                            default:
-                                SetWorkSheetPaperSize(sheet, printArea);
-                                usedSheets += 1;
-                                break;
-                        }
+                                case "":
+                                    break;
 
-                        Marshal.ReleaseComObject(sheet);
-                        continue;
+                                default:
+                                    SetWorkSheetPaperSize(sheet, printArea);
+                                    usedSheets += 1;
+                                    break;
+                            }
+
+                            Marshal.ReleaseComObject(sheet);
+                            continue;
                     }
 
-                    var chart = sheetObject as ExcelInterop.Chart;
-                    if (chart != null)
-                    {
-                        SetChartPaperSize(chart);
-                        Marshal.ReleaseComObject(chart);
-                    }
+                    if (!(sheetObject is ExcelInterop.Chart chart)) continue;
+                    SetChartPaperSize(chart);
+                    Marshal.ReleaseComObject(chart);
                 }
 
                 // It is not possible in Excel to export an empty workbook
