@@ -7,18 +7,9 @@ Convert Microsoft Office document to PDF (Office 2007 - 2016)
   - Converts .DOC, .DOCM, .DOCX, .DOT, .DOTM, .ODT, .XLS, .XLSB, .XLSM, .XLSX, .XLT, .XLTM, .XLTX, .XLW, .ODS, .POT, .PPT, .POTM, .POTX, .PPS, .PPSM, .PPSX, .PPTM, .PPTX and .ODP files to PDF with the use of Microsoft Office
   - Checks if the files are password protected without using Microsoft Office to speed up conversion
 
-
-## What is ChromeHtmlToPdf?
-
-ChromeHtmlToPdf is a 100% managed C# .NET library and console application that can be used to convert HTML to PDF format with the use of Google Chrome
-
-## Why did I make this?
-
-I needed a replacement for wkHtmlToPdf, a great tool but the activity on this project is low and it's not 100% compatible with HTML5.
-
 ## License Information
 
-ChromeHtmlToPdf is Copyright (C)2017-2018 Kees van Spelde and is licensed under the MIT license:
+OfficeConverter is Copyright (C)2014-2018 Kees van Spelde and is licensed under the MIT license:
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +31,7 @@ ChromeHtmlToPdf is Copyright (C)2017-2018 Kees van Spelde and is licensed under 
 
 ## Installing via NuGet
 
-The easiest way to install ChromeHtmlToPdf is via NuGet.
+The easiest way to install OfficeConverter is via NuGet.
 
 In Visual Studio's Package Manager Console, simply enter the following command:
 
