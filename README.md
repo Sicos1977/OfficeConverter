@@ -44,6 +44,7 @@ using (var converter = new Converter())
 {
     converter.ConvertToPdf(<inputfile>, <outputfile>);
 }
+```
 
 Core Team
 =========
