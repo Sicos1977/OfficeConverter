@@ -80,7 +80,7 @@ namespace OfficeConverterTestTool
                     var extractor = new Converter();
                     var outputFile = openFileDialog1.FileName.Substring(0, openFileDialog1.FileName.LastIndexOf('.')) + ".pdf";
                     OutputTextBox.Text = @"Converting...";
-                    extractor.Convert(openFileDialog1.FileName, outputFile, LibreOfficeCheckBox.Checked);
+                    extractor.Convert(openFileDialog1.FileName, outputFile);
                     OutputTextBox.Clear();
                     OutputTextBox.Text = @"Converted file written to '" + outputFile + @"'";
                 }

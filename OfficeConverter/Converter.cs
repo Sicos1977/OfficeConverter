@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
 using ICSharpCode.SharpZipLib.Zip;
 using OfficeConverter.Exceptions;
@@ -65,11 +66,36 @@ namespace OfficeConverter
     {
         #region Fields
         /// <summary>
+        ///     When set then logging is written to this stream
+        /// </summary>
+        private Stream _logStream;
+
+        /// <summary>
         ///     Contains an error message when something goes wrong in the <see cref="ConvertFromCom" /> method.
         ///     This message can be retreived with the GetErrorMessage. This way we keep .NET exceptions inside
         ///     when this code is called from a COM language
         /// </summary>
         private string _errorMessage;
+        #endregion
+
+        #region Properties
+        /// <summary>
+        ///     An unique id that can be used to identify the logging of the converter when
+        ///     calling the code from multiple threads and writing all the logging to the same file
+        /// </summary>
+        public string InstanceId { get; set; }
+        #endregion
+
+        #region Constructor
+        /// <summary>
+        ///     Creates this object and sets it's needed properties
+        /// </summary>
+        /// <param name="logStream">When set then logging is written to this stream for all conversions. If
+        /// you want a separate log for each conversion then set the logstream on the <see cref="Convert"/> method</param>
+        public Converter(Stream logStream = null)
+        {
+            _logStream = logStream;
+        }
         #endregion
 
         #region GetErrorMessage
@@ -168,7 +194,7 @@ namespace OfficeConverter
             try
             {
                 _errorMessage = string.Empty;
-                Convert(inputFile, outputFile, useLibreOffice);
+                Convert(inputFile, outputFile);
                 return true;
             }
             catch (Exception exception)
@@ -183,10 +209,7 @@ namespace OfficeConverter
         /// </summary>
         /// <param name="inputFile">The Microsoft Office file</param>
         /// <param name="outputFile">The output file with full path</param>
-        /// <param name="useLibreOffice">
-        ///     When set to <c>true</c> then LibreOffice is used to convert the file to PDF instead of
-        ///     Microsoft Office
-        /// </param>
+        /// <param name="logStream"></param>
         /// <exception cref="ArgumentNullException">
         ///     Raised when the <paramref name="inputFile" /> or <paramref name="outputFile" />
         ///     is null or empty
@@ -201,28 +224,30 @@ namespace OfficeConverter
         /// <exception cref="OCFileIsPasswordProtected">Raised when the <paramref name="inputFile" /> is password protected</exception>
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile" /> has to many rows</exception>
         /// <exception cref="OCFileContainsNoData">Raised when the Microsoft Office file contains no actual data</exception>
-        public void Convert(string inputFile, string outputFile, bool useLibreOffice)
+        public void Convert(string inputFile, string outputFile, Stream logStream = null)
         {
+            _logStream = logStream;
+
             CheckFileNameAndOutputFolder(inputFile, outputFile);
 
             var extension = Path.GetExtension(inputFile);
             extension = extension?.ToUpperInvariant();
 
-            if (useLibreOffice)
-            {
-                //for (var j = 1; j < 100; j++)
-                //{
-                //    var i = 0;
-                //    Parallel.For(i, 4, m =>
-                //    {
-                //        i++;
-                //        new LibreOffice().ConvertToPdf($"d:\\{i}.docx", $"d:\\{i}_{Guid.NewGuid()}.pdf");
-                //    });
-                //}
+            //if (useLibreOffice)
+            //{
+            //    //for (var j = 1; j < 100; j++)
+            //    //{
+            //    //    var i = 0;
+            //    //    Parallel.For(i, 4, m =>
+            //    //    {
+            //    //        i++;
+            //    //        new LibreOffice().ConvertToPdf($"d:\\{i}.docx", $"d:\\{i}_{Guid.NewGuid()}.pdf");
+            //    //    });
+            //    //}
 
-                new LibreOffice().ConvertToPdf(inputFile, outputFile);
-                return;
-            }
+            //    new LibreOffice().ConvertToPdf(inputFile, outputFile);
+            //    return;
+            //}
 
             switch (extension)
             {
@@ -314,6 +339,30 @@ namespace OfficeConverter
                                                      Environment.NewLine +
                                                      ".POTX, .PPSM, .PPSX, .PPTM, .PPTX, .ODP" + Environment.NewLine +
                                                      " are supported");
+            }
+        }
+        #endregion
+
+        #region WriteToLog
+        /// <summary>
+        ///     Writes a line and linefeed to the <see cref="_logStream" />
+        /// </summary>
+        /// <param name="message">The message to write</param>
+        private void WriteToLog(string message)
+        {
+            if (_logStream == null) return;
+
+            try
+            {
+                var line = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff") + (InstanceId != null ? " - " + InstanceId : string.Empty) + " - " +
+                           message + Environment.NewLine;
+                var bytes = Encoding.UTF8.GetBytes(line);
+                _logStream.Write(bytes, 0, bytes.Length);
+                _logStream.Flush();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Ignore
             }
         }
         #endregion
