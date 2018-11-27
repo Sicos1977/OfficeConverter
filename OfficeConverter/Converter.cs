@@ -2,26 +2,36 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading.Tasks;
 using ICSharpCode.SharpZipLib.Zip;
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
+using PasswordProtectedChecker;
 
-/*
-   Copyright 2014 - 2018 Kees van Spelde
-
-   Licensed under The Code Project Open License (CPOL) 1.02;
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-     http://www.codeproject.com/info/cpol10.aspx
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
+//
+// Converter.cs
+//
+// Author: Kees van Spelde <sicos2002@hotmail.com>
+//
+// Copyright (c) 2014-2018 Magic-Sessions. (www.magic-sessions.com)
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+//
 
 namespace OfficeConverter
 {
@@ -76,6 +86,12 @@ namespace OfficeConverter
         ///     when this code is called from a COM language
         /// </summary>
         private string _errorMessage;
+
+        /// <summary>
+        ///     <see cref="PasswordProtectedChecker.Checker"/>
+        /// </summary>
+        private readonly Checker _passwordProtectedChecker = new Checker();
+
         #endregion
 
         #region Properties
@@ -256,20 +272,16 @@ namespace OfficeConverter
                 case ".DOCM":
                 case ".DOCX":
                 case ".DOTM":
-                    if (Word.IsPasswordProtected(inputFile))
-                        throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
-                                                            "' is password protected");
-
-                    Word.Convert(inputFile, outputFile);
-                    break;
-
                 case ".ODT":
-                    if (OpenDocumentFormatIsPasswordProtected(inputFile))
+                {
+                    var result = _passwordProtectedChecker.IsFileProtected(inputFile);
+                    if (result.Protected)
                         throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
                                                             "' is password protected");
 
                     Word.Convert(inputFile, outputFile);
                     break;
+                }
 
                 case ".RTF":
                 case ".MHT":
@@ -286,23 +298,29 @@ namespace OfficeConverter
                 case ".XLSX":
                 case ".XLTM":
                 case ".XLTX":
-                    if (Excel.IsPasswordProtected(inputFile))
+                {
+                    var result = _passwordProtectedChecker.IsFileProtected(inputFile);
+                    if (result.Protected)
                         throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
                                                             "' is password protected");
                     Excel.Convert(inputFile, outputFile);
                     break;
+                }
 
                 case ".CSV":
                     Excel.Convert(inputFile, outputFile);
                     break;
 
                 case ".ODS":
-                    if (OpenDocumentFormatIsPasswordProtected(inputFile))
+                {
+                    var result = _passwordProtectedChecker.IsFileProtected(inputFile);
+                    if (result.Protected)
                         throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
                                                             "' is password protected");
 
                     Excel.Convert(inputFile, outputFile);
                     break;
+                }
 
                 case ".POT":
                 case ".PPT":
@@ -313,30 +331,33 @@ namespace OfficeConverter
                 case ".PPSX":
                 case ".PPTM":
                 case ".PPTX":
-                    if (PowerPoint.IsPasswordProtected(inputFile))
+                {
+                    var result = _passwordProtectedChecker.IsFileProtected(inputFile);
+                    if (result.Protected)
                         throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
                                                             "' is password protected");
 
                     PowerPoint.Convert(inputFile, outputFile);
                     break;
+                }
 
                 case ".ODP":
-                    if (OpenDocumentFormatIsPasswordProtected(inputFile))
+                {
+                    var result = _passwordProtectedChecker.IsFileProtected(inputFile);
+                    if (result.Protected)
                         throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
                                                             "' is password protected");
 
                     PowerPoint.Convert(inputFile, outputFile);
                     break;
+                }
 
                 default:
                     throw new OCFileTypeNotSupported("The file '" + Path.GetFileName(inputFile) +
                                                      "' is not supported only, " + Environment.NewLine +
-                                                     ".DOC, .DOT, .DOCM, .DOCX, .DOTM, .ODT, .RTF, .MHT, " +
-                                                     Environment.NewLine +
-                                                     ".WPS, .WRI, .XLS, .XLT, .XLW, .XLSB, .XLSM, .XLSX, " +
-                                                     Environment.NewLine +
-                                                     ".XLTM, .XLTX, .CSV, .ODS, .POT, .PPT, .PPS, .POTM, " +
-                                                     Environment.NewLine +
+                                                     ".DOC, .DOT, .DOCM, .DOCX, .DOTM, .ODT, .RTF, .MHT, " + Environment.NewLine +
+                                                     ".WPS, .WRI, .XLS, .XLT, .XLW, .XLSB, .XLSM, .XLSX, " + Environment.NewLine +
+                                                     ".XLTM, .XLTX, .CSV, .ODS, .POT, .PPT, .PPS, .POTM, " + Environment.NewLine +
                                                      ".POTX, .PPSM, .PPSX, .PPTM, .PPTX, .ODP" + Environment.NewLine +
                                                      " are supported");
             }

@@ -6,24 +6,33 @@ using Microsoft.Office.Core;
 using Microsoft.Win32;
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
-using OpenMcdf;
 using PowerPointInterop = Microsoft.Office.Interop.PowerPoint;
 
-/*
-   Copyright 2014 - 2018 Kees van Spelde
-
-   Licensed under The Code Project Open License (CPOL) 1.02;
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-     http://www.codeproject.com/info/cpol10.aspx
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
+//
+// PowerPoint.cs
+//
+// Author: Kees van Spelde <sicos2002@hotmail.com>
+//
+// Copyright (c) 2014-2018 Magic-Sessions. (www.magic-sessions.com)
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+//
 
 namespace OfficeConverter
 {
@@ -135,64 +144,6 @@ namespace OfficeConverter
                     powerPoint.Quit();
                     Marshal.ReleaseComObject(powerPoint);
                 }
-            }
-        }
-        #endregion
-
-        #region IsPasswordProtected
-        /// <summary>
-        /// Returns true when the binary PowerPoint file is password protected
-        /// </summary>
-        /// <param name="fileName"></param>
-        /// <returns></returns>
-        internal static bool IsPasswordProtected(string fileName)
-        {
-            try
-            {
-                using (var compoundFile = new CompoundFile(fileName))
-                {
-                    if (compoundFile.RootStorage.TryGetStream("EncryptedPackage") != null) return true;
-                    var stream = compoundFile.RootStorage.TryGetStream("Current User");
-                    if (stream == null) return false;
-
-                    using (var memoryStream = new MemoryStream(stream.GetData()))
-                    using (var binaryReader = new BinaryReader(memoryStream))
-                    {
-                        var verAndInstance = binaryReader.ReadUInt16();
-                        // ReSharper disable UnusedVariable
-                        // We need to read these fields to get to the correct location in the Current User stream
-                        var version = verAndInstance & 0x000FU; // first 4 bit of field verAndInstance
-                        var instance = (verAndInstance & 0xFFF0U) >> 4; // last 12 bit of field verAndInstance
-                        var typeCode = binaryReader.ReadUInt16();
-                        var size = binaryReader.ReadUInt32();
-                        var size1 = binaryReader.ReadUInt32();
-                        // ReSharper restore UnusedVariable
-                        var headerToken = binaryReader.ReadUInt32();
-
-                        switch (headerToken)
-                        {
-                            // Not encrypted
-                            case 0xE391C05F:
-                                return false;
-
-                            // Encrypted
-                            case 0xF3D1C4DF:
-                                return true;
-
-                            default:
-                                return false;
-                        }
-                    }
-                }
-            }
-            catch (CFCorruptedFileException)
-            {
-                throw new OCFileIsCorrupt("The file '" + Path.GetFileName(fileName) + "' is corrupt");
-            }
-            catch (CFFileFormatException)
-            {
-                // It seems the file is just a normal Microsoft Office 2007 and up Open XML file
-                return false;
             }
         }
         #endregion

@@ -10,31 +10,40 @@ using Microsoft.Office.Core;
 using Microsoft.Win32;
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
-using OpenMcdf;
 using ExcelInterop = Microsoft.Office.Interop.Excel;
 
-/*
-   Copyright 2014 - 2018 Kees van Spelde
-
-   Licensed under The Code Project Open License (CPOL) 1.02;
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-     http://www.codeproject.com/info/cpol10.aspx
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
+//
+// Excel.cs
+//
+// Author: Kees van Spelde <sicos2002@hotmail.com>
+//
+// Copyright (c) 2014-2018 Magic-Sessions. (www.magic-sessions.com)
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+//
 
 namespace OfficeConverter
 {
     /// <summary>
     /// This class is used as a placeholder for all Excel related methods
     /// </summary>
-    internal static class Excel
+    internal class Excel
     {
         #region Private class ShapePosition
         /// <summary>
@@ -42,10 +51,10 @@ namespace OfficeConverter
         /// </summary>
         private class ShapePosition
         {
-            public int TopLeftColumn { get; private set; }
-            public int TopLeftRow { get; private set; }
-            public int BottomRightColumn { get; private set; }
-            public int BottomRightRow { get; private set; }
+            public int TopLeftColumn { get; }
+            public int TopLeftRow { get; }
+            public int BottomRightColumn { get; }
+            public int BottomRightRow { get; }
 
             public ShapePosition(ExcelInterop.Shape shape)
             {
@@ -67,8 +76,8 @@ namespace OfficeConverter
         /// </summary>
         private class ExcelPaperSize
         {
-            public ExcelInterop.XlPaperSize PaperSize { get; private set; }
-            public ExcelInterop.XlPageOrientation Orientation { get; private set; }
+            public ExcelInterop.XlPaperSize PaperSize { get; }
+            public ExcelInterop.XlPageOrientation Orientation { get; }
 
             public ExcelPaperSize(ExcelInterop.XlPaperSize paperSize, ExcelInterop.XlPageOrientation orientation)
             {
@@ -80,7 +89,7 @@ namespace OfficeConverter
 
         #region Private enum MergedCellSearchOrder
         /// <summary>
-        /// Direction to search in merged cell
+        /// Direction to search in merged cells
         /// </summary>
         private enum MergedCellSearchOrder
         {
@@ -141,7 +150,7 @@ namespace OfficeConverter
         /// see if all requirements for a succesfull conversion are there.
         /// </summary>
         /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine Excel version</exception>
-        static Excel()
+        internal Excel()
         {
             try
             {
@@ -825,61 +834,6 @@ namespace OfficeConverter
 
             GC.Collect();
             GC.WaitForPendingFinalizers();
-        }
-        #endregion
-
-        #region IsPasswordProtected
-        /// <summary>
-        /// Returns true when the Excel file is password protected
-        /// </summary>
-        /// <param name="fileName"></param>
-        /// <returns></returns>
-        /// <exception cref="OCFileIsCorrupt">Raised when the file is corrupt</exception>
-        public static bool IsPasswordProtected(string fileName)
-        {
-            try
-            {
-                using (var compoundFile = new CompoundFile(fileName))
-                {
-                    if (compoundFile.RootStorage.TryGetStream("EncryptedPackage") != null) return true;
-
-                    var stream = compoundFile.RootStorage.TryGetStream("WorkBook");
-                    if (stream == null)
-                        compoundFile.RootStorage.TryGetStream("Book");
-
-                    if (stream == null)
-                        throw new OCFileIsCorrupt("Could not find the WorkBook or Book stream in the file '" + fileName +
-                                                  "'");
-
-                    var bytes = stream.GetData();
-                    using (var memoryStream = new MemoryStream(bytes))
-                    using (var binaryReader = new BinaryReader(memoryStream))
-                    {
-                        // Get the record type, at the beginning of the stream this should always be the BOF
-                        var recordType = binaryReader.ReadUInt16();
-
-                        // Something seems to be wrong, we would expect a BOF but for some reason it isn't so stop it
-                        if (recordType != 0x809)
-                            throw new OCFileIsCorrupt("The file '" + fileName + "' is corrupt");
-
-                        var recordLength = binaryReader.ReadUInt16();
-                        binaryReader.BaseStream.Position += recordLength;
-
-                        // Search after the BOF for the FilePass record, this starts with 2F hex
-                        recordType = binaryReader.ReadUInt16();
-                        return recordType == 0x2F;
-                    }
-                }
-            }
-            catch (CFCorruptedFileException)
-            {
-                throw new OCFileIsCorrupt("The file '" + Path.GetFileName(fileName) + "' is corrupt");
-            }
-            catch (CFFileFormatException)
-            {
-                // It seems the file is just a normal Microsoft Office 2007 and up Open XML file
-                return false;
-            }
         }
         #endregion
 

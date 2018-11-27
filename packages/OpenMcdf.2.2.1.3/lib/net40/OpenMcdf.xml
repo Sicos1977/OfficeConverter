@@ -351,23 +351,6 @@
             <exception cref="T:OpenMcdf.CFItemNotFound">Raised if item to delete is not found</exception>
             <exception cref="T:OpenMcdf.CFException">Raised if trying to delete root storage</exception>
         </member>
-        <member name="M:OpenMcdf.DirectoryEntry.fnv_hash(System.Byte[])">
-            <summary>
-            FNV hash, short for Fowler/Noll/Vo
-            </summary>
-            <param name="buffer"></param>
-            <returns>(not warranted) unique hash for byte array</returns>
-        </member>
-        <member name="P:OpenMcdf.Header.FirstMiniFATSectorID">
-            <summary>
-            This integer field contains the starting sector number for the mini FAT
-            </summary>
-        </member>
-        <member name="F:OpenMcdf.Header.OLE_CFS_SIGNATURE">
-            <summary>
-            Structured Storage signature
-            </summary>
-        </member>
         <member name="T:OpenMcdf.CFStream">
             <summary>
             OLE structured storage <see cref="T:OpenMcdf.CFStream">stream</see> Object
@@ -453,8 +436,8 @@
             Raised when the owner compound file has been closed.
             </exception>
         </member>
-        <!-- Badly formed XML comment ignored for member "M:OpenMcdf.CFStream.Read(System.Byte[],System.Int64,System.Int32)" -->
-        <!-- Badly formed XML comment ignored for member "M:OpenMcdf.CFStream.Read(System.Byte[],System.Int64,System.Int32,System.Int32)" -->
+        <!-- Commento XML in formato non corretto ignorato per il membro 'M:OpenMcdf.CFStream.Read(System.Byte[],System.Int64,System.Int32)' -->
+        <!-- Commento XML in formato non corretto ignorato per il membro 'M:OpenMcdf.CFStream.Read(System.Byte[],System.Int64,System.Int32,System.Int32)' -->
         <member name="M:OpenMcdf.CFStream.CopyFrom(System.IO.Stream)">
             <summary>
             Copy data from an existing stream.
@@ -470,19 +453,6 @@
             Resize stream padding with zero if enlarging, trimming data if reducing size.
             </summary>
             <param name="length">New length to assign to this stream</param>
-        </member>
-        <member name="T:OpenMcdf.Ver3SizeLimitReached">
-            <summary>
-            Action to implement when transaction support - sector
-            has to be written to the underlying stream (see specs).
-            </summary>
-        </member>
-        <member name="T:OpenMcdf.SectorCollection">
-            <summary>
-            Ad-hoc Heap Friendly sector collection to avoid using 
-            large array that may create some problem to GC collection 
-            (see http://www.simple-talk.com/dotnet/.net-framework/the-dangers-of-the-large-object-heap/ )
-            </summary>
         </member>
         <member name="T:OpenMcdf.CFSConfiguration">
             <summary>
@@ -516,6 +486,12 @@
             No exception is raised when a validation error occurs.
             This can possibly lead to a security issue but gives 
             a chance to corrupted files to load.
+            </summary>
+        </member>
+        <member name="F:OpenMcdf.CFSConfiguration.LeaveOpen">
+            <summary>
+            If this flag is set true,
+            backing stream is kept open after CompoundFile disposal
             </summary>
         </member>
         <member name="T:OpenMcdf.CFSVersion">
@@ -981,7 +957,7 @@
             <param name="sType">Type of sector to look for</param>
             <returns>A Queue of available sectors or minisectors already allocated</returns>
         </member>
-        <!-- Badly formed XML comment ignored for member "M:OpenMcdf.CompoundFile.AppendData(OpenMcdf.CFItem,System.Byte[])" -->
+        <!-- Commento XML in formato non corretto ignorato per il membro 'M:OpenMcdf.CompoundFile.AppendData(OpenMcdf.CFItem,System.Byte[])' -->
         <member name="M:OpenMcdf.CompoundFile.SetStreamLength(OpenMcdf.CFItem,System.Int64)">
             <summary>
             Resize stream length
@@ -1127,12 +1103,42 @@
             <param name="currSrcStorage">Current source storage to clone</param>
             <param name="currDstStorage">Current cloned destination storage</param>
         </member>
+        <member name="M:OpenMcdf.DirectoryEntry.fnv_hash(System.Byte[])">
+            <summary>
+            FNV hash, short for Fowler/Noll/Vo
+            </summary>
+            <param name="buffer"></param>
+            <returns>(not warranted) unique hash for byte array</returns>
+        </member>
+        <member name="P:OpenMcdf.Header.FirstMiniFATSectorID">
+            <summary>
+            This integer field contains the starting sector number for the mini FAT
+            </summary>
+        </member>
+        <member name="F:OpenMcdf.Header.OLE_CFS_SIGNATURE">
+            <summary>
+            Structured Storage signature
+            </summary>
+        </member>
         <member name="M:OpenMcdf.Sector.Dispose(System.Boolean)">
             <summary>
             When called from user code, release all resources, otherwise, in the case runtime called it,
             only unmanagd resources are released.
             </summary>
             <param name="disposing">If true, method has been called from User code, if false it's been called from .net runtime</param>
+        </member>
+        <member name="T:OpenMcdf.Ver3SizeLimitReached">
+            <summary>
+            Action to implement when transaction support - sector
+            has to be written to the underlying stream (see specs).
+            </summary>
+        </member>
+        <member name="T:OpenMcdf.SectorCollection">
+            <summary>
+            Ad-hoc Heap Friendly sector collection to avoid using 
+            large array that may create some problem to GC collection 
+            (see http://www.simple-talk.com/dotnet/.net-framework/the-dangers-of-the-large-object-heap/ )
+            </summary>
         </member>
         <member name="T:OpenMcdf.StreamView">
             <summary>
