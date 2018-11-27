@@ -119,12 +119,12 @@ namespace OfficeConverter
         /// <summary>
         /// Excel version number
         /// </summary>
-        private static readonly int VersionNumber;
+        private readonly int _versionNumber;
 
         /// <summary>
         /// Excel maximum rows
         /// </summary>
-        private static readonly int MaxRows;
+        private readonly int _maxRows;
 
         /// <summary>
         /// Paper sizes to use when detecting optimal page size with the <see cref="SetWorkSheetPaperSize"/> method
@@ -162,27 +162,27 @@ namespace OfficeConverter
                     {
                         // Excel 2003
                         case "EXCEL.APPLICATION.11":
-                            VersionNumber = 11;
+                            _versionNumber = 11;
                             break;
 
                         // Excel 2007
                         case "EXCEL.APPLICATION.12":
-                            VersionNumber = 12;
+                            _versionNumber = 12;
                             break;
 
                         // Excel 2010
                         case "EXCEL.APPLICATION.14":
-                            VersionNumber = 14;
+                            _versionNumber = 14;
                             break;
 
                         // Excel 2013
                         case "EXCEL.APPLICATION.15":
-                            VersionNumber = 15;
+                            _versionNumber = 15;
                             break;
 
                         // Excel 2016
                         case "EXCEL.APPLICATION.16":
-                            VersionNumber = 16;
+                            _versionNumber = 16;
                             break;
 
                         default:
@@ -200,7 +200,7 @@ namespace OfficeConverter
             const int excelMaxRowsFrom2003AndBelow = 65535;
             const int excelMaxRowsFrom2007AndUp = 1048576;
 
-            switch (VersionNumber)
+            switch (_versionNumber)
             {
                 // Excel 2007
                 case 12:
@@ -210,12 +210,12 @@ namespace OfficeConverter
                 case 15:
                 //Excel 2016
                 case 16:
-                    MaxRows = excelMaxRowsFrom2007AndUp;
+                    _maxRows = excelMaxRowsFrom2007AndUp;
                     break;
 
                 // Excel 2003 and older
                 default:
-                    MaxRows = excelMaxRowsFrom2003AndBelow;
+                    _maxRows = excelMaxRowsFrom2003AndBelow;
                     break;
             }
 
@@ -433,7 +433,7 @@ namespace OfficeConverter
         /// </summary>
         /// <param name="worksheet"></param>
         /// <returns></returns>
-        private static string GetWorksheetPrintArea(ExcelInterop._Worksheet worksheet)
+        private string GetWorksheetPrintArea(ExcelInterop._Worksheet worksheet)
         {
             var firstColumn = 1;
             var firstRow = 1;
@@ -445,7 +445,7 @@ namespace OfficeConverter
             var shapes = worksheet.Shapes;
             if (shapes.Count > 0)
             {
-                if (VersionNumber < 14)
+                if (_versionNumber < 14)
                     return "shapes";
 
                 // The shape TopLeftCell and BottomRightCell is only supported from Excel 2010 and up
@@ -695,7 +695,7 @@ namespace OfficeConverter
         /// <param name="outputFile">The PDF output file</param>
         /// <returns></returns>
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile"/> has to many rows</exception>
-        internal static void Convert(string inputFile, string outputFile)
+        internal void Convert(string inputFile, string outputFile)
         {
             // We only need to perform this check if we are running on a server
             if (NativeMethods.IsWindowsServer())
@@ -839,13 +839,13 @@ namespace OfficeConverter
 
         #region GetCsvSeperator
         /// <summary>
-        /// Returns the seperator and textqualifier that is used in the CSV file
+        /// Returns the separator and text qualifier that is used in the CSV file
         /// </summary>
-        /// <param name="inputFile">The inputfile</param>
+        /// <param name="inputFile">The input file</param>
         /// <param name="separator">The separator that is used</param>
         /// <param name="textQualifier">The text qualifier</param>
         /// <returns></returns>
-        private static void GetCsvSeperator(string inputFile, out string separator, out ExcelInterop.XlTextQualifier textQualifier)
+        private static void GetCsvSeparator(string inputFile, out string separator, out ExcelInterop.XlTextQualifier textQualifier)
         {
             separator = string.Empty;
             textQualifier = ExcelInterop.XlTextQualifier.xlTextQualifierNone;
@@ -877,10 +877,10 @@ namespace OfficeConverter
         /// <param name="repairMode">When true the <paramref name="inputFile"/> is opened in repair mode</param>
         /// <returns></returns>
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile"/> has to many rows</exception>
-        private static ExcelInterop.Workbook Open(ExcelInterop._Application excel,
-                                                   string inputFile,
-                                                   string extension,
-                                                   bool repairMode)
+        private ExcelInterop.Workbook Open(ExcelInterop._Application excel,
+            string inputFile,
+            string extension,
+            bool repairMode)
         {
             try
             {
@@ -889,7 +889,7 @@ namespace OfficeConverter
                     case ".CSV":
 
                         var count = File.ReadLines(inputFile).Count();
-                        var excelMaxRows = MaxRows;
+                        var excelMaxRows = _maxRows;
                         if (count > excelMaxRows)
                             throw new OCCsvFileLimitExceeded("The input CSV file has more then " + excelMaxRows +
                                                              " rows, the installed Excel version supports only " +
@@ -898,7 +898,7 @@ namespace OfficeConverter
                         string separator;
                         ExcelInterop.XlTextQualifier textQualifier;
 
-                        GetCsvSeperator(inputFile, out separator, out textQualifier);
+                        GetCsvSeparator(inputFile, out separator, out textQualifier);
 
                         switch (separator)
                         {
@@ -976,14 +976,14 @@ namespace OfficeConverter
         /// to make entries to corrupted workbooks. If there are to many entries under this key Excel will
         /// get slower and slower to start. To prevent this we just delete this key when it exists
         /// </summary>
-        private static void DeleteAutoRecoveryFiles()
+        private void DeleteAutoRecoveryFiles()
         {
             try
             {
                 // HKEY_CURRENT_USER\Software\Microsoft\Office\14.0\Excel\Resiliency\DocumentRecovery
                 var version = string.Empty;
 
-                switch (VersionNumber)
+                switch (_versionNumber)
                 {
                     // Word 2003
                     case 11:

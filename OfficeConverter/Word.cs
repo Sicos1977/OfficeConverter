@@ -28,7 +28,7 @@ using WordInterop = Microsoft.Office.Interop.Word;
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
 // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
@@ -65,6 +65,11 @@ namespace OfficeConverter
         private WordInterop.ApplicationClass _word;
 
         /// <summary>
+        /// A <see cref="Process"/> object to Word
+        /// </summary>
+        private Process _wordProcess;
+
+        /// <summary>
         ///     Keeps track is we already disposed our resources
         /// </summary>
         private bool _disposed;
@@ -72,7 +77,7 @@ namespace OfficeConverter
 
         #region Constructor
         /// <summary>
-        /// This constructor checks to see if all requirements for a succesfull conversion are here.
+        /// This constructor checks to see if all requirements for a successful conversion are here.
         /// </summary>
         /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine Word version</exception>
         internal Word(Stream logStream = null)
@@ -116,7 +121,7 @@ namespace OfficeConverter
                         // Word 2016
                         case "WORD.APPLICATION.16":
                             _versionNumber = 16;
-                            WriteToLog("Word 2019 is installed");
+                            WriteToLog("Word 2016 is installed");
                             break;
 
                         // Word 2019
@@ -170,11 +175,41 @@ namespace OfficeConverter
             _word.Options.UpdateFieldsAtPrint = false;
             _word.Options.UpdateLinksAtOpen = false;
             _word.Options.UpdateLinksAtPrint = false;
-            _word.DisplayAutoCompleteTips = false;
-            _word.DisplayScreenTips = false;
-            _word.DisplayStatusBar = false;
-            
+
+            var captionGuid = Guid.NewGuid().ToString();
+            _word.Visible = true;
+            _word.Caption = captionGuid;
+
+            var processes = Process.GetProcessesByName("WINWORD");
+            foreach (var process in processes)
+            {
+                if (process.MainWindowTitle.Equals(captionGuid, StringComparison.InvariantCultureIgnoreCase))
+                    _wordProcess = process;
+
+            }
+
+            _word.Visible = false;
             WriteToLog("Word started");
+        }
+        #endregion
+
+        #region StopWord
+        private void StopWord()
+        {
+            if (_word == null) return;
+            WriteToLog("Stopping Word");
+            _word.Quit(false);
+            Marshal.ReleaseComObject(_word);
+            _word = null;
+
+            if (!_wordProcess.HasExited)
+            {
+                WriteToLog($"Word did not shutdown gracefully... killing it on process id {_wordProcess.Id}");
+                _wordProcess.Kill();
+                WriteToLog("Word process killed");
+            }
+
+            WriteToLog("Word stopped");
         }
         #endregion
 
@@ -194,14 +229,14 @@ namespace OfficeConverter
             try
             {
                 StartWord();
-                
+
                 document = (WordInterop.DocumentClass) OpenDocument(_word, inputFile, false);
 
                 // Do not remove this line!!
                 // This is yet another solution to a weird Office problem. Sometimes there
                 // are Word documents with images in it that take some time to load. When
                 // we remove the line below the ExportAsFixedFormat method will be called 
-                // before the images are loaded thus resulting in an unendless loop somewhere
+                // before the images are loaded thus resulting in an un endless loop somewhere
                 // in this method.
                 // ReSharper disable once UnusedVariable
                 var count = document.ComputeStatistics(WordInterop.WdStatistic.wdStatisticPages);
@@ -209,6 +244,11 @@ namespace OfficeConverter
                 WriteToLog($"Exporting document to PDF file {outputFile}");
                 document.ExportAsFixedFormat(outputFile, WordInterop.WdExportFormat.wdExportFormatPDF);
                 WriteToLog("Document exported to PDF");
+            }
+            catch (Exception)
+            {
+                StopWord();
+                throw;
             }
             finally
             {
@@ -238,17 +278,17 @@ namespace OfficeConverter
                 var extension = Path.GetExtension(inputFile);
 
                 if (extension != null && extension.ToUpperInvariant() == ".TXT")
-                    document = word.Documents.OpenNoRepairDialog(inputFile, false, true, false, "dummypassword",
+                    document = word.Documents.OpenNoRepairDialog(inputFile, false, true, false, "dummy password",
                         Format: WordInterop.WdOpenFormat.wdOpenFormatUnicodeText,
                         OpenAndRepair: repairMode,
                         NoEncodingDialog: true);
                 else
-                    document = word.Documents.OpenNoRepairDialog(inputFile, false, true, false, "dummypassword",
+                    document = word.Documents.OpenNoRepairDialog(inputFile, false, true, false, "dummy password",
                         OpenAndRepair: repairMode,
                         NoEncodingDialog: true);
 
                 // This will lock or unlock all form fields in a Word document so that auto fill 
-                // and date/time field do or don't get updated automaticly when converting
+                // and date/time field do or don't get updated automatic when converting
                 if (document.Fields.Count > 0)
                 {
                     WriteToLog("Locking all form fields against modifications");
@@ -256,7 +296,7 @@ namespace OfficeConverter
                         field.Locked = true;
                 }
 
-                WriteToLog("Document openend");
+                WriteToLog("Document opened");
                 return document;
             }
             catch (Exception exception)
@@ -297,7 +337,7 @@ namespace OfficeConverter
         /// </summary>
         private void DeleteAutoRecoveryFiles()
         {
-            WriteToLog("Deleting autorecovery files from registry");
+            WriteToLog("Deleting auto recovery files from registry");
 
             try
             {
@@ -337,11 +377,11 @@ namespace OfficeConverter
                 if (Registry.CurrentUser.OpenSubKey(key, false) != null)
                     Registry.CurrentUser.DeleteSubKeyTree(key);
 
-                WriteToLog("Autorecovery files are deleted from the registry");
+                WriteToLog("Auto recovery files are deleted from the registry");
             }
             catch (Exception exception)
             {
-                WriteToLog("ERROR: Failed to delete autorecovery files, check if OfficeConverter has enough rights to delete from the registry");
+                WriteToLog("ERROR: Failed to delete auto recovery files, check if OfficeConverter has enough rights to delete from the registry");
                 EventLog.WriteEntry("OfficeConverter", ExceptionHelpers.GetInnerException(exception),
                     EventLogEntryType.Error);
             }
@@ -372,12 +412,7 @@ namespace OfficeConverter
         {
             if (_disposed) return;
             _disposed = true;
-            if (_word == null) return;
-            WriteToLog("Stopping Word");
-            _word.Quit(false);
-            Marshal.ReleaseComObject(_word);
-            _word = null;
-            WriteToLog("Word stopped");
+            StopWord();
         }
         #endregion
     }

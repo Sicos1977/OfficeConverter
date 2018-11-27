@@ -72,7 +72,7 @@ namespace OfficeConverter
     /// </summary>
     [Guid("4F474ED1-70C5-47D4-8EEF-CDB3E1149455")]
     [ComVisible(true)]
-    public class Converter : IConverter
+    public class Converter : IConverter, IDisposable
     {
         #region Fields
         /// <summary>
@@ -92,6 +92,15 @@ namespace OfficeConverter
         /// </summary>
         private readonly Checker _passwordProtectedChecker = new Checker();
 
+        /// <summary>
+        /// <see cref="Word"/>
+        /// </summary>
+        private Word _word;
+
+        /// <summary>
+        ///     Keeps track is we already disposed our resources
+        /// </summary>
+        private bool _disposed;
         #endregion
 
         #region Properties
@@ -100,6 +109,22 @@ namespace OfficeConverter
         ///     calling the code from multiple threads and writing all the logging to the same file
         /// </summary>
         public string InstanceId { get; set; }
+
+        /// <summary>
+        /// Returns a reference to the Word class when it already exists or creates a new one
+        /// when it doesn't
+        /// </summary>
+        private Word Word
+        {
+            get
+            {
+                if (_word != null)
+                    return _word;
+
+                _word = new Word();
+                return _word;
+            }
+        }
         #endregion
 
         #region Constructor
@@ -303,12 +328,12 @@ namespace OfficeConverter
                     if (result.Protected)
                         throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
                                                             "' is password protected");
-                    Excel.Convert(inputFile, outputFile);
+                    new Excel().Convert(inputFile, outputFile);
                     break;
                 }
 
                 case ".CSV":
-                    Excel.Convert(inputFile, outputFile);
+                    new Excel().Convert(inputFile, outputFile);
                     break;
 
                 case ".ODS":
@@ -318,7 +343,7 @@ namespace OfficeConverter
                         throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
                                                             "' is password protected");
 
-                    Excel.Convert(inputFile, outputFile);
+                    new Excel().Convert(inputFile, outputFile);
                     break;
                 }
 
@@ -384,6 +409,23 @@ namespace OfficeConverter
             catch (ObjectDisposedException)
             {
                 // Ignore
+            }
+        }
+        #endregion
+
+        #region Implementation of IDisposable
+        /// <summary>
+        ///     Disposes all created office objects
+        /// </summary>
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            var word = Word;
+            if (word != null)
+            {
+                WriteToLog("Disposing Word object");
+                word.Dispose();
             }
         }
         #endregion

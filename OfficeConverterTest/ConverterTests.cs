@@ -92,8 +92,28 @@ namespace OfficeConverterTest
         public void DocxWith7EmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            new Converter().Convert(GetCurrentDir() + "TestFiles\\A DOCX word document with 7 embedded files.docx", outputFile);
+
+            using(var converter = new Converter())
+                converter.Convert(GetCurrentDir() + "TestFiles\\A DOCX word document with 7 embedded files.docx", outputFile);
+
             Assert.IsTrue(File.Exists(outputFile));
+        }
+
+        [TestMethod]
+        public void DocxWith7EmbeddedFiles100Times()
+        {
+            var currentDir = GetCurrentDir();
+            
+            using (var converter = new Converter())
+            {
+                for (var i = 0; i < 100; i++)
+                {
+                    var outputFile = CreateTemporaryFolder() + "\\test.pdf";
+                    converter.Convert(GetCurrentDir() + "TestFiles\\A DOCX word document with 7 embedded files.docx",
+                        outputFile);
+                    Assert.IsTrue(File.Exists(outputFile));
+                }
+            }
         }
 
         [TestMethod]
