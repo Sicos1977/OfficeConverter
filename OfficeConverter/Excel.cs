@@ -205,6 +205,7 @@ namespace OfficeConverter
         /// <summary>
         ///     This constructor checks to see if all requirements for a successful conversion are here.
         /// </summary>
+        /// <param name="logStream">When set then logging is written to this stream</param>
         /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine Excel version</exception>
         internal Excel(Stream logStream = null)
         {
@@ -297,11 +298,11 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region StarExcel
+        #region StartExcel
         /// <summary>
         ///     Starts Excel
         /// </summary>
-        private void StarExcel()
+        private void StartExcel()
         {
             if (_excel != null)
                 return;
@@ -323,7 +324,7 @@ namespace OfficeConverter
             ProcessHelpers.GetWindowThreadProcessId(_excel.Hwnd, out var processId);
             _excelProcess = Process.GetProcessById(processId);
 
-            WriteToLog("Excel started");
+            WriteToLog($"Excel started with process id {_excelProcess.Id}");
         }
         #endregion
 
@@ -333,7 +334,9 @@ namespace OfficeConverter
         /// </summary>
         private void StopExcel()
         {
-            if (_excel == null) return;
+            if (_excel == null) 
+                return;
+
             WriteToLog("Stopping Excel");
             _excel.Quit();
             Marshal.ReleaseComObject(_excel);
@@ -347,6 +350,9 @@ namespace OfficeConverter
             }
 
             WriteToLog("Excel stopped");
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
         }
         #endregion
 
@@ -793,7 +799,7 @@ namespace OfficeConverter
                         break;
                 }
 
-                WriteToLog($"Paper size set to '{pageSetup.PaperSize}' and zoom ratio to '{pageSetup.Orientation}'");
+                WriteToLog($"Paper size set to '{pageSetup.PaperSize}', orientation to '{pageSetup.Orientation}' and zoom ratio to '{pageSetup.Zoom}'");
             }
             finally
             {
@@ -843,15 +849,14 @@ namespace OfficeConverter
             if (NativeMethods.IsWindowsServer())
                 CheckIfSystemProfileDesktopDirectoryExists();
 
-            CheckIfPrinterIsInstalled();
-            DeleteAutoRecoveryFiles();
+            DeleteResiliencyKeys();
 
             ExcelInterop.Workbook workbook = null;
             string tempFileName = null;
 
             try
             {
-                StarExcel();
+                StartExcel();
 
                 var extension = Path.GetExtension(inputFile);
                 if (string.IsNullOrWhiteSpace(extension))
@@ -869,7 +874,7 @@ namespace OfficeConverter
                     inputFile = tempFileName;
                 }
 
-                workbook = OpenWorkbook(_excel, inputFile, extension, false);
+                workbook = OpenWorkbook(inputFile, extension, false);
 
                 // We cannot determine a print area when the document is marked as final so we remove this
                 workbook.Final = false;
@@ -902,7 +907,7 @@ namespace OfficeConverter
                                 if (!sheet.ProtectContents || protection.AllowFormattingColumns)
                                     if (activeWindow.View != ExcelInterop.XlWindowView.xlPageLayoutView)
                                     {
-                                        WriteToLog($"Auto fitting colums on sheet {sheet.Name}");
+                                        WriteToLog($"Auto fitting colums on sheet '{sheet.Name}'");
                                         sheet.Columns.AutoFit();
                                     }
                             }
@@ -947,7 +952,7 @@ namespace OfficeConverter
                 // It is not possible in Excel to export an empty workbook
                 if (usedSheets != 0)
                 {
-                    WriteToLog($"Exporting worksheets to PDF file {outputFile}");
+                    WriteToLog($"Exporting worksheets to PDF file '{outputFile}'");
                     workbook.ExportAsFixedFormat(ExcelInterop.XlFixedFormatType.xlTypePDF, outputFile);
                     WriteToLog("Worksheets exported to PDF");
                 }
@@ -1008,16 +1013,12 @@ namespace OfficeConverter
         /// <summary>
         ///     Opens the <paramref name="inputFile" /> and returns it as an <see cref="ExcelInterop.Workbook" /> object
         /// </summary>
-        /// <param name="excel">The <see cref="ExcelInterop.Application" /></param>
         /// <param name="inputFile">The file to open</param>
         /// <param name="extension">The file extension</param>
         /// <param name="repairMode">When true the <paramref name="inputFile" /> is opened in repair mode</param>
         /// <returns></returns>
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile" /> has to many rows</exception>
-        private ExcelInterop.Workbook OpenWorkbook(ExcelInterop._Application excel,
-            string inputFile,
-            string extension,
-            bool repairMode)
+        private ExcelInterop.Workbook OpenWorkbook(string inputFile, string extension, bool repairMode)
         {
             WriteToLog($"Opening workbook '{inputFile}'{(repairMode ? " with repair mode" : string.Empty)}");
 
@@ -1040,38 +1041,38 @@ namespace OfficeConverter
                         switch (separator)
                         {
                             case ";":
-                                excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
+                                _excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
                                     ExcelInterop.XlTextParsingType.xlDelimited,
                                     textQualifier, true, false, true);
                                 break;
 
                             case ",":
-                                excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
+                                _excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
                                     ExcelInterop.XlTextParsingType.xlDelimited, textQualifier,
                                     Type.Missing, false, false, true);
                                 break;
 
                             case "\t":
-                                excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
+                                _excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
                                     ExcelInterop.XlTextParsingType.xlDelimited, textQualifier,
                                     Type.Missing, true);
                                 break;
 
                             case " ":
-                                excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
+                                _excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
                                     ExcelInterop.XlTextParsingType.xlDelimited, textQualifier,
                                     Type.Missing, false, false, false, true);
                                 break;
 
                             default:
-                                excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
+                                _excel.Workbooks.OpenText(inputFile, Type.Missing, Type.Missing,
                                     ExcelInterop.XlTextParsingType.xlDelimited, textQualifier,
                                     Type.Missing, false, true);
                                 break;
                         }
 
                         WriteToLog("Workbook opened");
-                        return excel.ActiveWorkbook;
+                        return _excel.ActiveWorkbook;
 
                     default:
 
@@ -1079,7 +1080,7 @@ namespace OfficeConverter
 
                         if (repairMode)
                         {
-                            workbook = excel.Workbooks.Open(inputFile, false, true,
+                            workbook = _excel.Workbooks.Open(inputFile, false, true,
                                 Password: "dummy password",
                                 IgnoreReadOnlyRecommended: true,
                                 AddToMru: false,
@@ -1088,7 +1089,7 @@ namespace OfficeConverter
                         }
                         else
                         {
-                            workbook = excel.Workbooks.Open(inputFile, false, true,
+                            workbook = _excel.Workbooks.Open(inputFile, false, true,
                                 Password: "dummy password",
                                 IgnoreReadOnlyRecommended: true,
                                 AddToMru: false);
@@ -1118,7 +1119,7 @@ namespace OfficeConverter
                                               "' could not be opened, error: " +
                                               ExceptionHelpers.GetInnerException(exception));
 
-                return OpenWorkbook(excel, inputFile, extension, true);
+                return OpenWorkbook(inputFile, extension, true);
             }
         }
         #endregion
@@ -1139,59 +1140,32 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region DeleteAutoRecoveryFiles
+        #region DeleteResiliencyKeys
         /// <summary>
         ///     This method will delete the automatic created Resiliency key. Excel uses this registry key
         ///     to make entries to corrupted workbooks. If there are to many entries under this key Excel will
         ///     get slower and slower to start. To prevent this we just delete this key when it exists
         /// </summary>
-        private void DeleteAutoRecoveryFiles()
+        private void DeleteResiliencyKeys()
         {
-            WriteToLog("Deleting auto recovery files from registry");
+            WriteToLog("Deleting Excel resiliency keys from the registry");
 
             try
             {
                 // HKEY_CURRENT_USER\Software\Microsoft\Office\14.0\Excel\Resiliency\DocumentRecovery
-                var version = string.Empty;
-
-                switch (_versionNumber)
-                {
-                    // Word 2003
-                    case 11:
-                        version = "11.0";
-                        break;
-
-                    // Word 2017
-                    case 12:
-                        version = "12.0";
-                        break;
-
-                    // Word 2010
-                    case 14:
-                        version = "14.0";
-                        break;
-
-                    // Word 2013
-                    case 15:
-                        version = "15.0";
-                        break;
-
-                    // Word 2016
-                    case 16:
-                        version = "16.0";
-                        break;
-                }
-
-                var key = @"Software\Microsoft\Office\" + version + @"\Excel\Resiliency";
+                var key = $@"Software\Microsoft\Office\{_versionNumber}.0\Excel\Resiliency";
 
                 if (Registry.CurrentUser.OpenSubKey(key, false) != null)
+                {
                     Registry.CurrentUser.DeleteSubKeyTree(key);
-
-                WriteToLog("Auto recovery files are deleted from the registry");
+                    WriteToLog("Resiliency keys deleted");
+                }
+                else
+                    WriteToLog("There are no keys to delete");
             }
             catch (Exception exception)
             {
-                WriteToLog($"Failed to delete auto recovery files, error: {ExceptionHelpers.GetInnerException(exception)}");
+                WriteToLog($"Failed to delete resiliency keys, error: {ExceptionHelpers.GetInnerException(exception)}");
             }
         }
         #endregion

@@ -5,6 +5,7 @@ using System.Text;
 using ICSharpCode.SharpZipLib.Zip;
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
+using OfficeConverter.Interfaces;
 using PasswordProtectedChecker;
 
 //
@@ -35,37 +36,6 @@ using PasswordProtectedChecker;
 
 namespace OfficeConverter
 {
-    #region Interface IReader
-    /// <summary>
-    ///     Interface to make Reader class COM exposable
-    /// </summary>
-    public interface IConverter
-    {
-        /// <summary>
-        ///     Converts the <paramref name="inputFile" /> to PDF and saves it as the <paramref name="outputFile" />
-        /// </summary>
-        /// <param name="inputFile">The Microsoft Office file</param>
-        /// <param name="outputFile">The output file with full path</param>
-        /// <param name="useLibreOffice">
-        ///     When set to <c>true</c> then LibreOffice is used to convert the file to PDF instead of
-        ///     Microsoft Office
-        /// </param>
-        /// <returns>
-        ///     Returns true when the conversion is succesfull, false is retournerd when an exception occurred.
-        ///     The exception can be retrieved with the <see cref="GetErrorMessage" /> method
-        /// </returns>
-        [DispId(1)]
-        bool ConvertFromCom(string inputFile, string outputFile, bool useLibreOffice);
-
-        /// <summary>
-        ///     Get the last know error message. When the string is empty there are no errors
-        /// </summary>
-        /// <returns></returns>
-        [DispId(2)]
-        string GetErrorMessage();
-    }
-    #endregion
-
     /// <summary>
     ///     With this class an Microsoft Office document can be converted to PDF format. Microsoft Office 2007
     ///     (with PDF export plugin) or higher is needed.
@@ -88,7 +58,7 @@ namespace OfficeConverter
         private string _errorMessage;
 
         /// <summary>
-        ///     <see cref="PasswordProtectedChecker.Checker"/>
+        ///     <see cref="Checker"/>
         /// </summary>
         private readonly Checker _passwordProtectedChecker = new Checker();
 
@@ -101,6 +71,11 @@ namespace OfficeConverter
         /// <see cref="Excel"/>
         /// </summary>
         private Excel _excel;
+
+        /// <summary>
+        /// <see cref="PowerPoint"/>
+        /// </summary>
+        private PowerPoint _powerPoint;
 
         /// <summary>
         ///     Keeps track is we already disposed our resources
@@ -126,7 +101,7 @@ namespace OfficeConverter
                 if (_word != null)
                     return _word;
 
-                _word = new Word { InstanceId = InstanceId};
+                _word = new Word (_logStream) { InstanceId = InstanceId};
                 return _word;
             }
         }
@@ -142,8 +117,25 @@ namespace OfficeConverter
                 if (_excel != null)
                     return _excel;
 
-                _excel = new Excel {InstanceId = InstanceId};
+                _excel = new Excel (_logStream) {InstanceId = InstanceId};
                 return _excel;
+            }
+        }
+
+
+        /// <summary>
+        /// Returns a reference to the PowerPoint class when it already exists or creates a new one
+        /// when it doesn't
+        /// </summary>
+        private PowerPoint PowerPoint
+        {
+            get
+            {
+                if (_powerPoint != null)
+                    return _powerPoint;
+
+                _powerPoint = new PowerPoint (_logStream) {InstanceId = InstanceId};
+                return _powerPoint;
             }
         }
         #endregion
@@ -288,7 +280,8 @@ namespace OfficeConverter
         /// <exception cref="OCFileContainsNoData">Raised when the Microsoft Office file contains no actual data</exception>
         public void Convert(string inputFile, string outputFile, Stream logStream = null)
         {
-            _logStream = logStream;
+            if (logStream != null)
+                _logStream = logStream;
 
             CheckFileNameAndOutputFolder(inputFile, outputFile);
 
@@ -454,6 +447,13 @@ namespace OfficeConverter
             {
                 WriteToLog("Disposing Excel object");
                 excel.Dispose();
+            }
+
+            var powerPoint = PowerPoint;
+            if (powerPoint != null)
+            {
+                WriteToLog("Disposing PowerPoint object");
+                powerPoint.Dispose();
             }
         }
         #endregion

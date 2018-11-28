@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using System.Windows.Forms;
 using OfficeConverter;
 
@@ -87,12 +88,18 @@ namespace OfficeConverterTestTool
                     tempFolder = GetTemporaryFolder();
                     _tempFolders.Add(tempFolder);
 
-                    var extractor = new Converter();
                     var outputFile = openFileDialog1.FileName.Substring(0, openFileDialog1.FileName.LastIndexOf('.')) + ".pdf";
-                    OutputTextBox.Text = @"Converting...";
-                    extractor.Convert(openFileDialog1.FileName, outputFile);
+
                     OutputTextBox.Clear();
-                    OutputTextBox.Text = @"Converted file written to '" + outputFile + @"'";
+                    OutputTextBox.Text = @"Converting...";
+
+                    using (var memoryStream = new MemoryStream())
+                    using (var converter = new Converter(memoryStream))
+                    {
+                        converter.Convert(openFileDialog1.FileName, outputFile);
+                        OutputTextBox.Text += Environment.NewLine + Encoding.Default.GetString(memoryStream.ToArray());
+                        OutputTextBox.Text += Environment.NewLine + @"Converted file written to '" + outputFile + @"'";
+                    }
                 }
                 catch (Exception ex)
                 {

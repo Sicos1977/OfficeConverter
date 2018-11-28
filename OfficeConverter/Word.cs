@@ -79,6 +79,7 @@ namespace OfficeConverter
         /// <summary>
         ///     This constructor checks to see if all requirements for a successful conversion are here.
         /// </summary>
+        /// <param name="logStream">When set then logging is written to this stream</param>
         /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine Word version</exception>
         internal Word(Stream logStream = null)
         {
@@ -184,7 +185,7 @@ namespace OfficeConverter
                     _wordProcess = process;
 
             _word.Visible = false;
-            WriteToLog("Word started");
+            WriteToLog($"Word started with process id {_wordProcess.Id}");
         }
         #endregion
 
@@ -194,7 +195,9 @@ namespace OfficeConverter
         /// </summary>
         private void StopWord()
         {
-            if (_word == null) return;
+            if (_word == null) 
+                return;
+
             WriteToLog("Stopping Word");
             _word.Quit(false);
             Marshal.ReleaseComObject(_word);
@@ -223,7 +226,7 @@ namespace OfficeConverter
         /// <returns></returns>
         internal void Convert(string inputFile, string outputFile)
         {
-            DeleteAutoRecoveryFiles();
+            DeleteResiliencyKeys();
 
             WordInterop.DocumentClass document = null;
 
@@ -231,7 +234,7 @@ namespace OfficeConverter
             {
                 StartWord();
 
-                document = (WordInterop.DocumentClass) OpenDocument(_word, inputFile, false);
+                document = (WordInterop.DocumentClass) OpenDocument(inputFile, false);
 
                 // Do not remove this line!!
                 // This is yet another solution to a weird Office problem. Sometimes there
@@ -242,7 +245,7 @@ namespace OfficeConverter
                 // ReSharper disable once UnusedVariable
                 var count = document.ComputeStatistics(WordInterop.WdStatistic.wdStatisticPages);
 
-                WriteToLog($"Exporting document to PDF file {outputFile}");
+                WriteToLog($"Exporting document to PDF file '{outputFile}'");
                 document.ExportAsFixedFormat(outputFile, WordInterop.WdExportFormat.wdExportFormatPDF);
                 WriteToLog("Document exported to PDF");
             }
@@ -262,13 +265,10 @@ namespace OfficeConverter
         /// <summary>
         ///     Opens the <paramref name="inputFile" /> and returns it as an <see cref="WordInterop.Document" /> object
         /// </summary>
-        /// <param name="word">The <see cref="WordInterop.Application" /></param>
         /// <param name="inputFile">The file to open</param>
         /// <param name="repairMode">When true the <paramref name="inputFile" /> is opened in repair mode</param>
         /// <returns></returns>
-        private WordInterop.Document OpenDocument(WordInterop._Application word,
-            string inputFile,
-            bool repairMode)
+        private WordInterop.Document OpenDocument(string inputFile, bool repairMode)
         {
             WriteToLog($"Opening document '{inputFile}'{(repairMode ? " with repair mode" : string.Empty)}");
 
@@ -279,12 +279,12 @@ namespace OfficeConverter
                 var extension = Path.GetExtension(inputFile);
 
                 if (extension != null && extension.ToUpperInvariant() == ".TXT")
-                    document = word.Documents.OpenNoRepairDialog(inputFile, false, true, false, "dummy password",
+                    document = _word.Documents.OpenNoRepairDialog(inputFile, false, true, false, "dummy password",
                         Format: WordInterop.WdOpenFormat.wdOpenFormatUnicodeText,
                         OpenAndRepair: repairMode,
                         NoEncodingDialog: true);
                 else
-                    document = word.Documents.OpenNoRepairDialog(inputFile, false, true, false, "dummy password",
+                    document = _word.Documents.OpenNoRepairDialog(inputFile, false, true, false, "dummy password",
                         OpenAndRepair: repairMode,
                         NoEncodingDialog: true);
 
@@ -310,7 +310,7 @@ namespace OfficeConverter
                                               "' seems to be corrupt, error: " +
                                               ExceptionHelpers.GetInnerException(exception));
 
-                return OpenDocument(word, inputFile, true);
+                return OpenDocument(inputFile, true);
             }
         }
         #endregion
@@ -331,59 +331,32 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region DeleteAutoRecoveryFiles
+        #region DeleteResiliencyKeys
         /// <summary>
         ///     This method will delete the automatic created Resiliency key. Word uses this registry key
         ///     to make entries to corrupted documents. If there are to many entries under this key Word will
         ///     get slower and slower to start. To prevent this we just delete this key when it exists
         /// </summary>
-        private void DeleteAutoRecoveryFiles()
+        private void DeleteResiliencyKeys()
         {
-            WriteToLog("Deleting auto recovery files from registry");
+            WriteToLog("Deleting Word resiliency keys from the registry");
 
             try
             {
                 // HKEY_CURRENT_USER\Software\Microsoft\Office\14.0\Word\Resiliency\DocumentRecovery
-                var version = string.Empty;
-
-                switch (_versionNumber)
-                {
-                    // Word 2003
-                    case 11:
-                        version = "11.0";
-                        break;
-
-                    // Word 2017
-                    case 12:
-                        version = "12.0";
-                        break;
-
-                    // Word 2010
-                    case 14:
-                        version = "14.0";
-                        break;
-
-                    // Word 2013
-                    case 15:
-                        version = "15.0";
-                        break;
-
-                    // Word 2016
-                    case 16:
-                        version = "16.0";
-                        break;
-                }
-
-                var key = @"Software\Microsoft\Office\" + version + @"\Word\Resiliency";
+                var key = $@"Software\Microsoft\Office\{_versionNumber}.0\Word\Resiliency";
 
                 if (Registry.CurrentUser.OpenSubKey(key, false) != null)
+                {
                     Registry.CurrentUser.DeleteSubKeyTree(key);
-
-                WriteToLog("Auto recovery files are deleted from the registry");
+                    WriteToLog("Resiliency keys deleted");
+                }
+                else
+                    WriteToLog("There are no keys to delete");
             }
             catch (Exception exception)
             {
-                WriteToLog($"Failed to delete auto recovery files, error: {ExceptionHelpers.GetInnerException(exception)}");
+                WriteToLog($"Failed to delete resiliency keys, error: {ExceptionHelpers.GetInnerException(exception)}");
             }
         }
         #endregion
