@@ -38,7 +38,7 @@ using WordInterop = Microsoft.Office.Interop.Word;
 namespace OfficeConverter
 {
     /// <summary>
-    /// This class is used as a placeholder for all Word related methods
+    ///     This class is used as a placeholder for all Word related methods
     /// </summary>
     internal class Word : IDisposable
     {
@@ -47,7 +47,7 @@ namespace OfficeConverter
         ///     When set then logging is written to this stream
         /// </summary>
         private readonly Stream _logStream;
-        
+
         /// <summary>
         ///     An unique id that can be used to identify the logging of the converter when
         ///     calling the code from multiple threads and writing all the logging to the same file
@@ -55,17 +55,17 @@ namespace OfficeConverter
         public string InstanceId { get; set; }
 
         /// <summary>
-        /// Word version number
+        ///     Word version number
         /// </summary>
         private readonly int _versionNumber;
 
         /// <summary>
-        /// <see cref="WordInterop.ApplicationClass"/>
+        ///     <see cref="WordInterop.ApplicationClass" />
         /// </summary>
         private WordInterop.ApplicationClass _word;
 
         /// <summary>
-        /// A <see cref="Process"/> object to Word
+        ///     A <see cref="Process" /> object to Word
         /// </summary>
         private Process _wordProcess;
 
@@ -77,7 +77,7 @@ namespace OfficeConverter
 
         #region Constructor
         /// <summary>
-        /// This constructor checks to see if all requirements for a successful conversion are here.
+        ///     This constructor checks to see if all requirements for a successful conversion are here.
         /// </summary>
         /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine Word version</exception>
         internal Word(Stream logStream = null)
@@ -91,7 +91,6 @@ namespace OfficeConverter
                 var baseKey = Registry.ClassesRoot;
                 var subKey = baseKey.OpenSubKey(@"Word.Application\CurVer");
                 if (subKey != null)
-                {
                     switch (subKey.GetValue(string.Empty).ToString().ToUpperInvariant())
                     {
                         // Word 2003
@@ -131,22 +130,21 @@ namespace OfficeConverter
                             break;
 
                         default:
-                            throw new OCConfiguration("Could not determine WORD version");
+                            throw new OCConfiguration("Could not determine Word version");
                     }
-                }
                 else
-                    throw new OCConfiguration("Could not find registry key WORD.Application\\CurVer");
+                    throw new OCConfiguration("Could not find registry key Word.Application\\CurVer");
             }
             catch (Exception exception)
             {
-                throw new OCConfiguration("Could not read registry to check WORD version", exception);
+                throw new OCConfiguration("Could not read registry to check Word version", exception);
             }
         }
         #endregion
 
         #region StartWord
         /// <summary>
-        /// Starts Word
+        ///     Starts Word
         /// </summary>
         private void StartWord()
         {
@@ -182,11 +180,8 @@ namespace OfficeConverter
 
             var processes = Process.GetProcessesByName("WINWORD");
             foreach (var process in processes)
-            {
                 if (process.MainWindowTitle.Equals(captionGuid, StringComparison.InvariantCultureIgnoreCase))
                     _wordProcess = process;
-
-            }
 
             _word.Visible = false;
             WriteToLog("Word started");
@@ -194,6 +189,9 @@ namespace OfficeConverter
         #endregion
 
         #region StopWord
+        /// <summary>
+        ///     Stops Word
+        /// </summary>
         private void StopWord()
         {
             if (_word == null) return;
@@ -210,12 +208,15 @@ namespace OfficeConverter
             }
 
             WriteToLog("Word stopped");
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
         }
         #endregion
 
         #region Convert
         /// <summary>
-        /// Converts a Word document to PDF
+        ///     Converts a Word document to PDF
         /// </summary>
         /// <param name="inputFile">The Word input file</param>
         /// <param name="outputFile">The PDF output file</param>
@@ -259,11 +260,11 @@ namespace OfficeConverter
 
         #region OpenDocument
         /// <summary>
-        /// Opens the <paramref name="inputFile"/> and returns it as an <see cref="WordInterop.Document"/> object
+        ///     Opens the <paramref name="inputFile" /> and returns it as an <see cref="WordInterop.Document" /> object
         /// </summary>
-        /// <param name="word">The <see cref="WordInterop.Application"/></param>
+        /// <param name="word">The <see cref="WordInterop.Application" /></param>
         /// <param name="inputFile">The file to open</param>
-        /// <param name="repairMode">When true the <paramref name="inputFile"/> is opened in repair mode</param>
+        /// <param name="repairMode">When true the <paramref name="inputFile" /> is opened in repair mode</param>
         /// <returns></returns>
         private WordInterop.Document OpenDocument(WordInterop._Application word,
             string inputFile,
@@ -301,7 +302,8 @@ namespace OfficeConverter
             }
             catch (Exception exception)
             {
-                WriteToLog($"ERROR: Failed to open document, exception {ExceptionHelpers.GetInnerException(exception)}");
+                WriteToLog(
+                    $"ERROR: Failed to open document, exception: '{ExceptionHelpers.GetInnerException(exception)}'");
 
                 if (repairMode)
                     throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) +
@@ -315,7 +317,7 @@ namespace OfficeConverter
 
         #region CloseDocument
         /// <summary>
-        /// Closes the opened Word document and releases any allocated resources
+        ///     Closes the opened document and releases any allocated resources
         /// </summary>
         /// <param name="document">The Word document</param>
         private void CloseDocument(WordInterop.Document document)
@@ -331,9 +333,9 @@ namespace OfficeConverter
 
         #region DeleteAutoRecoveryFiles
         /// <summary>
-        /// This method will delete the automatic created Resiliency key. Word uses this registry key  
-        /// to make entries to corrupted documents. If there are to many entries under this key Word will
-        /// get slower and slower to start. To prevent this we just delete this key when it exists
+        ///     This method will delete the automatic created Resiliency key. Word uses this registry key
+        ///     to make entries to corrupted documents. If there are to many entries under this key Word will
+        ///     get slower and slower to start. To prevent this we just delete this key when it exists
         /// </summary>
         private void DeleteAutoRecoveryFiles()
         {
@@ -381,9 +383,7 @@ namespace OfficeConverter
             }
             catch (Exception exception)
             {
-                WriteToLog("ERROR: Failed to delete auto recovery files, check if OfficeConverter has enough rights to delete from the registry");
-                EventLog.WriteEntry("OfficeConverter", ExceptionHelpers.GetInnerException(exception),
-                    EventLogEntryType.Error);
+                WriteToLog($"Failed to delete auto recovery files, error: {ExceptionHelpers.GetInnerException(exception)}");
             }
         }
         #endregion
@@ -396,7 +396,8 @@ namespace OfficeConverter
         private void WriteToLog(string message)
         {
             if (_logStream == null) return;
-            var line = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff") + (InstanceId != null ? " - " + InstanceId : string.Empty) + " - " +
+            var line = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff") +
+                       (InstanceId != null ? " - " + InstanceId : string.Empty) + " - " +
                        message + Environment.NewLine;
             var bytes = Encoding.UTF8.GetBytes(line);
             _logStream.Write(bytes, 0, bytes.Length);

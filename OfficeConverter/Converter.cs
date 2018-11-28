@@ -98,6 +98,11 @@ namespace OfficeConverter
         private Word _word;
 
         /// <summary>
+        /// <see cref="Excel"/>
+        /// </summary>
+        private Excel _excel;
+
+        /// <summary>
         ///     Keeps track is we already disposed our resources
         /// </summary>
         private bool _disposed;
@@ -121,8 +126,24 @@ namespace OfficeConverter
                 if (_word != null)
                     return _word;
 
-                _word = new Word();
+                _word = new Word { InstanceId = InstanceId};
                 return _word;
+            }
+        }
+
+        /// <summary>
+        /// Returns a reference to the Excel class when it already exists or creates a new one
+        /// when it doesn't
+        /// </summary>
+        private Excel Excel
+        {
+            get
+            {
+                if (_excel != null)
+                    return _excel;
+
+                _excel = new Excel {InstanceId = InstanceId};
+                return _excel;
             }
         }
         #endregion
@@ -328,12 +349,12 @@ namespace OfficeConverter
                     if (result.Protected)
                         throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
                                                             "' is password protected");
-                    new Excel().Convert(inputFile, outputFile);
+                    Excel.Convert(inputFile, outputFile);
                     break;
                 }
 
                 case ".CSV":
-                    new Excel().Convert(inputFile, outputFile);
+                    Excel.Convert(inputFile, outputFile);
                     break;
 
                 case ".ODS":
@@ -343,7 +364,7 @@ namespace OfficeConverter
                         throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
                                                             "' is password protected");
 
-                    new Excel().Convert(inputFile, outputFile);
+                    Excel.Convert(inputFile, outputFile);
                     break;
                 }
 
@@ -413,7 +434,7 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region Implementation of IDisposable
+        #region Dispose
         /// <summary>
         ///     Disposes all created office objects
         /// </summary>
@@ -426,6 +447,13 @@ namespace OfficeConverter
             {
                 WriteToLog("Disposing Word object");
                 word.Dispose();
+            }
+
+            var excel = Excel;
+            if (excel != null)
+            {
+                WriteToLog("Disposing Excel object");
+                excel.Dispose();
             }
         }
         #endregion
