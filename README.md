@@ -37,7 +37,7 @@ In Visual Studio's Package Manager Console, simply enter the following command:
 
     Install-Package OfficeConverter 
 
-### Converting a file or url from code
+### Converting a file from code
 
 ```csharp
 using (var converter = new Converter())
