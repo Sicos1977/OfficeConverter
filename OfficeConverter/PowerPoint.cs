@@ -75,6 +75,24 @@ namespace OfficeConverter
         private bool _disposed;
         #endregion
 
+        #region Properties
+        /// <summary>
+        ///     Returns <c>true</c> when PowerPoint is running
+        /// </summary>
+        /// <returns></returns>
+        private bool IsPowerPointRunning
+        {
+            get
+            {
+                if (_powerPointProcess == null)
+                    return false;
+
+                _powerPointProcess.Refresh();
+                return !_powerPointProcess.HasExited;
+            }
+        }
+        #endregion
+
         #region Constructor
         /// <summary>
         ///     This constructor checks to see if all requirements for a successful conversion are here.
@@ -138,7 +156,7 @@ namespace OfficeConverter
         /// </summary>
         private void StartPowerPoint()
         {
-            if (_powerPointProcess != null && !_powerPointProcess.HasExited)
+            if (IsPowerPointRunning)
                 return;
 
             WriteToLog("Starting PowerPoint");
@@ -163,7 +181,7 @@ namespace OfficeConverter
         /// </summary>
         private void StopPowerPoint()
         {
-            if (_powerPointProcess != null && !_powerPointProcess.HasExited)
+            if (IsPowerPointRunning)
             {
                 WriteToLog("Stopping PowerPoint");
                 _powerPoint.Quit();

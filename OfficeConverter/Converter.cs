@@ -1,11 +1,8 @@
 ﻿using System;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Text;
 using ICSharpCode.SharpZipLib.Zip;
 using OfficeConverter.Exceptions;
-using OfficeConverter.Helpers;
-using OfficeConverter.Interfaces;
 using PasswordProtectedChecker;
 
 //
@@ -40,9 +37,7 @@ namespace OfficeConverter
     ///     With this class an Microsoft Office document can be converted to PDF format. Microsoft Office 2007
     ///     (with PDF export plugin) or higher is needed.
     /// </summary>
-    [Guid("4F474ED1-70C5-47D4-8EEF-CDB3E1149455")]
-    [ComVisible(true)]
-    public class Converter : IConverter, IDisposable
+    public class Converter : IDisposable
     {
         #region Fields
         /// <summary>
@@ -51,29 +46,22 @@ namespace OfficeConverter
         private Stream _logStream;
 
         /// <summary>
-        ///     Contains an error message when something goes wrong in the <see cref="ConvertFromCom" /> method.
-        ///     This message can be retreived with the GetErrorMessage. This way we keep .NET exceptions inside
-        ///     when this code is called from a COM language
-        /// </summary>
-        private string _errorMessage;
-
-        /// <summary>
         ///     <see cref="Checker"/>
         /// </summary>
         private readonly Checker _passwordProtectedChecker = new Checker();
 
         /// <summary>
-        /// <see cref="Word"/>
+        ///     <see cref="Word"/>
         /// </summary>
         private Word _word;
 
         /// <summary>
-        /// <see cref="Excel"/>
+        ///     <see cref="Excel"/>
         /// </summary>
         private Excel _excel;
 
         /// <summary>
-        /// <see cref="PowerPoint"/>
+        ///     <see cref="PowerPoint"/>
         /// </summary>
         private PowerPoint _powerPoint;
 
@@ -89,6 +77,11 @@ namespace OfficeConverter
         ///     calling the code from multiple threads and writing all the logging to the same file
         /// </summary>
         public string InstanceId { get; set; }
+
+        /// <summary>
+        ///     When set then this directory is used to store temporary files
+        /// </summary>
+        public string TempDirectory { get; set; }
 
         /// <summary>
         /// Returns a reference to the Word class when it already exists or creates a new one
@@ -117,7 +110,10 @@ namespace OfficeConverter
                 if (_excel != null)
                     return _excel;
 
-                _excel = new Excel (_logStream) {InstanceId = InstanceId};
+                _excel = new Excel(_logStream) {InstanceId = InstanceId};
+                if (TempDirectory != null)
+                    _excel.TempDirectory = TempDirectory;
+
                 return _excel;
             }
         }
@@ -149,17 +145,6 @@ namespace OfficeConverter
         public Converter(Stream logStream = null)
         {
             _logStream = logStream;
-        }
-        #endregion
-
-        #region GetErrorMessage
-        /// <summary>
-        ///     Get the last know error message. When the string is empty there are no errors
-        /// </summary>
-        /// <returns></returns>
-        public string GetErrorMessage()
-        {
-            return _errorMessage;
         }
         #endregion
 
@@ -235,34 +220,6 @@ namespace OfficeConverter
         /// </summary>
         /// <param name="inputFile">The Microsoft Office file</param>
         /// <param name="outputFile">The output file with full path</param>
-        /// <param name="useLibreOffice">
-        ///     When set to <c>true</c> then LibreOffice is used to convert the file to PDF instead of
-        ///     Microsoft Office
-        /// </param>
-        /// <returns>
-        ///     Returns true when the conversion is succesfull, false is retournerd when an exception occurred.
-        ///     The exception can be retrieved with the <see cref="GetErrorMessage" /> method
-        /// </returns>
-        public bool ConvertFromCom(string inputFile, string outputFile, bool useLibreOffice)
-        {
-            try
-            {
-                _errorMessage = string.Empty;
-                Convert(inputFile, outputFile);
-                return true;
-            }
-            catch (Exception exception)
-            {
-                _errorMessage = ExceptionHelpers.GetInnerException(exception);
-                return false;
-            }
-        }
-
-        /// <summary>
-        ///     Converts the <paramref name="inputFile" /> to PDF and saves it as the <paramref name="outputFile" />
-        /// </summary>
-        /// <param name="inputFile">The Microsoft Office file</param>
-        /// <param name="outputFile">The output file with full path</param>
         /// <param name="logStream"></param>
         /// <exception cref="ArgumentNullException">
         ///     Raised when the <paramref name="inputFile" /> or <paramref name="outputFile" />
@@ -287,22 +244,6 @@ namespace OfficeConverter
 
             var extension = Path.GetExtension(inputFile);
             extension = extension?.ToUpperInvariant();
-
-            //if (useLibreOffice)
-            //{
-            //    //for (var j = 1; j < 100; j++)
-            //    //{
-            //    //    var i = 0;
-            //    //    Parallel.For(i, 4, m =>
-            //    //    {
-            //    //        i++;
-            //    //        new LibreOffice().ConvertToPdf($"d:\\{i}.docx", $"d:\\{i}_{Guid.NewGuid()}.pdf");
-            //    //    });
-            //    //}
-
-            //    new LibreOffice().ConvertToPdf(inputFile, outputFile);
-            //    return;
-            //}
 
             switch (extension)
             {

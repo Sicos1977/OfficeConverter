@@ -75,6 +75,24 @@ namespace OfficeConverter
         private bool _disposed;
         #endregion
 
+        #region Properties
+        /// <summary>
+        ///     Returns <c>true</c> when Word is running
+        /// </summary>
+        /// <returns></returns>
+        private bool IsWordRunning
+        {
+            get
+            {
+                if (_wordProcess == null)
+                    return false;
+
+                _wordProcess.Refresh();
+                return !_wordProcess.HasExited;
+            }
+        }
+        #endregion
+
         #region Constructor
         /// <summary>
         ///     This constructor checks to see if all requirements for a successful conversion are here.
@@ -149,7 +167,7 @@ namespace OfficeConverter
         /// </summary>
         private void StartWord()
         {
-            if (_wordProcess != null && !_wordProcess.HasExited)
+            if (IsWordRunning)
                 return;
 
             WriteToLog("Starting Word");
@@ -197,7 +215,7 @@ namespace OfficeConverter
         /// </summary>
         private void StopWord()
         {
-            if (_wordProcess != null && !_wordProcess.HasExited)
+            if (IsWordRunning)
             {
                 WriteToLog("Stopping Word");
                 _word.Quit(false);

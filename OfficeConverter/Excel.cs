@@ -197,9 +197,65 @@ namespace OfficeConverter
         private Process _excelProcess;
 
         /// <summary>
+        ///     When set then this folder is used for temporary files
+        /// </summary>
+        private DirectoryInfo _tempDirectory;
+
+        /// <summary>
         ///     Keeps track is we already disposed our resources
         /// </summary>
         private bool _disposed;
+        #endregion
+
+        #region Properties
+        /// <summary>
+        ///     When set then this directory is used to store temporary files
+        /// </summary>
+        /// <exception cref="DirectoryNotFoundException">Raised when the given directory does not exists</exception>
+        public string TempDirectory
+        {
+            get => _tempDirectory.FullName;
+            set
+            {
+                if (!Directory.Exists(value))
+                    throw new DirectoryNotFoundException($"The directory '{value}' does not exists");
+
+                _tempDirectory = new DirectoryInfo(Path.Combine(value, Guid.NewGuid().ToString()));
+            }
+        }
+
+        /// <summary>
+        ///     Returns a reference to the temp directory
+        /// </summary>
+        private DirectoryInfo GetTempDirectory
+        {
+            get
+            {
+                if (_tempDirectory == null)
+                    _tempDirectory = new DirectoryInfo(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString()));
+
+                if (!_tempDirectory.Exists)
+                    _tempDirectory.Create();
+
+                return _tempDirectory;
+            }
+        }
+
+        /// <summary>
+        ///     Returns <c>true</c> when Excel is running
+        /// </summary>
+        /// <returns></returns>
+        private bool IsExcelRunning
+        {
+            get
+            {
+                if (_excelProcess == null)
+                    return false;
+
+                _excelProcess.Refresh();
+                return !_excelProcess.HasExited;
+            }
+        }
         #endregion
 
         #region Constructor
@@ -305,7 +361,7 @@ namespace OfficeConverter
         /// </summary>
         private void StartExcel()
         {
-            if (_excelProcess != null && ! _excelProcess.HasExited)
+            if (IsExcelRunning)
                 return;
 
             WriteToLog("Starting Excel");
@@ -335,7 +391,7 @@ namespace OfficeConverter
         /// </summary>
         private void StopExcel()
         {
-            if (_excelProcess != null && !_excelProcess.HasExited)
+            if (IsExcelRunning)
             {
                 WriteToLog("Stopping Excel");
                 _excel.Quit();
@@ -870,7 +926,6 @@ namespace OfficeConverter
             DeleteResiliencyKeys();
 
             ExcelInterop.Workbook workbook = null;
-            string tempFileName = null;
 
             try
             {
@@ -882,7 +937,7 @@ namespace OfficeConverter
 
                 if (extension.ToUpperInvariant() == ".CSV")
                 {
-                    tempFileName = Path.GetTempFileName() + Guid.NewGuid() + ".txt";
+                    var tempFileName = Path.Combine(GetTempDirectory.FullName, Guid.NewGuid() + ".txt");
 
                     // Yes this look somewhat weird but we have to change the extension if we want to handle
                     // CSV files with different kind of separators. Otherwhise Excel will always overrule whatever
@@ -900,7 +955,7 @@ namespace OfficeConverter
                 // Fix for "This command is not available in a shared workbook."
                 if (workbook.MultiUserEditing)
                 {
-                    tempFileName = Path.GetTempFileName() + Guid.NewGuid() + Path.GetExtension(inputFile);
+                    var tempFileName = Path.Combine(GetTempDirectory.FullName, Guid.NewGuid() + Path.GetExtension(inputFile));
                     WriteToLog($"Excel file '{inputFile}' is in 'multi user editing' mode saving it to temporary file '{tempFileName}' to set it to exclusive mode");
                     workbook.SaveAs(tempFileName, AccessMode: ExcelInterop.XlSaveAsAccessMode.xlExclusive);
                 }
@@ -987,10 +1042,14 @@ namespace OfficeConverter
             {
                 CloseWorkbook(workbook);
 
-                if (!string.IsNullOrEmpty(tempFileName) && File.Exists(tempFileName))
+                if (_tempDirectory != null)
                 {
-                    WriteToLog($"Deleting temporary file '{tempFileName}'");
-                    File.Delete(tempFileName);
+                    _tempDirectory.Refresh();
+                    if (_tempDirectory.Exists)
+                    {
+                        WriteToLog($"Deleting temporary folder '{_tempDirectory.FullName}'");
+                        _tempDirectory.Delete(true);
+                    }
                 }
             }
         }
