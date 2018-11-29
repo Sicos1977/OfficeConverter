@@ -28,7 +28,7 @@ using PowerPointInterop = Microsoft.Office.Interop.PowerPoint;
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
 // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
@@ -138,7 +138,7 @@ namespace OfficeConverter
         /// </summary>
         private void StartPowerPoint()
         {
-            if (_powerPoint != null)
+            if (_powerPointProcess != null && !_powerPointProcess.HasExited)
                 return;
 
             WriteToLog("Starting PowerPoint");
@@ -152,7 +152,7 @@ namespace OfficeConverter
 
             ProcessHelpers.GetWindowThreadProcessId(_powerPoint.HWND, out var processId);
             _powerPointProcess = Process.GetProcessById(processId);
-
+        
             WriteToLog($"PowerPoint started with process id {_powerPointProcess.Id}");
         }
         #endregion
@@ -163,22 +163,29 @@ namespace OfficeConverter
         /// </summary>
         private void StopPowerPoint()
         {
-            if (_powerPoint == null)
-                return;
-
-            WriteToLog("Stopping PowerPoint");
-            _powerPoint.Quit();
-            Marshal.ReleaseComObject(_powerPoint);
-            _powerPoint = null;
-
-            if (!_powerPointProcess.HasExited)
+            if (_powerPointProcess != null && !_powerPointProcess.HasExited)
             {
-                WriteToLog($"PowerPoint did not shutdown gracefully... killing it on process id {_powerPointProcess.Id}");
-                _powerPointProcess.Kill();
-                WriteToLog("PowerPoint process killed");
+                WriteToLog("Stopping PowerPoint");
+                _powerPoint.Quit();
+
+                if (!_powerPointProcess.HasExited)
+                {
+                    WriteToLog(
+                        $"PowerPoint did not shutdown gracefully... killing it on process id {_powerPointProcess.Id}");
+                    _powerPointProcess.Kill();
+                    WriteToLog("PowerPoint process killed");
+                }
+
+                WriteToLog("PowerPoint stopped");
             }
 
-            WriteToLog("PowerPoint stopped");
+            if (_powerPoint != null)
+            {
+                Marshal.ReleaseComObject(_powerPoint);
+                _powerPoint = null;
+            }
+
+            _powerPointProcess = null;
 
             GC.Collect();
             GC.WaitForPendingFinalizers();

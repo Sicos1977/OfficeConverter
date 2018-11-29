@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing.Printing;
 using System.Globalization;
@@ -32,7 +33,7 @@ using ExcelInterop = Microsoft.Office.Interop.Excel;
 //
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
 // AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
@@ -304,7 +305,7 @@ namespace OfficeConverter
         /// </summary>
         private void StartExcel()
         {
-            if (_excel != null)
+            if (_excelProcess != null && ! _excelProcess.HasExited)
                 return;
 
             WriteToLog("Starting Excel");
@@ -334,22 +335,28 @@ namespace OfficeConverter
         /// </summary>
         private void StopExcel()
         {
-            if (_excel == null) 
-                return;
-
-            WriteToLog("Stopping Excel");
-            _excel.Quit();
-            Marshal.ReleaseComObject(_excel);
-            _excel = null;
-
-            if (!_excelProcess.HasExited)
+            if (_excelProcess != null && !_excelProcess.HasExited)
             {
-                WriteToLog($"Excel did not shutdown gracefully... killing it on process id {_excelProcess.Id}");
-                _excelProcess.Kill();
-                WriteToLog("Excel process killed");
+                WriteToLog("Stopping Excel");
+                _excel.Quit();
+
+                if (!_excelProcess.HasExited)
+                {
+                    WriteToLog($"Excel did not shutdown gracefully... killing it on process id {_excelProcess.Id}");
+                    _excelProcess.Kill();
+                    WriteToLog("Excel process killed");
+                }
+
+                WriteToLog("Excel stopped");
             }
 
-            WriteToLog("Excel stopped");
+            if (_excel != null)
+            {
+                Marshal.ReleaseComObject(_excel);
+                _excel = null;
+            }
+
+            _excelProcess = null;
 
             GC.Collect();
             GC.WaitForPendingFinalizers();
@@ -418,7 +425,18 @@ namespace OfficeConverter
 
             var result = false;
 
-            foreach (string printerName in PrinterSettings.InstalledPrinters)
+            PrinterSettings.StringCollection installedPrinters;
+
+            try
+            {
+                installedPrinters = PrinterSettings.InstalledPrinters;
+            }
+            catch (Win32Exception win32Exception)
+            {
+                throw new OCConfiguration($"Printer spooler service not enabled, error: {ExceptionHelpers.GetInnerException(win32Exception)}");
+            }
+
+            foreach (string printerName in installedPrinters)
             {
                 // Retrieve the printer settings.
                 var printer = new PrinterSettings {PrinterName = printerName};

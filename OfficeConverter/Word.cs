@@ -149,7 +149,7 @@ namespace OfficeConverter
         /// </summary>
         private void StartWord()
         {
-            if (_word != null)
+            if (_wordProcess != null && !_wordProcess.HasExited)
                 return;
 
             WriteToLog("Starting Word");
@@ -176,6 +176,7 @@ namespace OfficeConverter
             _word.Options.UpdateLinksAtPrint = false;
 
             var captionGuid = Guid.NewGuid().ToString();
+
             _word.Visible = true;
             _word.Caption = captionGuid;
 
@@ -185,6 +186,7 @@ namespace OfficeConverter
                     _wordProcess = process;
 
             _word.Visible = false;
+
             WriteToLog($"Word started with process id {_wordProcess.Id}");
         }
         #endregion
@@ -195,22 +197,28 @@ namespace OfficeConverter
         /// </summary>
         private void StopWord()
         {
-            if (_word == null) 
-                return;
-
-            WriteToLog("Stopping Word");
-            _word.Quit(false);
-            Marshal.ReleaseComObject(_word);
-            _word = null;
-
-            if (!_wordProcess.HasExited)
+            if (_wordProcess != null && !_wordProcess.HasExited)
             {
-                WriteToLog($"Word did not shutdown gracefully... killing it on process id {_wordProcess.Id}");
-                _wordProcess.Kill();
-                WriteToLog("Word process killed");
+                WriteToLog("Stopping Word");
+                _word.Quit(false);
+
+                if (!_wordProcess.HasExited)
+                {
+                    WriteToLog($"Word did not shutdown gracefully... killing it on process id {_wordProcess.Id}");
+                    _wordProcess.Kill();
+                    WriteToLog("Word process killed");
+                }
+
+                WriteToLog("Word stopped");
             }
 
-            WriteToLog("Word stopped");
+            if (_word != null)
+            {
+                Marshal.ReleaseComObject(_word);
+                _word = null;
+            }
+
+            _wordProcess = null;
 
             GC.Collect();
             GC.WaitForPendingFinalizers();
