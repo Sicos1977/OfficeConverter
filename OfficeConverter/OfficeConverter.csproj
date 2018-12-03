@@ -53,7 +53,7 @@
     <DocumentationFile>bin\Release\OfficeConverter.xml</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup>
-    <SignAssembly>false</SignAssembly>
+    <SignAssembly>true</SignAssembly>
   </PropertyGroup>
   <PropertyGroup>
     <AssemblyOriginatorKeyFile>OfficeConverter.snk</AssemblyOriginatorKeyFile>
