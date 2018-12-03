@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OfficeConverter;
 using OfficeConverter.Exceptions;
@@ -89,8 +90,18 @@ namespace OfficeConverterTest
         public void DocxWithoutEmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            using(var converter = new Converter())
-                converter.Convert(GetCurrentDir() + "TestFiles\\A DOCX word document without embedded files.docx", outputFile);
+            using (var logStream = new MemoryStream())
+            {
+                using (var converter = new Converter(logStream))
+                {
+                    converter.Convert(GetCurrentDir() + "TestFiles\\A DOCX word document without embedded files.docx",
+                        outputFile);
+                }
+
+                var log = Encoding.ASCII.GetString(logStream.ToArray());
+                Assert.IsTrue(log.Contains("Document exported to PDF"));
+            }
+
             Assert.IsTrue(File.Exists(outputFile));
         }
 

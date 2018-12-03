@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using Microsoft.Office.Core;
 using Microsoft.Win32;
 using OfficeConverter.Exceptions;
@@ -186,15 +187,25 @@ namespace OfficeConverter
                 WriteToLog("Stopping PowerPoint");
                 _powerPoint.Quit();
 
-                if (!_powerPointProcess.HasExited)
+                var counter = 0;
+
+                // Give PowerPoint 2 seconds to close
+                while (counter < 2000)
+                {
+                    if (!IsPowerPointRunning) break;
+                    counter++;
+                    Thread.Sleep(1);
+                }
+
+                if (IsPowerPointRunning)
                 {
                     WriteToLog(
-                        $"PowerPoint did not shutdown gracefully... killing it on process id {_powerPointProcess.Id}");
+                        $"PowerPoint did not shutdown gracefully in 2 seconds ... killing it on process id {_powerPointProcess.Id}");
                     _powerPointProcess.Kill();
                     WriteToLog("PowerPoint process killed");
                 }
-
-                WriteToLog("PowerPoint stopped");
+                else
+                    WriteToLog("PowerPoint stopped");
             }
 
             if (_powerPoint != null)
@@ -327,7 +338,7 @@ namespace OfficeConverter
         /// <param name="message">The message to write</param>
         private void WriteToLog(string message)
         {
-            if (_logStream == null) return;
+            if (_logStream == null || !_logStream.CanWrite) return;
             var line = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff") +
                        (InstanceId != null ? " - " + InstanceId : string.Empty) + " - " +
                        message + Environment.NewLine;

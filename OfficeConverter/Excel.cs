@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using Microsoft.Office.Core;
 using Microsoft.Win32;
 using OfficeConverter.Exceptions;
@@ -396,14 +397,25 @@ namespace OfficeConverter
                 WriteToLog("Stopping Excel");
                 _excel.Quit();
 
-                if (!_excelProcess.HasExited)
+                var counter = 0;
+
+                // Give Excel 2 seconds to close
+                while (counter < 2000)
+                {
+                    if (!IsExcelRunning) break;
+                    counter++;
+                    Thread.Sleep(1);
+                }
+
+                if (IsExcelRunning)
                 {
                     WriteToLog($"Excel did not shutdown gracefully... killing it on process id {_excelProcess.Id}");
                     _excelProcess.Kill();
+                    _excelProcess = null;
                     WriteToLog("Excel process killed");
                 }
-
-                WriteToLog("Excel stopped");
+                else
+                    WriteToLog("Excel stopped");
             }
 
             if (_excel != null)
@@ -1254,7 +1266,7 @@ namespace OfficeConverter
         /// <param name="message">The message to write</param>
         private void WriteToLog(string message)
         {
-            if (_logStream == null) return;
+            if (_logStream == null || !_logStream.CanWrite) return;
             var line = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff") +
                        (InstanceId != null ? " - " + InstanceId : string.Empty) + " - " +
                        message + Environment.NewLine;

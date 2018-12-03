@@ -351,11 +351,12 @@ namespace OfficeConverter
         /// <param name="message">The message to write</param>
         private void WriteToLog(string message)
         {
-            if (_logStream == null) return;
+            if (_logStream == null || !_logStream.CanWrite) return;
 
             try
             {
-                var line = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff") + (InstanceId != null ? " - " + InstanceId : string.Empty) + " - " +
+                var line = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff") +
+                           (InstanceId != null ? " - " + InstanceId : string.Empty) + " - " +
                            message + Environment.NewLine;
                 var bytes = Encoding.UTF8.GetBytes(line);
                 _logStream.Write(bytes, 0, bytes.Length);
@@ -376,25 +377,23 @@ namespace OfficeConverter
         {
             if (_disposed) return;
             _disposed = true;
-            var word = Word;
-            if (word != null)
+
+            if (_word != null)
             {
                 WriteToLog("Disposing Word object");
-                word.Dispose();
+                _word.Dispose();
             }
 
-            var excel = Excel;
-            if (excel != null)
+            if (_excel != null)
             {
                 WriteToLog("Disposing Excel object");
-                excel.Dispose();
+                _excel.Dispose();
             }
 
-            var powerPoint = PowerPoint;
-            if (powerPoint != null)
+            if (_powerPoint != null)
             {
                 WriteToLog("Disposing PowerPoint object");
-                powerPoint.Dispose();
+                _powerPoint.Dispose();
             }
         }
         #endregion

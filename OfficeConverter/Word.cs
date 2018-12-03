@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using Microsoft.Office.Core;
 using Microsoft.Win32;
 using OfficeConverter.Exceptions;
@@ -220,14 +221,24 @@ namespace OfficeConverter
                 WriteToLog("Stopping Word");
                 _word.Quit(false);
 
-                if (!_wordProcess.HasExited)
+                var counter = 0;
+
+                // Give Word 2 seconds to close
+                while (counter < 2000)
                 {
-                    WriteToLog($"Word did not shutdown gracefully... killing it on process id {_wordProcess.Id}");
+                    if (!IsWordRunning) break;
+                    counter++;
+                    Thread.Sleep(1);
+                }
+
+                if (IsWordRunning)
+                {
+                    WriteToLog($"Word did not shutdown gracefully in 2 seconds ... killing it on process id {_wordProcess.Id}");
                     _wordProcess.Kill();
                     WriteToLog("Word process killed");
                 }
-
-                WriteToLog("Word stopped");
+                else
+                    WriteToLog("Word stopped");
             }
 
             if (_word != null)
@@ -394,7 +405,7 @@ namespace OfficeConverter
         /// <param name="message">The message to write</param>
         private void WriteToLog(string message)
         {
-            if (_logStream == null) return;
+            if (_logStream == null || !_logStream.CanWrite) return;
             var line = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff") +
                        (InstanceId != null ? " - " + InstanceId : string.Empty) + " - " +
                        message + Environment.NewLine;
