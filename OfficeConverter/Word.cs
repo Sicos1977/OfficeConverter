@@ -180,7 +180,8 @@ namespace OfficeConverter
                 DisplayDocumentInformationPanel = false,
                 DisplayRecentFiles = false,
                 DisplayScrollBars = false,
-                AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable
+                AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable,
+                Visible = false
             };
 
             _word.Options.UpdateLinksAtOpen = false;
@@ -195,16 +196,14 @@ namespace OfficeConverter
             _word.Options.UpdateLinksAtPrint = false;
 
             var captionGuid = Guid.NewGuid().ToString();
-
-            _word.Visible = true;
             _word.Caption = captionGuid;
 
-            var processes = Process.GetProcessesByName("WINWORD");
-            foreach (var process in processes)
-                if (process.MainWindowTitle.Equals(captionGuid, StringComparison.InvariantCultureIgnoreCase))
-                    _wordProcess = process;
+            var processId = ProcessHelpers.GetProcessIdByWindowTitle(captionGuid);
 
-            _word.Visible = false;
+            if (!processId.HasValue)
+                throw new OCConfiguration("Could not determine Word process by title");
+
+            _wordProcess = Process.GetProcessById(processId.Value);
 
             WriteToLog($"Word started with process id {_wordProcess.Id}");
         }
