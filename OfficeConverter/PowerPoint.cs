@@ -158,7 +158,10 @@ namespace OfficeConverter
         private void StartPowerPoint()
         {
             if (IsPowerPointRunning)
+            {
+                WriteToLog($"Powerpoint is already running on PID {_powerPointProcess.Id}... skipped");
                 return;
+            }
 
             WriteToLog("Starting PowerPoint");
 

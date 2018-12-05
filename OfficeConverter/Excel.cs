@@ -351,7 +351,10 @@ namespace OfficeConverter
 
             WriteToLog($"Setting maximum Excel rows to {_maxRows}");
 
-            CheckIfSystemProfileDesktopDirectoryExists();
+            // We only need to perform this check if we are running on a server
+            if (NativeMethods.IsWindowsServer())
+                CheckIfSystemProfileDesktopDirectoryExists();
+            
             CheckIfPrinterIsInstalled();
         }
         #endregion
@@ -363,7 +366,10 @@ namespace OfficeConverter
         private void StartExcel()
         {
             if (IsExcelRunning)
+            {
+                WriteToLog($"Excel is already running on PID {_excelProcess.Id}... skipped");
                 return;
+            }
 
             WriteToLog("Starting Excel");
 
@@ -931,10 +937,6 @@ namespace OfficeConverter
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile" /> has to many rows</exception>
         internal void Convert(string inputFile, string outputFile)
         {
-            // We only need to perform this check if we are running on a server
-            if (NativeMethods.IsWindowsServer())
-                CheckIfSystemProfileDesktopDirectoryExists();
-
             DeleteResiliencyKeys();
 
             ExcelInterop.Workbook workbook = null;

@@ -94,7 +94,7 @@ namespace OfficeConverter
                 if (_word != null)
                     return _word;
 
-                _word = new Word (_logStream) { InstanceId = InstanceId};
+                _word = new Word(_logStream) {InstanceId = InstanceId};
                 return _word;
             }
         }

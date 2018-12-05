@@ -169,7 +169,10 @@ namespace OfficeConverter
         private void StartWord()
         {
             if (IsWordRunning)
+            {
+                WriteToLog($"Word is already running on PID {_wordProcess.Id}... skipped");
                 return;
+            }
 
             WriteToLog("Starting Word");
 
