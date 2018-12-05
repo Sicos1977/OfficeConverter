@@ -144,7 +144,7 @@ namespace OfficeConverter
         {
             if (IsPowerPointRunning)
             {
-                Logger.WriteToLog("Powerpoint is already running on PID {_powerPointProcess.Id}... skipped");
+                Logger.WriteToLog($"Powerpoint is already running on PID {_powerPointProcess.Id}... skipped");
                 return;
             }
 
@@ -160,7 +160,7 @@ namespace OfficeConverter
             ProcessHelpers.GetWindowThreadProcessId(_powerPoint.HWND, out var processId);
             _powerPointProcess = Process.GetProcessById(processId);
         
-            Logger.WriteToLog("PowerPoint started with process id {_powerPointProcess.Id}");
+            Logger.WriteToLog($"PowerPoint started with process id {_powerPointProcess.Id}");
         }
         #endregion
 
@@ -228,7 +228,7 @@ namespace OfficeConverter
 
                 presentation = OpenPresentation(inputFile, false);
 
-                Logger.WriteToLog("Exporting presentation to PDF file '{outputFile}'");
+                Logger.WriteToLog($"Exporting presentation to PDF file '{outputFile}'");
                 presentation.ExportAsFixedFormat(outputFile, PowerPointInterop.PpFixedFormatType.ppFixedFormatTypePDF);
                 Logger.WriteToLog("Presentation exported to PDF");
             }

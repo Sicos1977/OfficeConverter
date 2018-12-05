@@ -334,7 +334,7 @@ namespace OfficeConverter
                     break;
             }
 
-            Logger.WriteToLog("Setting maximum Excel rows to {_maxRows}");
+            Logger.WriteToLog($"Setting maximum Excel rows to {_maxRows}");
 
             // We only need to perform this check if we are running on a server
             if (NativeMethods.IsWindowsServer())
@@ -352,7 +352,7 @@ namespace OfficeConverter
         {
             if (IsExcelRunning)
             {
-                Logger.WriteToLog("Excel is already running on PID {_excelProcess.Id}... skipped");
+                Logger.WriteToLog($"Excel is already running on PID {_excelProcess.Id}... skipped");
                 return;
             }
 
@@ -373,7 +373,7 @@ namespace OfficeConverter
             ProcessHelpers.GetWindowThreadProcessId(_excel.Hwnd, out var processId);
             _excelProcess = Process.GetProcessById(processId);
 
-            Logger.WriteToLog("Excel started with process id {_excelProcess.Id}");
+            Logger.WriteToLog($"Excel started with process id {_excelProcess.Id}");
         }
         #endregion
 
@@ -400,7 +400,7 @@ namespace OfficeConverter
 
                 if (IsExcelRunning)
                 {
-                    Logger.WriteToLog("Excel did not shutdown gracefully... killing it on process id {_excelProcess.Id}");
+                    Logger.WriteToLog($"Excel did not shutdown gracefully... killing it on process id {_excelProcess.Id}");
                     _excelProcess.Kill();
                     _excelProcess = null;
                     Logger.WriteToLog("Excel process killed");
@@ -435,7 +435,7 @@ namespace OfficeConverter
                 var x64DesktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows),
                     @"SysWOW64\config\systemprofile\desktop");
 
-                Logger.WriteToLog("Checking if system profile desktop directory exists in '{x64DesktopPath}'");
+                Logger.WriteToLog($"Checking if system profile desktop directory exists in '{x64DesktopPath}'");
 
                 if (!Directory.Exists(x64DesktopPath))
                     try
@@ -455,7 +455,7 @@ namespace OfficeConverter
                 var x86DesktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows),
                     @"System32\config\systemprofile\desktop");
 
-                Logger.WriteToLog("Checking if system profile desktop directory exists in '{x86DesktopPath}'");
+                Logger.WriteToLog($"Checking if system profile desktop directory exists in '{x86DesktopPath}'");
 
                 if (!Directory.Exists(x86DesktopPath))
                     try
@@ -506,7 +506,7 @@ namespace OfficeConverter
                 // setting.)
                 if (printer.IsValid)
                 {
-                    Logger.WriteToLog("A valid printer '{printer.PrinterName}' is found");
+                    Logger.WriteToLog($"A valid printer '{printer.PrinterName}' is found");
                     result = true;
                     break;
                 }
@@ -832,7 +832,7 @@ namespace OfficeConverter
         /// <param name="printArea"></param>
         private void SetWorkSheetPaperSize(ExcelInterop._Worksheet worksheet, string printArea)
         {
-            Logger.WriteToLog("Detecting optimal paper size for sheet {worksheet.Name} with print area '{printArea}'");
+            Logger.WriteToLog($"Detecting optimal paper size for sheet {worksheet.Name} with print area '{printArea}'");
 
             var pageSetup = worksheet.PageSetup;
             var pages = pageSetup.Pages;
@@ -876,7 +876,7 @@ namespace OfficeConverter
                         break;
                 }
 
-                Logger.WriteToLog("Paper size set to '{pageSetup.PaperSize}', orientation to '{pageSetup.Orientation}' and zoom ratio to '{pageSetup.Zoom}'");
+                Logger.WriteToLog($"Paper size set to '{pageSetup.PaperSize}', orientation to '{pageSetup.Orientation}' and zoom ratio to '{pageSetup.Zoom}'");
             }
             finally
             {
@@ -893,7 +893,7 @@ namespace OfficeConverter
         /// <param name="chart"></param>
         private void SetChartPaperSize(ExcelInterop._Chart chart)
         {
-            Logger.WriteToLog("Setting paper site for chart '{chart.Name}' to A4 landscape");
+            Logger.WriteToLog($"Setting paper site for chart '{chart.Name}' to A4 landscape");
 
             var pageSetup = chart.PageSetup;
             var pages = pageSetup.Pages;
@@ -941,7 +941,7 @@ namespace OfficeConverter
                     // Yes this look somewhat weird but we have to change the extension if we want to handle
                     // CSV files with different kind of separators. Otherwhise Excel will always overrule whatever
                     // setting we make to open a file
-                    Logger.WriteToLog("Copying CSV file '{inputFile}' to temporary file '{tempFileName}' and setting that one as the input file");
+                    Logger.WriteToLog($"Copying CSV file '{inputFile}' to temporary file '{tempFileName}' and setting that one as the input file");
                     File.Copy(inputFile, tempFileName);
                     inputFile = tempFileName;
                 }
@@ -955,7 +955,7 @@ namespace OfficeConverter
                 if (workbook.MultiUserEditing)
                 {
                     var tempFileName = Path.Combine(GetTempDirectory.FullName, Guid.NewGuid() + Path.GetExtension(inputFile));
-                    Logger.WriteToLog("Excel file '{inputFile}' is in 'multi user editing' mode saving it to temporary file '{tempFileName}' to set it to exclusive mode");
+                    Logger.WriteToLog($"Excel file '{inputFile}' is in 'multi user editing' mode saving it to temporary file '{tempFileName}' to set it to exclusive mode");
                     workbook.SaveAs(tempFileName, AccessMode: ExcelInterop.XlSaveAsAccessMode.xlExclusive);
                 }
 
@@ -979,7 +979,7 @@ namespace OfficeConverter
                                 if (!sheet.ProtectContents || protection.AllowFormattingColumns)
                                     if (activeWindow.View != ExcelInterop.XlWindowView.xlPageLayoutView)
                                     {
-                                        Logger.WriteToLog("Auto fitting colums on sheet '{sheet.Name}'");
+                                        Logger.WriteToLog($"Auto fitting colums on sheet '{sheet.Name}'");
                                         sheet.Columns.AutoFit();
                                     }
                             }
@@ -994,7 +994,7 @@ namespace OfficeConverter
                             }
 
                             var printArea = GetWorksheetPrintArea(sheet);
-                            Logger.WriteToLog("Print area for sheet {sheet.Name} set to '{printArea}'");
+                            Logger.WriteToLog($"Print area for sheet {sheet.Name} set to '{printArea}'");
 
                             switch (printArea)
                             {
@@ -1024,7 +1024,7 @@ namespace OfficeConverter
                 // It is not possible in Excel to export an empty workbook
                 if (usedSheets != 0)
                 {
-                    Logger.WriteToLog("Exporting worksheets to PDF file '{outputFile}'");
+                    Logger.WriteToLog($"Exporting worksheets to PDF file '{outputFile}'");
                     workbook.ExportAsFixedFormat(ExcelInterop.XlFixedFormatType.xlTypePDF, outputFile);
                     Logger.WriteToLog("Worksheets exported to PDF");
                 }
@@ -1046,7 +1046,7 @@ namespace OfficeConverter
                     _tempDirectory.Refresh();
                     if (_tempDirectory.Exists)
                     {
-                        Logger.WriteToLog("Deleting temporary folder '{_tempDirectory.FullName}'");
+                        Logger.WriteToLog($"Deleting temporary folder '{_tempDirectory.FullName}'");
                         _tempDirectory.Delete(true);
                     }
                 }
@@ -1112,7 +1112,7 @@ namespace OfficeConverter
                                                              excelMaxRows + " rows");
 
                         GetCsvSeparator(inputFile, out var separator, out var textQualifier);
-                        Logger.WriteToLog("Separator for CSV file set to '{separator}' and text qualifier to '{textQualifier}'");
+                        Logger.WriteToLog($"Separator for CSV file set to '{separator}' and text qualifier to '{textQualifier}'");
 
                         switch (separator)
                         {

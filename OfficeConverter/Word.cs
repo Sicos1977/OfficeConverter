@@ -155,7 +155,7 @@ namespace OfficeConverter
         {
             if (IsWordRunning)
             {
-                Logger.WriteToLog("Word is already running on PID {_wordProcess.Id}... skipped");
+                Logger.WriteToLog($"Word is already running on PID {_wordProcess.Id}... skipped");
                 return;
             }
 
@@ -193,7 +193,7 @@ namespace OfficeConverter
 
             _wordProcess = Process.GetProcessById(processId.Value);
 
-            Logger.WriteToLog("Word started with process id {_wordProcess.Id}");
+            Logger.WriteToLog($"Word started with process id {_wordProcess.Id}");
         }
         #endregion
 
@@ -220,7 +220,7 @@ namespace OfficeConverter
 
                 if (IsWordRunning)
                 {
-                    Logger.WriteToLog("Word did not shutdown gracefully in 2 seconds ... killing it on process id {_wordProcess.Id}");
+                    Logger.WriteToLog($"Word did not shutdown gracefully in 2 seconds ... killing it on process id {_wordProcess.Id}");
                     _wordProcess.Kill();
                     Logger.WriteToLog("Word process killed");
                 }
@@ -269,7 +269,7 @@ namespace OfficeConverter
                 // ReSharper disable once UnusedVariable
                 var count = document.ComputeStatistics(WordInterop.WdStatistic.wdStatisticPages);
 
-                Logger.WriteToLog("Exporting document to PDF file '{outputFile}'");
+                Logger.WriteToLog($"Exporting document to PDF file '{outputFile}'");
                 document.ExportAsFixedFormat(outputFile, WordInterop.WdExportFormat.wdExportFormatPDF);
                 Logger.WriteToLog("Document exported to PDF");
             }
