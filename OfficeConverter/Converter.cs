@@ -1,8 +1,7 @@
 ﻿using System;
 using System.IO;
-using System.Text;
-using ICSharpCode.SharpZipLib.Zip;
 using OfficeConverter.Exceptions;
+using OfficeConverter.Helpers;
 using PasswordProtectedChecker;
 
 //
@@ -41,11 +40,6 @@ namespace OfficeConverter
     {
         #region Fields
         /// <summary>
-        ///     When set then logging is written to this stream
-        /// </summary>
-        private Stream _logStream;
-
-        /// <summary>
         ///     <see cref="Checker"/>
         /// </summary>
         private readonly Checker _passwordProtectedChecker = new Checker();
@@ -76,7 +70,11 @@ namespace OfficeConverter
         ///     An unique id that can be used to identify the logging of the converter when
         ///     calling the code from multiple threads and writing all the logging to the same file
         /// </summary>
-        public string InstanceId { get; set; }
+        public string InstanceId
+        {
+            get => Logger.InstanceId;
+            set => Logger.InstanceId = value;
+        }
 
         /// <summary>
         ///     When set then this directory is used to store temporary files
@@ -94,7 +92,7 @@ namespace OfficeConverter
                 if (_word != null)
                     return _word;
 
-                _word = new Word(_logStream) {InstanceId = InstanceId};
+                _word = new Word();
                 return _word;
             }
         }
@@ -110,7 +108,7 @@ namespace OfficeConverter
                 if (_excel != null)
                     return _excel;
 
-                _excel = new Excel(_logStream) {InstanceId = InstanceId};
+                _excel = new Excel();
                 if (TempDirectory != null)
                     _excel.TempDirectory = TempDirectory;
 
@@ -130,7 +128,7 @@ namespace OfficeConverter
                 if (_powerPoint != null)
                     return _powerPoint;
 
-                _powerPoint = new PowerPoint (_logStream) {InstanceId = InstanceId};
+                _powerPoint = new PowerPoint();
                 return _powerPoint;
             }
         }
@@ -144,7 +142,7 @@ namespace OfficeConverter
         /// you want a separate log for each conversion then set the logstream on the <see cref="Convert"/> method</param>
         public Converter(Stream logStream = null)
         {
-            _logStream = logStream;
+            Logger.LogStream = logStream;
         }
         #endregion
 
@@ -185,35 +183,6 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region ExtractFromOpenDocumentFormat
-        /// <summary>
-        ///     Returns true when the <paramref name="inputFile" /> is password protected
-        /// </summary>
-        /// <param name="inputFile">The OpenDocument format file</param>
-        public bool OpenDocumentFormatIsPasswordProtected(string inputFile)
-        {
-            var zipFile = new ZipFile(inputFile);
-
-            // Check if the file is password protected
-            var manifestEntry = zipFile.FindEntry("META-INF/manifest.xml", true);
-            if (manifestEntry != -1)
-                using (var manifestEntryStream = zipFile.GetInputStream(manifestEntry))
-                using (var manifestEntryMemoryStream = new MemoryStream())
-                {
-                    manifestEntryStream.CopyTo(manifestEntryMemoryStream);
-                    manifestEntryMemoryStream.Position = 0;
-                    using (var streamReader = new StreamReader(manifestEntryMemoryStream))
-                    {
-                        var manifest = streamReader.ReadToEnd();
-                        if (manifest.ToUpperInvariant().Contains("ENCRYPTION-DATA"))
-                            return true;
-                    }
-                }
-
-            return false;
-        }
-        #endregion
-
         #region Convert
         /// <summary>
         ///     Converts the <paramref name="inputFile" /> to PDF and saves it as the <paramref name="outputFile" />
@@ -238,7 +207,7 @@ namespace OfficeConverter
         public void Convert(string inputFile, string outputFile, Stream logStream = null)
         {
             if (logStream != null)
-                _logStream = logStream;
+                Logger.LogStream = logStream;
 
             CheckFileNameAndOutputFolder(inputFile, outputFile);
 
@@ -344,31 +313,6 @@ namespace OfficeConverter
         }
         #endregion
 
-        #region WriteToLog
-        /// <summary>
-        ///     Writes a line and linefeed to the <see cref="_logStream" />
-        /// </summary>
-        /// <param name="message">The message to write</param>
-        private void WriteToLog(string message)
-        {
-            if (_logStream == null || !_logStream.CanWrite) return;
-
-            try
-            {
-                var line = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff") +
-                           (InstanceId != null ? " - " + InstanceId : string.Empty) + " - " +
-                           message + Environment.NewLine;
-                var bytes = Encoding.UTF8.GetBytes(line);
-                _logStream.Write(bytes, 0, bytes.Length);
-                _logStream.Flush();
-            }
-            catch (ObjectDisposedException)
-            {
-                // Ignore
-            }
-        }
-        #endregion
-
         #region Dispose
         /// <summary>
         ///     Disposes all created office objects
@@ -380,19 +324,19 @@ namespace OfficeConverter
 
             if (_word != null)
             {
-                WriteToLog("Disposing Word object");
+                Logger.WriteToLog("Disposing Word object");
                 _word.Dispose();
             }
 
             if (_excel != null)
             {
-                WriteToLog("Disposing Excel object");
+                Logger.WriteToLog("Disposing Excel object");
                 _excel.Dispose();
             }
 
             if (_powerPoint != null)
             {
-                WriteToLog("Disposing PowerPoint object");
+                Logger.WriteToLog("Disposing PowerPoint object");
                 _powerPoint.Dispose();
             }
         }

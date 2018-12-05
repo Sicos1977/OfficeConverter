@@ -109,8 +109,25 @@ namespace OfficeConverterTest
         public void DocxWith7EmbeddedFiles()
         {
             var outputFile = CreateTemporaryFolder() + "\\test.pdf";
-            using(var converter = new Converter())
-                converter.Convert(GetCurrentDir() + "TestFiles\\A DOCX word document with 7 embedded files.docx", outputFile);
+            using (var converter = new Converter())
+            {
+                using (var logStream = new MemoryStream())
+                {
+                    converter.Convert(GetCurrentDir() + "TestFiles\\A DOCX word document with 7 embedded files.docx",
+                        outputFile, logStream);
+                    var log = Encoding.ASCII.GetString(logStream.ToArray());
+                    Assert.IsTrue(log.Contains("Document exported to PDF"));
+
+                }
+                using (var logStream = new MemoryStream())
+                {
+                    converter.Convert(GetCurrentDir() + "TestFiles\\A DOCX word document with 7 embedded files.docx",
+                        outputFile, logStream);
+                    var log = Encoding.ASCII.GetString(logStream.ToArray());
+                    Assert.IsTrue(log.Contains("Document exported to PDF"));
+                }
+            }
+
             Assert.IsTrue(File.Exists(outputFile));
         }
 
