@@ -961,27 +961,38 @@ namespace OfficeConverter
 
                 var usedSheets = 0;
 
+                var activeWindow = _excel.ActiveWindow;
+
+                if (activeWindow == null)
+                {
+                    const string message = "There is no window active in Excel";
+                    Logger.WriteToLog(message);
+                    throw new OCFileContainsNoData(message);
+                }
+
                 foreach (var sheetObject in workbook.Sheets)
                 {
                     switch (sheetObject)
                     {
-                        //case ExcelInterop.Worksheet sheet when sheet.Visible != ExcelInterop.XlSheetVisibility.xlSheetVisible:
-                        //    continue;
+                        // Invisible sheets will not be converted... they are not visible
+                        case ExcelInterop.Worksheet sheet when sheet.Visible != ExcelInterop.XlSheetVisibility.xlSheetVisible:
+                            continue;
 
                         case ExcelInterop.Worksheet sheet:
                             var protection = sheet.Protection;
-                            var activeWindow = _excel.ActiveWindow;
 
                             try
                             {
                                 // ReSharper disable once RedundantCast
                                 (sheet as ExcelInterop._Worksheet).Activate();
                                 if (!sheet.ProtectContents || protection.AllowFormattingColumns)
+                                {
                                     if (activeWindow.View != ExcelInterop.XlWindowView.xlPageLayoutView)
                                     {
                                         Logger.WriteToLog($"Auto fitting colums on sheet '{sheet.Name}'");
                                         sheet.Columns.AutoFit();
                                     }
+                                }
                             }
                             catch (COMException)
                             {
@@ -989,7 +1000,6 @@ namespace OfficeConverter
                             }
                             finally
                             {
-                                Marshal.ReleaseComObject(activeWindow);
                                 Marshal.ReleaseComObject(protection);
                             }
 
@@ -1018,6 +1028,8 @@ namespace OfficeConverter
 
                     if (!(sheetObject is ExcelInterop.Chart chart)) continue;
                     SetChartPaperSize(chart);
+
+                    Marshal.ReleaseComObject(activeWindow);
                     Marshal.ReleaseComObject(chart);
                 }
 
@@ -1029,7 +1041,11 @@ namespace OfficeConverter
                     Logger.WriteToLog("Worksheets exported to PDF");
                 }
                 else
-                    throw new OCFileContainsNoData("The file '" + Path.GetFileName(inputFile) + "' contains no data");
+                {
+                    const string message = "The file contains no data";
+                    Logger.WriteToLog(message);
+                    throw new OCFileContainsNoData(message);
+                }
             }
             catch (Exception)
             {
