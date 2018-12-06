@@ -70,6 +70,7 @@ namespace OfficeConverter
         ///     An unique id that can be used to identify the logging of the converter when
         ///     calling the code from multiple threads and writing all the logging to the same file
         /// </summary>
+        // ReSharper disable once UnusedMember.Global
         public string InstanceId
         {
             get => Logger.InstanceId;
@@ -171,7 +172,11 @@ namespace OfficeConverter
                 throw new ArgumentNullException(outputFile);
 
             if (!File.Exists(inputFile))
-                throw new FileNotFoundException("Could not find the input file '" + inputFile + "'");
+            {
+                var message = $"Could not find the input file '{inputFile}'";
+                Logger.WriteToLog(message);
+                throw new FileNotFoundException(message);
+            }
 
             var directoryInfo = new FileInfo(outputFile).Directory;
             if (directoryInfo == null) return;
@@ -179,7 +184,21 @@ namespace OfficeConverter
             var outputFolder = directoryInfo.FullName;
 
             if (!Directory.Exists(outputFolder))
-                throw new DirectoryNotFoundException("The output folder '" + outputFolder + "' does not exist");
+            {
+                var message = $"The output folder '{outputFolder}' does not exist";
+                Logger.WriteToLog(message);
+                throw new DirectoryNotFoundException(message);
+            }
+        }
+        #endregion
+
+        #region ThrowPasswordProtected
+        private void ThrowPasswordProtected(string inputFile)
+        {
+            var message = "The file '" + Path.GetFileName(inputFile) +
+                          "' is password protected";
+            Logger.WriteToLog(message);
+            throw new OCFileIsPasswordProtected(message);
         }
         #endregion
 
@@ -225,8 +244,7 @@ namespace OfficeConverter
                 {
                     var result = _passwordProtectedChecker.IsFileProtected(inputFile);
                     if (result.Protected)
-                        throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
-                                                            "' is password protected");
+                        ThrowPasswordProtected(inputFile);
 
                     Word.Convert(inputFile, outputFile);
                     break;
@@ -250,8 +268,8 @@ namespace OfficeConverter
                 {
                     var result = _passwordProtectedChecker.IsFileProtected(inputFile);
                     if (result.Protected)
-                        throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
-                                                            "' is password protected");
+                        ThrowPasswordProtected(inputFile);
+
                     Excel.Convert(inputFile, outputFile);
                     break;
                 }
@@ -264,8 +282,7 @@ namespace OfficeConverter
                 {
                     var result = _passwordProtectedChecker.IsFileProtected(inputFile);
                     if (result.Protected)
-                        throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
-                                                            "' is password protected");
+                        ThrowPasswordProtected(inputFile);
 
                     Excel.Convert(inputFile, outputFile);
                     break;
@@ -283,8 +300,7 @@ namespace OfficeConverter
                 {
                     var result = _passwordProtectedChecker.IsFileProtected(inputFile);
                     if (result.Protected)
-                        throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
-                                                            "' is password protected");
+                        ThrowPasswordProtected(inputFile);
 
                     PowerPoint.Convert(inputFile, outputFile);
                     break;
@@ -294,21 +310,25 @@ namespace OfficeConverter
                 {
                     var result = _passwordProtectedChecker.IsFileProtected(inputFile);
                     if (result.Protected)
-                        throw new OCFileIsPasswordProtected("The file '" + Path.GetFileName(inputFile) +
-                                                            "' is password protected");
+                        ThrowPasswordProtected(inputFile);
 
                     PowerPoint.Convert(inputFile, outputFile);
                     break;
                 }
 
                 default:
-                    throw new OCFileTypeNotSupported("The file '" + Path.GetFileName(inputFile) +
-                                                     "' is not supported only, " + Environment.NewLine +
-                                                     ".DOC, .DOT, .DOCM, .DOCX, .DOTM, .ODT, .RTF, .MHT, " + Environment.NewLine +
-                                                     ".WPS, .WRI, .XLS, .XLT, .XLW, .XLSB, .XLSM, .XLSX, " + Environment.NewLine +
-                                                     ".XLTM, .XLTX, .CSV, .ODS, .POT, .PPT, .PPS, .POTM, " + Environment.NewLine +
-                                                     ".POTX, .PPSM, .PPSX, .PPTM, .PPTX, .ODP" + Environment.NewLine +
-                                                     " are supported");
+                {
+                    var message = "The file '" + Path.GetFileName(inputFile) +
+                                  "' is not supported only, " + Environment.NewLine +
+                                  ".DOC, .DOT, .DOCM, .DOCX, .DOTM, .ODT, .RTF, .MHT, " + Environment.NewLine +
+                                  ".WPS, .WRI, .XLS, .XLT, .XLW, .XLSB, .XLSM, .XLSX, " + Environment.NewLine +
+                                  ".XLTM, .XLTX, .CSV, .ODS, .POT, .PPT, .PPS, .POTM, " + Environment.NewLine +
+                                  ".POTX, .PPSM, .PPSX, .PPTM, .PPTX, .ODP" + Environment.NewLine +
+                                  " are supported";
+
+                    Logger.WriteToLog(message);
+                    throw new OCFileTypeNotSupported(message);
+                }
             }
         }
         #endregion
