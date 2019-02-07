@@ -42,10 +42,10 @@ namespace OfficeConverter
         /// </summary>
         private class ShapePosition
         {
-            public int TopLeftColumn { get; private set; }
-            public int TopLeftRow { get; private set; }
-            public int BottomRightColumn { get; private set; }
-            public int BottomRightRow { get; private set; }
+            public int TopLeftColumn { get; }
+            public int TopLeftRow { get; }
+            public int BottomRightColumn { get; }
+            public int BottomRightRow { get; }
 
             public ShapePosition(ExcelInterop.Shape shape)
             {
@@ -67,8 +67,8 @@ namespace OfficeConverter
         /// </summary>
         private class ExcelPaperSize
         {
-            public ExcelInterop.XlPaperSize PaperSize { get; private set; }
-            public ExcelInterop.XlPageOrientation Orientation { get; private set; }
+            public ExcelInterop.XlPaperSize PaperSize { get; }
+            public ExcelInterop.XlPageOrientation Orientation { get; }
 
             public ExcelPaperSize(ExcelInterop.XlPaperSize paperSize, ExcelInterop.XlPageOrientation orientation)
             {
@@ -176,6 +176,11 @@ namespace OfficeConverter
                             VersionNumber = 16;
                             break;
 
+                        // Excel 2016
+                        case "EXCEL.APPLICATION.17":
+                            VersionNumber = 17;
+                            break;
+
                         default:
                             throw new OCConfiguration("Could not determine Excel version");
                     }
@@ -199,8 +204,10 @@ namespace OfficeConverter
                 case 14:
                 // Excel 2013
                 case 15:
-                //Excel 2016
+                // Excel 2016
                 case 16:
+                // Excel 2019
+                case 19:
                     MaxRows = excelMaxRowsFrom2007AndUp;
                     break;
 
@@ -452,7 +459,7 @@ namespace OfficeConverter
             }
 
             var range = worksheet.Cells[1, 1] as ExcelInterop.Range;
-            if (range == null || range.Value == null)
+            if (range?.Value == null)
             {
                 if (range != null)
                     Marshal.ReleaseComObject(range);
@@ -941,10 +948,7 @@ namespace OfficeConverter
                                                              " rows, the installed Excel version supports only " +
                                                              excelMaxRows + " rows");
 
-                        string separator;
-                        ExcelInterop.XlTextQualifier textQualifier;
-
-                        GetCsvSeperator(inputFile, out separator, out textQualifier);
+                        GetCsvSeperator(inputFile, out var separator, out var textQualifier);
 
                         switch (separator)
                         {

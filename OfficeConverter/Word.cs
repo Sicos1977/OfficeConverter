@@ -81,6 +81,11 @@ namespace OfficeConverter
                             VersionNumber = 16;
                             break;
 
+                        // Word 2019
+                        case "WORD.APPLICATION.17":
+                            VersionNumber = 17;
+                            break;
+
                         default:
                             throw new OCConfiguration("Could not determine WORD version");
                     }
@@ -306,6 +311,11 @@ namespace OfficeConverter
                     // Word 2016
                     case 16:
                         version = "16.0";
+                        break;
+
+                    // Word 2019
+                    case 17:
+                        version = "17.0";
                         break;
                 }
 

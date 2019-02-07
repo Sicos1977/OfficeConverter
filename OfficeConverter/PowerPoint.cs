@@ -41,9 +41,9 @@ namespace OfficeConverter
 
         #region Constructor
         /// <summary>
-        /// This constructor is called the first time when the <see cref="Convert"/> or
-        /// <see cref="FileIsPasswordProtected"/> method is called. Some checks are done to
-        /// see if all requirements for a succesfull conversion are there.
+        /// This constructor is called the first time when the <see cref="Convert"/>
+        /// method is called. Some checks are done to see if all requirements for a
+        /// succesfull conversion are there.
         /// </summary>
         /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine PowerPoint version</exception>
         static PowerPoint()
@@ -79,6 +79,11 @@ namespace OfficeConverter
                         // PowerPoint 2016
                         case "POWERPOINT.APPLICATION.16":
                             VersionNumber = 16;
+                            break;
+
+                        // PowerPoint 2019
+                        case "POWERPOINT.APPLICATION.17":
+                            VersionNumber = 17;
                             break;
 
                         default:
@@ -263,6 +268,11 @@ namespace OfficeConverter
                     // Word 2016
                     case 16:
                         version = "16.0";
+                        break;
+
+                    // Word 2019
+                    case 17:
+                        version = "17.0";
                         break;
                 }
 
