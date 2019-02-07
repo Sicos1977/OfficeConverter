@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
 using Microsoft.Office.Core;
 using Microsoft.Win32;
@@ -44,17 +43,6 @@ namespace OfficeConverter
     internal class Word : IDisposable
     {
         #region Fields
-        /// <summary>
-        ///     When set then logging is written to this stream
-        /// </summary>
-        private readonly Stream _logStream;
-
-        /// <summary>
-        ///     An unique id that can be used to identify the logging of the converter when
-        ///     calling the code from multiple threads and writing all the logging to the same file
-        /// </summary>
-        public string InstanceId { get; set; }
-
         /// <summary>
         ///     Word version number
         /// </summary>
@@ -98,13 +86,10 @@ namespace OfficeConverter
         /// <summary>
         ///     This constructor checks to see if all requirements for a successful conversion are here.
         /// </summary>
-        /// <param name="logStream">When set then logging is written to this stream</param>
         /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine Word version</exception>
-        internal Word(Stream logStream = null)
+        internal Word()
         {
-            _logStream = logStream;
-
-            WriteToLog("Checking what version of Word is installed");
+            Logger.WriteToLog("Checking what version of Word is installed");
 
             try
             {
@@ -116,37 +101,37 @@ namespace OfficeConverter
                         // Word 2003
                         case "WORD.APPLICATION.11":
                             _versionNumber = 11;
-                            WriteToLog("Word 2003 is installed");
+                            Logger.WriteToLog("Word 2003 is installed");
                             break;
 
                         // Word 2007
                         case "WORD.APPLICATION.12":
                             _versionNumber = 12;
-                            WriteToLog("Word 2007 is installed");
+                            Logger.WriteToLog("Word 2007 is installed");
                             break;
 
                         // Word 2010
                         case "WORD.APPLICATION.14":
                             _versionNumber = 14;
-                            WriteToLog("Word 2010 is installed");
+                            Logger.WriteToLog("Word 2010 is installed");
                             break;
 
                         // Word 2013
                         case "WORD.APPLICATION.15":
                             _versionNumber = 15;
-                            WriteToLog("Word 2013 is installed");
+                            Logger.WriteToLog("Word 2013 is installed");
                             break;
 
                         // Word 2016
                         case "WORD.APPLICATION.16":
                             _versionNumber = 16;
-                            WriteToLog("Word 2016 is installed");
+                            Logger.WriteToLog("Word 2016 is installed");
                             break;
 
                         // Word 2019
                         case "WORD.APPLICATION.17":
                             _versionNumber = 17;
-                            WriteToLog("Word 2019 is installed");
+                            Logger.WriteToLog("Word 2019 is installed");
                             break;
 
                         default:
@@ -169,9 +154,12 @@ namespace OfficeConverter
         private void StartWord()
         {
             if (IsWordRunning)
+            {
+                Logger.WriteToLog($"Word is already running on PID {_wordProcess.Id}... skipped");
                 return;
+            }
 
-            WriteToLog("Starting Word");
+            Logger.WriteToLog("Starting Word");
 
             _word = new WordInterop.ApplicationClass
             {
@@ -205,7 +193,7 @@ namespace OfficeConverter
 
             _wordProcess = Process.GetProcessById(processId.Value);
 
-            WriteToLog($"Word started with process id {_wordProcess.Id}");
+            Logger.WriteToLog($"Word started with process id {_wordProcess.Id}");
         }
         #endregion
 
@@ -217,7 +205,7 @@ namespace OfficeConverter
         {
             if (IsWordRunning)
             {
-                WriteToLog("Stopping Word");
+                Logger.WriteToLog("Stopping Word");
                 _word.Quit(false);
 
                 var counter = 0;
@@ -232,12 +220,12 @@ namespace OfficeConverter
 
                 if (IsWordRunning)
                 {
-                    WriteToLog($"Word did not shutdown gracefully in 2 seconds ... killing it on process id {_wordProcess.Id}");
+                    Logger.WriteToLog($"Word did not shutdown gracefully in 2 seconds ... killing it on process id {_wordProcess.Id}");
                     _wordProcess.Kill();
-                    WriteToLog("Word process killed");
+                    Logger.WriteToLog("Word process killed");
                 }
                 else
-                    WriteToLog("Word stopped");
+                    Logger.WriteToLog("Word stopped");
             }
 
             if (_word != null)
@@ -281,9 +269,9 @@ namespace OfficeConverter
                 // ReSharper disable once UnusedVariable
                 var count = document.ComputeStatistics(WordInterop.WdStatistic.wdStatisticPages);
 
-                WriteToLog($"Exporting document to PDF file '{outputFile}'");
+                Logger.WriteToLog($"Exporting document to PDF file '{outputFile}'");
                 document.ExportAsFixedFormat(outputFile, WordInterop.WdExportFormat.wdExportFormatPDF);
-                WriteToLog("Document exported to PDF");
+                Logger.WriteToLog("Document exported to PDF");
             }
             catch (Exception)
             {
@@ -306,7 +294,7 @@ namespace OfficeConverter
         /// <returns></returns>
         private WordInterop.Document OpenDocument(string inputFile, bool repairMode)
         {
-            WriteToLog($"Opening document '{inputFile}'{(repairMode ? " with repair mode" : string.Empty)}");
+            Logger.WriteToLog($"Opening document '{inputFile}'{(repairMode ? " with repair mode" : string.Empty)}");
 
             try
             {
@@ -328,17 +316,17 @@ namespace OfficeConverter
                 // and date/time field do or don't get updated automatic when converting
                 if (document.Fields.Count > 0)
                 {
-                    WriteToLog("Locking all form fields against modifications");
+                    Logger.WriteToLog("Locking all form fields against modifications");
                     foreach (WordInterop.Field field in document.Fields)
                         field.Locked = true;
                 }
 
-                WriteToLog("Document opened");
+                Logger.WriteToLog("Document opened");
                 return document;
             }
             catch (Exception exception)
             {
-                WriteToLog(
+                Logger.WriteToLog(
                     $"ERROR: Failed to open document, exception: '{ExceptionHelpers.GetInnerException(exception)}'");
 
                 if (repairMode)
@@ -359,11 +347,11 @@ namespace OfficeConverter
         private void CloseDocument(WordInterop.Document document)
         {
             if (document == null) return;
-            WriteToLog("Closing document");
+            Logger.WriteToLog("Closing document");
             document.Saved = true;
             document.Close(false);
             Marshal.ReleaseComObject(document);
-            WriteToLog("Document closed");
+            Logger.WriteToLog("Document closed");
         }
         #endregion
 
@@ -375,7 +363,7 @@ namespace OfficeConverter
         /// </summary>
         private void DeleteResiliencyKeys()
         {
-            WriteToLog("Deleting Word resiliency keys from the registry");
+            Logger.WriteToLog("Deleting Word resiliency keys from the registry");
 
             try
             {
@@ -385,32 +373,15 @@ namespace OfficeConverter
                 if (Registry.CurrentUser.OpenSubKey(key, false) != null)
                 {
                     Registry.CurrentUser.DeleteSubKeyTree(key);
-                    WriteToLog("Resiliency keys deleted");
+                    Logger.WriteToLog("Resiliency keys deleted");
                 }
                 else
-                    WriteToLog("There are no keys to delete");
+                    Logger.WriteToLog("There are no keys to delete");
             }
             catch (Exception exception)
             {
-                WriteToLog($"Failed to delete resiliency keys, error: {ExceptionHelpers.GetInnerException(exception)}");
+                Logger.WriteToLog($"Failed to delete resiliency keys, error: {ExceptionHelpers.GetInnerException(exception)}");
             }
-        }
-        #endregion
-
-        #region WriteToLog
-        /// <summary>
-        ///     Writes a line and linefeed to the <see cref="_logStream" />
-        /// </summary>
-        /// <param name="message">The message to write</param>
-        private void WriteToLog(string message)
-        {
-            if (_logStream == null || !_logStream.CanWrite) return;
-            var line = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff") +
-                       (InstanceId != null ? " - " + InstanceId : string.Empty) + " - " +
-                       message + Environment.NewLine;
-            var bytes = Encoding.UTF8.GetBytes(line);
-            _logStream.Write(bytes, 0, bytes.Length);
-            _logStream.Flush();
         }
         #endregion
 

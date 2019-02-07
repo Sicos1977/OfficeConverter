@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
 using Microsoft.Office.Core;
 using Microsoft.Win32;
@@ -44,17 +43,6 @@ namespace OfficeConverter
     internal class PowerPoint : IDisposable
     {
         #region Fields
-        /// <summary>
-        ///     When set then logging is written to this stream
-        /// </summary>
-        private readonly Stream _logStream;
-
-        /// <summary>
-        ///     An unique id that can be used to identify the logging of the converter when
-        ///     calling the code from multiple threads and writing all the logging to the same file
-        /// </summary>
-        public string InstanceId { get; set; }
-
         /// <summary>
         ///     PowerPoint version number
         /// </summary>
@@ -98,13 +86,10 @@ namespace OfficeConverter
         /// <summary>
         ///     This constructor checks to see if all requirements for a successful conversion are here.
         /// </summary>
-        /// <param name="logStream">When set then logging is written to this stream</param>
         /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine PowerPoint version</exception>
-        internal PowerPoint(Stream logStream = null)
+        internal PowerPoint()
         {
-            _logStream = logStream;
-
-            WriteToLog("Checking what version of Word is installed");
+            Logger.WriteToLog("Checking what version of Word is installed");
 
             try
             {
@@ -158,9 +143,12 @@ namespace OfficeConverter
         private void StartPowerPoint()
         {
             if (IsPowerPointRunning)
+            {
+                Logger.WriteToLog($"Powerpoint is already running on PID {_powerPointProcess.Id}... skipped");
                 return;
+            }
 
-            WriteToLog("Starting PowerPoint");
+            Logger.WriteToLog("Starting PowerPoint");
 
             _powerPoint = new PowerPointInterop.ApplicationClass
             {
@@ -172,7 +160,7 @@ namespace OfficeConverter
             ProcessHelpers.GetWindowThreadProcessId(_powerPoint.HWND, out var processId);
             _powerPointProcess = Process.GetProcessById(processId);
         
-            WriteToLog($"PowerPoint started with process id {_powerPointProcess.Id}");
+            Logger.WriteToLog($"PowerPoint started with process id {_powerPointProcess.Id}");
         }
         #endregion
 
@@ -184,7 +172,7 @@ namespace OfficeConverter
         {
             if (IsPowerPointRunning)
             {
-                WriteToLog("Stopping PowerPoint");
+                Logger.WriteToLog("Stopping PowerPoint");
                 _powerPoint.Quit();
 
                 var counter = 0;
@@ -199,13 +187,13 @@ namespace OfficeConverter
 
                 if (IsPowerPointRunning)
                 {
-                    WriteToLog(
+                    Logger.WriteToLog(
                         $"PowerPoint did not shutdown gracefully in 2 seconds ... killing it on process id {_powerPointProcess.Id}");
                     _powerPointProcess.Kill();
-                    WriteToLog("PowerPoint process killed");
+                    Logger.WriteToLog("PowerPoint process killed");
                 }
                 else
-                    WriteToLog("PowerPoint stopped");
+                    Logger.WriteToLog("PowerPoint stopped");
             }
 
             if (_powerPoint != null)
@@ -240,9 +228,9 @@ namespace OfficeConverter
 
                 presentation = OpenPresentation(inputFile, false);
 
-                WriteToLog($"Exporting presentation to PDF file '{outputFile}'");
+                Logger.WriteToLog($"Exporting presentation to PDF file '{outputFile}'");
                 presentation.ExportAsFixedFormat(outputFile, PowerPointInterop.PpFixedFormatType.ppFixedFormatTypePDF);
-                WriteToLog("Presentation exported to PDF");
+                Logger.WriteToLog("Presentation exported to PDF");
             }
             catch (Exception)
             {
@@ -293,11 +281,11 @@ namespace OfficeConverter
         private void ClosePresentation(PowerPointInterop.Presentation presentation)
         {
             if (presentation == null) return;
-            WriteToLog("Closing presentation");
+            Logger.WriteToLog("Closing presentation");
             presentation.Saved = MsoTriState.msoFalse;
             presentation.Close();
             Marshal.ReleaseComObject(presentation);
-            WriteToLog("Presentation closed");
+            Logger.WriteToLog("Presentation closed");
         }
         #endregion
 
@@ -309,7 +297,7 @@ namespace OfficeConverter
         /// </summary>
         private void DeleteResiliencyKeys()
         {
-            WriteToLog("Deleting PowerPoint resiliency keys from the registry");
+            Logger.WriteToLog("Deleting PowerPoint resiliency keys from the registry");
 
             try
             {
@@ -319,32 +307,15 @@ namespace OfficeConverter
                 if (Registry.CurrentUser.OpenSubKey(key, false) != null)
                 {
                     Registry.CurrentUser.DeleteSubKeyTree(key);
-                    WriteToLog("Resiliency keys deleted");
+                    Logger.WriteToLog("Resiliency keys deleted");
                 }
                 else
-                    WriteToLog("There are no keys to delete");
+                    Logger.WriteToLog("There are no keys to delete");
             }
             catch (Exception exception)
             {
-                WriteToLog($"Failed to delete resiliency keys, error: {ExceptionHelpers.GetInnerException(exception)}");
+                Logger.WriteToLog($"Failed to delete resiliency keys, error: {ExceptionHelpers.GetInnerException(exception)}");
             }
-        }
-        #endregion
-
-        #region WriteToLog
-        /// <summary>
-        ///     Writes a line and linefeed to the <see cref="_logStream" />
-        /// </summary>
-        /// <param name="message">The message to write</param>
-        private void WriteToLog(string message)
-        {
-            if (_logStream == null || !_logStream.CanWrite) return;
-            var line = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff") +
-                       (InstanceId != null ? " - " + InstanceId : string.Empty) + " - " +
-                       message + Environment.NewLine;
-            var bytes = Encoding.UTF8.GetBytes(line);
-            _logStream.Write(bytes, 0, bytes.Length);
-            _logStream.Flush();
         }
         #endregion
 

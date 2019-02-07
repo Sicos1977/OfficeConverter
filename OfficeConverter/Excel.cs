@@ -7,7 +7,6 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading;
 using Microsoft.Office.Core;
 using Microsoft.Win32;
@@ -151,17 +150,6 @@ namespace OfficeConverter
 
         #region Fields
         /// <summary>
-        ///     When set then logging is written to this stream
-        /// </summary>
-        private readonly Stream _logStream;
-
-        /// <summary>
-        ///     An unique id that can be used to identify the logging of the converter when
-        ///     calling the code from multiple threads and writing all the logging to the same file
-        /// </summary>
-        public string InstanceId { get; set; }
-
-        /// <summary>
         ///     Excel version number
         /// </summary>
         private readonly int _versionNumber;
@@ -263,13 +251,10 @@ namespace OfficeConverter
         /// <summary>
         ///     This constructor checks to see if all requirements for a successful conversion are here.
         /// </summary>
-        /// <param name="logStream">When set then logging is written to this stream</param>
         /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine Excel version</exception>
-        internal Excel(Stream logStream = null)
+        internal Excel()
         {
-            _logStream = logStream;
-
-            WriteToLog("Checking what version of Excel is installed");
+            Logger.WriteToLog("Checking what version of Excel is installed");
 
             try
             {
@@ -281,37 +266,37 @@ namespace OfficeConverter
                         // Excel 2003
                         case "EXCEL.APPLICATION.11":
                             _versionNumber = 11;
-                            WriteToLog("Excel 2003 is installed");
+                            Logger.WriteToLog("Excel 2003 is installed");
                             break;
 
                         // Excel 2007
                         case "EXCEL.APPLICATION.12":
                             _versionNumber = 12;
-                            WriteToLog("Excel 2007 is installed");
+                            Logger.WriteToLog("Excel 2007 is installed");
                             break;
 
                         // Excel 2010
                         case "EXCEL.APPLICATION.14":
                             _versionNumber = 14;
-                            WriteToLog("Excel 2010 is installed");
+                            Logger.WriteToLog("Excel 2010 is installed");
                             break;
 
                         // Excel 2013
                         case "EXCEL.APPLICATION.15":
                             _versionNumber = 15;
-                            WriteToLog("Excel 2013 is installed");
+                            Logger.WriteToLog("Excel 2013 is installed");
                             break;
 
                         // Excel 2016
                         case "EXCEL.APPLICATION.16":
                             _versionNumber = 16;
-                            WriteToLog("Excel 2016 is installed");
+                            Logger.WriteToLog("Excel 2016 is installed");
                             break;
 
                         // Excel 2019
                         case "EXCEL.APPLICATION.17":
                             _versionNumber = 17;
-                            WriteToLog("Excel 2019 is installed");
+                            Logger.WriteToLog("Excel 2019 is installed");
                             break;
 
                         default:
@@ -349,9 +334,12 @@ namespace OfficeConverter
                     break;
             }
 
-            WriteToLog($"Setting maximum Excel rows to {_maxRows}");
+            Logger.WriteToLog($"Setting maximum Excel rows to {_maxRows}");
 
-            CheckIfSystemProfileDesktopDirectoryExists();
+            // We only need to perform this check if we are running on a server
+            if (NativeMethods.IsWindowsServer())
+                CheckIfSystemProfileDesktopDirectoryExists();
+            
             CheckIfPrinterIsInstalled();
         }
         #endregion
@@ -363,9 +351,12 @@ namespace OfficeConverter
         private void StartExcel()
         {
             if (IsExcelRunning)
+            {
+                Logger.WriteToLog($"Excel is already running on PID {_excelProcess.Id}... skipped");
                 return;
+            }
 
-            WriteToLog("Starting Excel");
+            Logger.WriteToLog("Starting Excel");
 
             _excel = new ExcelInterop.ApplicationClass
             {
@@ -382,7 +373,7 @@ namespace OfficeConverter
             ProcessHelpers.GetWindowThreadProcessId(_excel.Hwnd, out var processId);
             _excelProcess = Process.GetProcessById(processId);
 
-            WriteToLog($"Excel started with process id {_excelProcess.Id}");
+            Logger.WriteToLog($"Excel started with process id {_excelProcess.Id}");
         }
         #endregion
 
@@ -394,7 +385,7 @@ namespace OfficeConverter
         {
             if (IsExcelRunning)
             {
-                WriteToLog("Stopping Excel");
+                Logger.WriteToLog("Stopping Excel");
                 _excel.Quit();
 
                 var counter = 0;
@@ -409,13 +400,13 @@ namespace OfficeConverter
 
                 if (IsExcelRunning)
                 {
-                    WriteToLog($"Excel did not shutdown gracefully... killing it on process id {_excelProcess.Id}");
+                    Logger.WriteToLog($"Excel did not shutdown gracefully... killing it on process id {_excelProcess.Id}");
                     _excelProcess.Kill();
                     _excelProcess = null;
-                    WriteToLog("Excel process killed");
+                    Logger.WriteToLog("Excel process killed");
                 }
                 else
-                    WriteToLog("Excel stopped");
+                    Logger.WriteToLog("Excel stopped");
             }
 
             if (_excel != null)
@@ -444,13 +435,13 @@ namespace OfficeConverter
                 var x64DesktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows),
                     @"SysWOW64\config\systemprofile\desktop");
 
-                WriteToLog($"Checking if system profile desktop directory exists in '{x64DesktopPath}'");
+                Logger.WriteToLog($"Checking if system profile desktop directory exists in '{x64DesktopPath}'");
 
                 if (!Directory.Exists(x64DesktopPath))
                     try
                     {
                         Directory.CreateDirectory(x64DesktopPath);
-                        WriteToLog("Directory did not exist ... created it");
+                        Logger.WriteToLog("Directory did not exist ... created it");
                     }
                     catch (Exception exception)
                     {
@@ -464,13 +455,13 @@ namespace OfficeConverter
                 var x86DesktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows),
                     @"System32\config\systemprofile\desktop");
 
-                WriteToLog($"Checking if system profile desktop directory exists in '{x86DesktopPath}'");
+                Logger.WriteToLog($"Checking if system profile desktop directory exists in '{x86DesktopPath}'");
 
                 if (!Directory.Exists(x86DesktopPath))
                     try
                     {
                         Directory.CreateDirectory(x86DesktopPath);
-                        WriteToLog("Directory did not exist ... created it");
+                        Logger.WriteToLog("Directory did not exist ... created it");
                     }
                     catch (Exception exception)
                     {
@@ -489,7 +480,7 @@ namespace OfficeConverter
         /// <exception cref="OCConfiguration">Raised when an default printer does not exists</exception>
         private void CheckIfPrinterIsInstalled()
         {
-            WriteToLog("Excel needs a printer to convert sheets to pdf ... checking if a printer exists");
+            Logger.WriteToLog("Excel needs a printer to convert sheets to pdf ... checking if a printer exists");
 
             var result = false;
 
@@ -515,7 +506,7 @@ namespace OfficeConverter
                 // setting.)
                 if (printer.IsValid)
                 {
-                    WriteToLog($"A valid printer '{printer.PrinterName}' is found");
+                    Logger.WriteToLog($"A valid printer '{printer.PrinterName}' is found");
                     result = true;
                     break;
                 }
@@ -841,7 +832,7 @@ namespace OfficeConverter
         /// <param name="printArea"></param>
         private void SetWorkSheetPaperSize(ExcelInterop._Worksheet worksheet, string printArea)
         {
-            WriteToLog($"Detecting optimal paper size for sheet {worksheet.Name} with print area '{printArea}'");
+            Logger.WriteToLog($"Detecting optimal paper size for sheet {worksheet.Name} with print area '{printArea}'");
 
             var pageSetup = worksheet.PageSetup;
             var pages = pageSetup.Pages;
@@ -885,7 +876,7 @@ namespace OfficeConverter
                         break;
                 }
 
-                WriteToLog($"Paper size set to '{pageSetup.PaperSize}', orientation to '{pageSetup.Orientation}' and zoom ratio to '{pageSetup.Zoom}'");
+                Logger.WriteToLog($"Paper size set to '{pageSetup.PaperSize}', orientation to '{pageSetup.Orientation}' and zoom ratio to '{pageSetup.Zoom}'");
             }
             finally
             {
@@ -902,7 +893,7 @@ namespace OfficeConverter
         /// <param name="chart"></param>
         private void SetChartPaperSize(ExcelInterop._Chart chart)
         {
-            WriteToLog($"Setting paper site for chart '{chart.Name}' to A4 landscape");
+            Logger.WriteToLog($"Setting paper site for chart '{chart.Name}' to A4 landscape");
 
             var pageSetup = chart.PageSetup;
             var pages = pageSetup.Pages;
@@ -931,10 +922,6 @@ namespace OfficeConverter
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile" /> has to many rows</exception>
         internal void Convert(string inputFile, string outputFile)
         {
-            // We only need to perform this check if we are running on a server
-            if (NativeMethods.IsWindowsServer())
-                CheckIfSystemProfileDesktopDirectoryExists();
-
             DeleteResiliencyKeys();
 
             ExcelInterop.Workbook workbook = null;
@@ -954,7 +941,7 @@ namespace OfficeConverter
                     // Yes this look somewhat weird but we have to change the extension if we want to handle
                     // CSV files with different kind of separators. Otherwhise Excel will always overrule whatever
                     // setting we make to open a file
-                    WriteToLog($"Copying CSV file '{inputFile}' to temporary file '{tempFileName}' and setting that one as the input file");
+                    Logger.WriteToLog($"Copying CSV file '{inputFile}' to temporary file '{tempFileName}' and setting that one as the input file");
                     File.Copy(inputFile, tempFileName);
                     inputFile = tempFileName;
                 }
@@ -968,33 +955,44 @@ namespace OfficeConverter
                 if (workbook.MultiUserEditing)
                 {
                     var tempFileName = Path.Combine(GetTempDirectory.FullName, Guid.NewGuid() + Path.GetExtension(inputFile));
-                    WriteToLog($"Excel file '{inputFile}' is in 'multi user editing' mode saving it to temporary file '{tempFileName}' to set it to exclusive mode");
+                    Logger.WriteToLog($"Excel file '{inputFile}' is in 'multi user editing' mode saving it to temporary file '{tempFileName}' to set it to exclusive mode");
                     workbook.SaveAs(tempFileName, AccessMode: ExcelInterop.XlSaveAsAccessMode.xlExclusive);
                 }
 
                 var usedSheets = 0;
 
+                var activeWindow = _excel.ActiveWindow;
+
+                if (activeWindow == null)
+                {
+                    const string message = "There is no window active in Excel";
+                    Logger.WriteToLog(message);
+                    throw new OCFileContainsNoData(message);
+                }
+
                 foreach (var sheetObject in workbook.Sheets)
                 {
                     switch (sheetObject)
                     {
-                        //case ExcelInterop.Worksheet sheet when sheet.Visible != ExcelInterop.XlSheetVisibility.xlSheetVisible:
-                        //    continue;
+                        // Invisible sheets will not be converted... they are not visible
+                        case ExcelInterop.Worksheet sheet when sheet.Visible != ExcelInterop.XlSheetVisibility.xlSheetVisible:
+                            continue;
 
                         case ExcelInterop.Worksheet sheet:
                             var protection = sheet.Protection;
-                            var activeWindow = _excel.ActiveWindow;
 
                             try
                             {
                                 // ReSharper disable once RedundantCast
                                 (sheet as ExcelInterop._Worksheet).Activate();
                                 if (!sheet.ProtectContents || protection.AllowFormattingColumns)
+                                {
                                     if (activeWindow.View != ExcelInterop.XlWindowView.xlPageLayoutView)
                                     {
-                                        WriteToLog($"Auto fitting colums on sheet '{sheet.Name}'");
+                                        Logger.WriteToLog($"Auto fitting colums on sheet '{sheet.Name}'");
                                         sheet.Columns.AutoFit();
                                     }
+                                }
                             }
                             catch (COMException)
                             {
@@ -1002,12 +1000,11 @@ namespace OfficeConverter
                             }
                             finally
                             {
-                                Marshal.ReleaseComObject(activeWindow);
                                 Marshal.ReleaseComObject(protection);
                             }
 
                             var printArea = GetWorksheetPrintArea(sheet);
-                            WriteToLog($"Print area for sheet {sheet.Name} set to '{printArea}'");
+                            Logger.WriteToLog($"Print area for sheet {sheet.Name} set to '{printArea}'");
 
                             switch (printArea)
                             {
@@ -1031,18 +1028,24 @@ namespace OfficeConverter
 
                     if (!(sheetObject is ExcelInterop.Chart chart)) continue;
                     SetChartPaperSize(chart);
+
+                    Marshal.ReleaseComObject(activeWindow);
                     Marshal.ReleaseComObject(chart);
                 }
 
                 // It is not possible in Excel to export an empty workbook
                 if (usedSheets != 0)
                 {
-                    WriteToLog($"Exporting worksheets to PDF file '{outputFile}'");
+                    Logger.WriteToLog($"Exporting worksheets to PDF file '{outputFile}'");
                     workbook.ExportAsFixedFormat(ExcelInterop.XlFixedFormatType.xlTypePDF, outputFile);
-                    WriteToLog("Worksheets exported to PDF");
+                    Logger.WriteToLog("Worksheets exported to PDF");
                 }
                 else
-                    throw new OCFileContainsNoData("The file '" + Path.GetFileName(inputFile) + "' contains no data");
+                {
+                    const string message = "The file contains no data";
+                    Logger.WriteToLog(message);
+                    throw new OCFileContainsNoData(message);
+                }
             }
             catch (Exception)
             {
@@ -1059,7 +1062,7 @@ namespace OfficeConverter
                     _tempDirectory.Refresh();
                     if (_tempDirectory.Exists)
                     {
-                        WriteToLog($"Deleting temporary folder '{_tempDirectory.FullName}'");
+                        Logger.WriteToLog($"Deleting temporary folder '{_tempDirectory.FullName}'");
                         _tempDirectory.Delete(true);
                     }
                 }
@@ -1109,7 +1112,7 @@ namespace OfficeConverter
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile" /> has to many rows</exception>
         private ExcelInterop.Workbook OpenWorkbook(string inputFile, string extension, bool repairMode)
         {
-            WriteToLog($"Opening workbook '{inputFile}'{(repairMode ? " with repair mode" : string.Empty)}");
+            Logger.WriteToLog($"Opening workbook '{inputFile}'{(repairMode ? " with repair mode" : string.Empty)}");
 
             try
             {
@@ -1125,7 +1128,7 @@ namespace OfficeConverter
                                                              excelMaxRows + " rows");
 
                         GetCsvSeparator(inputFile, out var separator, out var textQualifier);
-                        WriteToLog($"Separator for CSV file set to '{separator}' and text qualifier to '{textQualifier}'");
+                        Logger.WriteToLog($"Separator for CSV file set to '{separator}' and text qualifier to '{textQualifier}'");
 
                         switch (separator)
                         {
@@ -1160,7 +1163,7 @@ namespace OfficeConverter
                                 break;
                         }
 
-                        WriteToLog("Workbook opened");
+                        Logger.WriteToLog("Workbook opened");
                         return _excel.ActiveWorkbook;
 
                     default:
@@ -1184,7 +1187,7 @@ namespace OfficeConverter
                                 AddToMru: false);
                         }
 
-                        WriteToLog("Workbook opened");
+                        Logger.WriteToLog("Workbook opened");
                         return workbook;
                 }
             }
@@ -1200,7 +1203,7 @@ namespace OfficeConverter
             }
             catch (Exception exception)
             {
-                WriteToLog(
+                Logger.WriteToLog(
                     $"ERROR: Failed to open worksheet, exception: '{ExceptionHelpers.GetInnerException(exception)}'");
 
                 if (repairMode)
@@ -1221,11 +1224,11 @@ namespace OfficeConverter
         private void CloseWorkbook(ExcelInterop.Workbook workbook)
         {
             if (workbook == null) return;
-            WriteToLog("Closing workbook");
+            Logger.WriteToLog("Closing workbook");
             workbook.Saved = true;
             workbook.Close(false);
             Marshal.ReleaseComObject(workbook);
-            WriteToLog("Workbook closed");
+            Logger.WriteToLog("Workbook closed");
         }
         #endregion
 
@@ -1237,7 +1240,7 @@ namespace OfficeConverter
         /// </summary>
         private void DeleteResiliencyKeys()
         {
-            WriteToLog("Deleting Excel resiliency keys from the registry");
+            Logger.WriteToLog("Deleting Excel resiliency keys from the registry");
 
             try
             {
@@ -1247,32 +1250,15 @@ namespace OfficeConverter
                 if (Registry.CurrentUser.OpenSubKey(key, false) != null)
                 {
                     Registry.CurrentUser.DeleteSubKeyTree(key);
-                    WriteToLog("Resiliency keys deleted");
+                    Logger.WriteToLog("Resiliency keys deleted");
                 }
                 else
-                    WriteToLog("There are no keys to delete");
+                    Logger.WriteToLog("There are no keys to delete");
             }
             catch (Exception exception)
             {
-                WriteToLog($"Failed to delete resiliency keys, error: {ExceptionHelpers.GetInnerException(exception)}");
+                Logger.WriteToLog($"Failed to delete resiliency keys, error: {ExceptionHelpers.GetInnerException(exception)}");
             }
-        }
-        #endregion
-
-        #region WriteToLog
-        /// <summary>
-        ///     Writes a line and linefeed to the <see cref="_logStream" />
-        /// </summary>
-        /// <param name="message">The message to write</param>
-        private void WriteToLog(string message)
-        {
-            if (_logStream == null || !_logStream.CanWrite) return;
-            var line = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff") +
-                       (InstanceId != null ? " - " + InstanceId : string.Empty) + " - " +
-                       message + Environment.NewLine;
-            var bytes = Encoding.UTF8.GetBytes(line);
-            _logStream.Write(bytes, 0, bytes.Length);
-            _logStream.Flush();
         }
         #endregion
 
