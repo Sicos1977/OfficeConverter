@@ -2,19 +2,20 @@
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
 using Microsoft.Office.Core;
 using Microsoft.Win32;
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
-using OpenMcdf;
 using WordInterop = Microsoft.Office.Interop.Word;
 
 //
-// Converter.cs
+// Word.cs
 //
 // Author: Kees van Spelde <sicos2002@hotmail.com>
 //
-// Copyright (c) 2014-2019 Magic-Sessions. (www.magic-sessions.com)
+// Copyright (c) 2014-2018 Magic-Sessions. (www.magic-sessions.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,213 +39,275 @@ using WordInterop = Microsoft.Office.Interop.Word;
 namespace OfficeConverter
 {
     /// <summary>
-    /// This class is used as a placeholder for all Word related methods
+    ///     This class is used as a placeholder for all Word related methods
     /// </summary>
-    internal static class Word
+    internal class Word : IDisposable
     {
         #region Fields
         /// <summary>
-        /// Word version number
+        ///     When set then logging is written to this stream
         /// </summary>
-        private static readonly int VersionNumber;
+        private readonly Stream _logStream;
+
+        /// <summary>
+        ///     An unique id that can be used to identify the logging of the converter when
+        ///     calling the code from multiple threads and writing all the logging to the same file
+        /// </summary>
+        public string InstanceId { get; set; }
+
+        /// <summary>
+        ///     Word version number
+        /// </summary>
+        private readonly int _versionNumber;
+
+        /// <summary>
+        ///     <see cref="WordInterop.ApplicationClass" />
+        /// </summary>
+        private WordInterop.ApplicationClass _word;
+
+        /// <summary>
+        ///     A <see cref="Process" /> object to Word
+        /// </summary>
+        private Process _wordProcess;
+
+        /// <summary>
+        ///     Keeps track is we already disposed our resources
+        /// </summary>
+        private bool _disposed;
+        #endregion
+
+        #region Properties
+        /// <summary>
+        ///     Returns <c>true</c> when Word is running
+        /// </summary>
+        /// <returns></returns>
+        private bool IsWordRunning
+        {
+            get
+            {
+                if (_wordProcess == null)
+                    return false;
+
+                _wordProcess.Refresh();
+                return !_wordProcess.HasExited;
+            }
+        }
         #endregion
 
         #region Constructor
         /// <summary>
-        /// This constructor is called the first time when the <see cref="Convert"/> or
-        /// <see cref="IsPasswordProtected"/> method is called. Some checks are done to
-        /// see if all requirements for a succesfull conversion are there.
+        ///     This constructor checks to see if all requirements for a successful conversion are here.
         /// </summary>
+        /// <param name="logStream">When set then logging is written to this stream</param>
         /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine Word version</exception>
-        static Word()
+        internal Word(Stream logStream = null)
         {
+            _logStream = logStream;
+
+            WriteToLog("Checking what version of Word is installed");
+
             try
             {
                 var baseKey = Registry.ClassesRoot;
                 var subKey = baseKey.OpenSubKey(@"Word.Application\CurVer");
                 if (subKey != null)
-                {
                     switch (subKey.GetValue(string.Empty).ToString().ToUpperInvariant())
                     {
                         // Word 2003
                         case "WORD.APPLICATION.11":
-                            VersionNumber = 11;
+                            _versionNumber = 11;
+                            WriteToLog("Word 2003 is installed");
                             break;
 
                         // Word 2007
                         case "WORD.APPLICATION.12":
-                            VersionNumber = 12;
+                            _versionNumber = 12;
+                            WriteToLog("Word 2007 is installed");
                             break;
 
                         // Word 2010
                         case "WORD.APPLICATION.14":
-                            VersionNumber = 14;
+                            _versionNumber = 14;
+                            WriteToLog("Word 2010 is installed");
                             break;
 
                         // Word 2013
                         case "WORD.APPLICATION.15":
-                            VersionNumber = 15;
+                            _versionNumber = 15;
+                            WriteToLog("Word 2013 is installed");
                             break;
 
                         // Word 2016
                         case "WORD.APPLICATION.16":
-                            VersionNumber = 16;
+                            _versionNumber = 16;
+                            WriteToLog("Word 2016 is installed");
                             break;
 
                         // Word 2019
                         case "WORD.APPLICATION.17":
-                            VersionNumber = 17;
+                            _versionNumber = 17;
+                            WriteToLog("Word 2019 is installed");
                             break;
 
                         default:
-                            throw new OCConfiguration("Could not determine WORD version");
+                            throw new OCConfiguration("Could not determine Word version");
                     }
-                }
                 else
-                    throw new OCConfiguration("Could not find registry key WORD.Application\\CurVer");
+                    throw new OCConfiguration("Could not find registry key Word.Application\\CurVer");
             }
             catch (Exception exception)
             {
-                throw new OCConfiguration("Could not read registry to check WORD version", exception);
+                throw new OCConfiguration("Could not read registry to check Word version", exception);
             }
+        }
+        #endregion
+
+        #region StartWord
+        /// <summary>
+        ///     Starts Word
+        /// </summary>
+        private void StartWord()
+        {
+            if (IsWordRunning)
+                return;
+
+            WriteToLog("Starting Word");
+
+            _word = new WordInterop.ApplicationClass
+            {
+                ScreenUpdating = false,
+                DisplayAlerts = WordInterop.WdAlertLevel.wdAlertsNone,
+                DisplayDocumentInformationPanel = false,
+                DisplayRecentFiles = false,
+                DisplayScrollBars = false,
+                AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable,
+                Visible = false
+            };
+
+            _word.Options.UpdateLinksAtOpen = false;
+            _word.Options.ConfirmConversions = false;
+            _word.Options.SaveInterval = 0;
+            _word.Options.SaveNormalPrompt = false;
+            _word.Options.SavePropertiesPrompt = false;
+            _word.Options.AllowReadingMode = false;
+            _word.Options.WarnBeforeSavingPrintingSendingMarkup = false;
+            _word.Options.UpdateFieldsAtPrint = false;
+            _word.Options.UpdateLinksAtOpen = false;
+            _word.Options.UpdateLinksAtPrint = false;
+
+            var captionGuid = Guid.NewGuid().ToString();
+            _word.Caption = captionGuid;
+
+            var processId = ProcessHelpers.GetProcessIdByWindowTitle(captionGuid);
+
+            if (!processId.HasValue)
+                throw new OCConfiguration("Could not determine Word process by title");
+
+            _wordProcess = Process.GetProcessById(processId.Value);
+
+            WriteToLog($"Word started with process id {_wordProcess.Id}");
+        }
+        #endregion
+
+        #region StopWord
+        /// <summary>
+        ///     Stops Word
+        /// </summary>
+        private void StopWord()
+        {
+            if (IsWordRunning)
+            {
+                WriteToLog("Stopping Word");
+                _word.Quit(false);
+
+                var counter = 0;
+
+                // Give Word 2 seconds to close
+                while (counter < 2000)
+                {
+                    if (!IsWordRunning) break;
+                    counter++;
+                    Thread.Sleep(1);
+                }
+
+                if (IsWordRunning)
+                {
+                    WriteToLog($"Word did not shutdown gracefully in 2 seconds ... killing it on process id {_wordProcess.Id}");
+                    _wordProcess.Kill();
+                    WriteToLog("Word process killed");
+                }
+                else
+                    WriteToLog("Word stopped");
+            }
+
+            if (_word != null)
+            {
+                Marshal.ReleaseComObject(_word);
+                _word = null;
+            }
+
+            _wordProcess = null;
+
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
         }
         #endregion
 
         #region Convert
         /// <summary>
-        /// Converts a Word document to PDF
+        ///     Converts a Word document to PDF
         /// </summary>
         /// <param name="inputFile">The Word input file</param>
         /// <param name="outputFile">The PDF output file</param>
         /// <returns></returns>
-        internal static void Convert(string inputFile, string outputFile)
+        internal void Convert(string inputFile, string outputFile)
         {
-            DeleteAutoRecoveryFiles();
+            DeleteResiliencyKeys();
 
-            WordInterop.ApplicationClass word = null;
             WordInterop.DocumentClass document = null;
 
             try
             {
-                word = new WordInterop.ApplicationClass
-                {
-                    ScreenUpdating = false,
-                    DisplayAlerts = WordInterop.WdAlertLevel.wdAlertsNone,
-                    DisplayDocumentInformationPanel = false,
-                    DisplayRecentFiles = false,
-                    DisplayScrollBars = false,
-                    AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable
-                };
+                StartWord();
 
-                word.Options.UpdateLinksAtOpen = false;
-                word.Options.ConfirmConversions = false;
-                word.Options.SaveInterval = 0;
-                word.Options.SaveNormalPrompt = false;
-                word.Options.SavePropertiesPrompt = false;
-                word.Options.AllowReadingMode = false;
-                word.Options.WarnBeforeSavingPrintingSendingMarkup = false;
-                word.Options.UpdateFieldsAtPrint = false;
-                word.Options.UpdateLinksAtOpen = false;
-                word.Options.UpdateLinksAtPrint = false;
-                
-                document = (WordInterop.DocumentClass) Open(word, inputFile, false);
+                document = (WordInterop.DocumentClass) OpenDocument(inputFile, false);
 
                 // Do not remove this line!!
                 // This is yet another solution to a weird Office problem. Sometimes there
                 // are Word documents with images in it that take some time to load. When
                 // we remove the line below the ExportAsFixedFormat method will be called 
-                // before the images are loaded thus resulting in an unendless loop somewhere
+                // before the images are loaded thus resulting in an un endless loop somewhere
                 // in this method.
                 // ReSharper disable once UnusedVariable
                 var count = document.ComputeStatistics(WordInterop.WdStatistic.wdStatisticPages);
 
-                word.DisplayAutoCompleteTips = false;
-                word.DisplayScreenTips = false;
-                word.DisplayStatusBar = false;
-
+                WriteToLog($"Exporting document to PDF file '{outputFile}'");
                 document.ExportAsFixedFormat(outputFile, WordInterop.WdExportFormat.wdExportFormatPDF);
+                WriteToLog("Document exported to PDF");
+            }
+            catch (Exception)
+            {
+                StopWord();
+                throw;
             }
             finally
             {
-                if (document != null)
-                {
-                    document.Saved = true;
-                    document.Close(false);
-                    Marshal.ReleaseComObject(document);
-                }
-
-                if (word != null)
-                {
-                    word.Quit(false);
-                    Marshal.ReleaseComObject(word);
-                }
+                CloseDocument(document);
             }
         }
         #endregion
 
-        #region IsPasswordProtected
+        #region OpenDocument
         /// <summary>
-        /// Returns true when the Word file is password protected
+        ///     Opens the <paramref name="inputFile" /> and returns it as an <see cref="WordInterop.Document" /> object
         /// </summary>
-        /// <param name="fileName"></param>
+        /// <param name="inputFile">The file to open</param>
+        /// <param name="repairMode">When true the <paramref name="inputFile" /> is opened in repair mode</param>
         /// <returns></returns>
-        /// <exception cref="OCFileIsCorrupt">Raised when the file is corrupt</exception>
-        public static bool IsPasswordProtected(string fileName)
+        private WordInterop.Document OpenDocument(string inputFile, bool repairMode)
         {
-            try
-            {
-                using (var compoundFile = new CompoundFile(fileName))
-                {
-                    if (compoundFile.RootStorage.TryGetStream("EncryptedPackage") != null) return true;
+            WriteToLog($"Opening document '{inputFile}'{(repairMode ? " with repair mode" : string.Empty)}");
 
-                    var stream = compoundFile.RootStorage.TryGetStream("WordDocument");
-
-                    if (stream == null)
-                        throw new OCFileIsCorrupt("Could not find the WordDocument stream in the file '" + fileName +
-                                                  "'");
-
-                    var bytes = stream.GetData();
-                    using (var memoryStream = new MemoryStream(bytes))
-                    using (var binaryReader = new BinaryReader(memoryStream))
-                    {
-                        //http://msdn.microsoft.com/en-us/library/dd944620%28v=office.12%29.aspx
-                        // The bit that shows if the file is encrypted is in the 11th and 12th byte so we 
-                        // need to skip the first 10 bytes
-                        binaryReader.ReadBytes(10);
-
-                        // Now we read the 2 bytes that we need
-                        var pnNext = binaryReader.ReadUInt16();
-                        //(value & mask) == mask)
-
-                        // The bit that tells us if the file is encrypted
-                        return (pnNext & 0x0100) == 0x0100;
-                    }
-                }
-            }
-            catch (CFCorruptedFileException)
-            {
-                throw new OCFileIsCorrupt("The file '" + Path.GetFileName(fileName) + "' is corrupt");
-            }
-            catch (CFFileFormatException)
-            {
-                // It seems the file is just a normal Microsoft Office 2007 and up Open XML file
-                return false;
-            }
-        }
-        #endregion
-
-        #region Open
-            /// <summary>
-            /// Opens the <paramref name="inputFile"/> and returns it as an <see cref="WordInterop.Document"/> object
-            /// </summary>
-            /// <param name="word">The <see cref="WordInterop.Application"/></param>
-            /// <param name="inputFile">The file to open</param>
-            /// <param name="repairMode">When true the <paramref name="inputFile"/> is opened in repair mode</param>
-            /// <returns></returns>
-        private static WordInterop.Document Open(WordInterop._Application word,
-                                                string inputFile,
-                                                bool repairMode)
-        {
             try
             {
                 WordInterop.Document document;
@@ -252,92 +315,114 @@ namespace OfficeConverter
                 var extension = Path.GetExtension(inputFile);
 
                 if (extension != null && extension.ToUpperInvariant() == ".TXT")
-                    document = word.Documents.OpenNoRepairDialog(inputFile, false, true, false, "dummypassword",
+                    document = _word.Documents.OpenNoRepairDialog(inputFile, false, true, false, "dummy password",
                         Format: WordInterop.WdOpenFormat.wdOpenFormatUnicodeText,
                         OpenAndRepair: repairMode,
                         NoEncodingDialog: true);
                 else
-                    document = word.Documents.OpenNoRepairDialog(inputFile, false, true, false, "dummypassword",
+                    document = _word.Documents.OpenNoRepairDialog(inputFile, false, true, false, "dummy password",
                         OpenAndRepair: repairMode,
                         NoEncodingDialog: true);
 
                 // This will lock or unlock all form fields in a Word document so that auto fill 
-                // and date/time field do or don't get updated automaticly when converting
+                // and date/time field do or don't get updated automatic when converting
                 if (document.Fields.Count > 0)
                 {
+                    WriteToLog("Locking all form fields against modifications");
                     foreach (WordInterop.Field field in document.Fields)
                         field.Locked = true;
                 }
 
+                WriteToLog("Document opened");
                 return document;
             }
             catch (Exception exception)
             {
+                WriteToLog(
+                    $"ERROR: Failed to open document, exception: '{ExceptionHelpers.GetInnerException(exception)}'");
+
                 if (repairMode)
                     throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) +
                                               "' seems to be corrupt, error: " +
                                               ExceptionHelpers.GetInnerException(exception));
 
-                return Open(word, inputFile, true);
+                return OpenDocument(inputFile, true);
             }
         }
         #endregion
 
-        #region DeleteAutoRecoveryFiles
+        #region CloseDocument
         /// <summary>
-        /// This method will delete the automatic created Resiliency key. Word uses this registry key  
-        /// to make entries to corrupted documents. If there are to many entries under this key Word will
-        /// get slower and slower to start. To prevent this we just delete this key when it exists
+        ///     Closes the opened document and releases any allocated resources
         /// </summary>
-        private static void DeleteAutoRecoveryFiles()
+        /// <param name="document">The Word document</param>
+        private void CloseDocument(WordInterop.Document document)
         {
+            if (document == null) return;
+            WriteToLog("Closing document");
+            document.Saved = true;
+            document.Close(false);
+            Marshal.ReleaseComObject(document);
+            WriteToLog("Document closed");
+        }
+        #endregion
+
+        #region DeleteResiliencyKeys
+        /// <summary>
+        ///     This method will delete the automatic created Resiliency key. Word uses this registry key
+        ///     to make entries to corrupted documents. If there are to many entries under this key Word will
+        ///     get slower and slower to start. To prevent this we just delete this key when it exists
+        /// </summary>
+        private void DeleteResiliencyKeys()
+        {
+            WriteToLog("Deleting Word resiliency keys from the registry");
+
             try
             {
                 // HKEY_CURRENT_USER\Software\Microsoft\Office\14.0\Word\Resiliency\DocumentRecovery
-                var version = string.Empty;
-
-                switch (VersionNumber)
-                {
-                    // Word 2003
-                    case 11:
-                        version = "11.0";
-                        break;
-
-                    // Word 2017
-                    case 12:
-                        version = "12.0";
-                        break;
-
-                    // Word 2010
-                    case 14:
-                        version = "14.0";
-                        break;
-
-                    // Word 2013
-                    case 15:
-                        version = "15.0";
-                        break;
-
-                    // Word 2016
-                    case 16:
-                        version = "16.0";
-                        break;
-
-                    // Word 2019
-                    case 17:
-                        version = "17.0";
-                        break;
-                }
-
-                var key = @"Software\Microsoft\Office\" + version + @"\Word\Resiliency";
+                var key = $@"Software\Microsoft\Office\{_versionNumber}.0\Word\Resiliency";
 
                 if (Registry.CurrentUser.OpenSubKey(key, false) != null)
+                {
                     Registry.CurrentUser.DeleteSubKeyTree(key);
+                    WriteToLog("Resiliency keys deleted");
+                }
+                else
+                    WriteToLog("There are no keys to delete");
             }
             catch (Exception exception)
             {
-                EventLog.WriteEntry("OfficeConverter", ExceptionHelpers.GetInnerException(exception), EventLogEntryType.Error);
+                WriteToLog($"Failed to delete resiliency keys, error: {ExceptionHelpers.GetInnerException(exception)}");
             }
+        }
+        #endregion
+
+        #region WriteToLog
+        /// <summary>
+        ///     Writes a line and linefeed to the <see cref="_logStream" />
+        /// </summary>
+        /// <param name="message">The message to write</param>
+        private void WriteToLog(string message)
+        {
+            if (_logStream == null || !_logStream.CanWrite) return;
+            var line = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff") +
+                       (InstanceId != null ? " - " + InstanceId : string.Empty) + " - " +
+                       message + Environment.NewLine;
+            var bytes = Encoding.UTF8.GetBytes(line);
+            _logStream.Write(bytes, 0, bytes.Length);
+            _logStream.Flush();
+        }
+        #endregion
+
+        #region Dispose
+        /// <summary>
+        ///     Disposes the running <see cref="_word" />
+        /// </summary>
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            StopWord();
         }
         #endregion
     }
