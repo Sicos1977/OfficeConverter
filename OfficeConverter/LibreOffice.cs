@@ -2,26 +2,52 @@
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
+using Microsoft.Win32;
 using uno;
 using uno.util;
 using unoidl.com.sun.star.beans;
 using unoidl.com.sun.star.bridge;
-
-// Libreoffice assemblies
-using unoidl.com.sun.star.lang;
 using unoidl.com.sun.star.frame;
+using unoidl.com.sun.star.lang;
 using unoidl.com.sun.star.uno;
 using unoidl.com.sun.star.util;
+using Exception = System.Exception;
+
+//
+// LibreOffice.cs
+//
+// Author: Kees van Spelde <sicos2002@hotmail.com>
+//
+// Copyright (c) 2014-2018 Magic-Sessions. (www.magic-sessions.com)
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+//
 
 namespace OfficeConverter
 {
     /// <summary>
-    /// This class is used as a placeholder for all Libre office related methods
+    ///     This class is used as a placeholder for all Libre office related methods
     /// </summary>
     /// <remarks>
-    /// - https://api.libreoffice.org/examples/examples.html
-    /// - https://api.libreoffice.org/docs/install.html
-    /// - https://www.libreoffice.org/download/download/
+    ///     - https://api.libreoffice.org/examples/examples.html
+    ///     - https://api.libreoffice.org/docs/install.html
+    ///     - https://www.libreoffice.org/download/download/
     /// </remarks>
     internal class LibreOffice
     {
@@ -33,13 +59,13 @@ namespace OfficeConverter
 
         #region Properties
         /// <summary>
-        /// Returns the full path to LibreOffice, when not found <c>null</c> is returned
+        ///     Returns the full path to LibreOffice, when not found <c>null</c> is returned
         /// </summary>
         private string GetInstallPath
         {
             get
             {
-                using (var regkey = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\LibreOffice\UNO\InstallPath", false))
+                using (var regkey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\LibreOffice\UNO\InstallPath", false))
                 {
                     var installPath = (string) regkey?.GetValue(string.Empty);
                     return installPath;
@@ -50,7 +76,7 @@ namespace OfficeConverter
 
         #region Start
         /// <summary>
-        /// Checks if LibreOffice is started and if not starts it
+        ///     Checks if LibreOffice is started and if not starts it
         /// </summary>
         private void Start()
         {
@@ -90,7 +116,7 @@ namespace OfficeConverter
 
         #region ConvertToUrl
         /// <summary>
-        /// Convert the give file path to the format LibreOffice needs
+        ///     Convert the give file path to the format LibreOffice needs
         /// </summary>
         /// <param name="file"></param>
         /// <returns></returns>
@@ -102,7 +128,7 @@ namespace OfficeConverter
 
         #region ConvertToPdf
         /// <summary>
-        /// Converts the given <paramref name="inputFile"/> to PDF format and saves it as <paramref name="outputFile"/>
+        ///     Converts the given <paramref name="inputFile" /> to PDF format and saves it as <paramref name="outputFile" />
         /// </summary>
         /// <param name="inputFile">The input file</param>
         /// <param name="outputFile">The output file</param>
@@ -125,13 +151,14 @@ namespace OfficeConverter
 
                 var localContext = Bootstrap.defaultBootstrap_InitialComponentContext();
                 var localServiceManager = localContext.getServiceManager();
-                var urlResolver = (XUnoUrlResolver) localServiceManager.createInstanceWithContext("com.sun.star.bridge.UnoUrlResolver", localContext);
+                var urlResolver =
+                    (XUnoUrlResolver) localServiceManager.createInstanceWithContext(
+                        "com.sun.star.bridge.UnoUrlResolver", localContext);
                 XComponentContext remoteContext;
 
                 var i = 0;
 
                 while (true)
-                {
                     try
                     {
                         remoteContext =
@@ -140,17 +167,16 @@ namespace OfficeConverter
 
                         break;
                     }
-                    catch (System.Exception exception)
+                    catch (Exception exception)
                     {
                         if (i == 20 || !exception.Message.Contains("couldn't connect to pipe")) throw;
                         Thread.Sleep(100);
                         i++;
                     }
-                }
 
                 // ReSharper disable once SuspiciousTypeConversion.Global
                 var remoteFactory = (XMultiServiceFactory) remoteContext.getServiceManager();
-                var componentLoader = (XComponentLoader) remoteFactory.createInstance("com.sun.star.frame.Desktop"); 
+                var componentLoader = (XComponentLoader) remoteFactory.createInstance("com.sun.star.frame.Desktop");
                 component = InitDocument(componentLoader, ConvertToUrl(inputFile), "_blank");
 
                 // Save/export the document
@@ -169,7 +195,7 @@ namespace OfficeConverter
                 {
                     _libreOfficeProcess.Kill();
 
-                    while(!_libreOfficeProcess.HasExited)
+                    while (!_libreOfficeProcess.HasExited)
                         Thread.Sleep(100);
 
                     _libreOfficeProcess = null;
@@ -189,7 +215,7 @@ namespace OfficeConverter
 
         #region InitDocument
         /// <summary>
-        /// Creates a new document in LibreOffice and opens the given <paramref name="file"/>
+        ///     Creates a new document in LibreOffice and opens the given <paramref name="file" />
         /// </summary>
         /// <param name="aLoader"></param>
         /// <param name="file"></param>
@@ -198,8 +224,8 @@ namespace OfficeConverter
         private XComponent InitDocument(XComponentLoader aLoader, string file, string target)
         {
             var openProps = new PropertyValue[2];
-            openProps[0] = new PropertyValue { Name = "Hidden", Value = new Any(true) };
-            openProps[1] = new PropertyValue { Name = "ReadOnly", Value = new Any(true) };
+            openProps[0] = new PropertyValue {Name = "Hidden", Value = new Any(true)};
+            openProps[1] = new PropertyValue {Name = "ReadOnly", Value = new Any(true)};
 
             var xComponent = aLoader.loadComponentFromURL(
                 file, target, 0,
@@ -211,12 +237,12 @@ namespace OfficeConverter
 
         #region SaveDocument
         /// <summary>
-        /// Exports the loaded document to PDF format
+        ///     Exports the loaded document to PDF format
         /// </summary>
         /// <param name="component"></param>
         /// <param name="sourceFile"></param>
         /// <param name="destinationFile"></param>
-        private  void ExportToPdf(XComponent component, string sourceFile, string destinationFile)
+        private void ExportToPdf(XComponent component, string sourceFile, string destinationFile)
         {
             var propertyValues = new PropertyValue[3];
             var filterData = new PropertyValue[5];
@@ -257,36 +283,36 @@ namespace OfficeConverter
                 Name = "FilterName",
                 Value = new Any(GetFilterType(sourceFile))
             };
-            
+
             // Setting the flag for overwriting
-            propertyValues[1] = new PropertyValue { Name = "Overwrite", Value = new Any(true) };
+            propertyValues[1] = new PropertyValue {Name = "Overwrite", Value = new Any(true)};
 
             var polymorphicType = PolymorphicType.GetType(
                 typeof(PropertyValue[]),
                 "unoidl.com.sun.star.beans.PropertyValue[]");
 
-            propertyValues[2] = new PropertyValue { Name = "FilterData",  Value = new Any(polymorphicType, filterData) };
-            
+            propertyValues[2] = new PropertyValue {Name = "FilterData", Value = new Any(polymorphicType, filterData)};
+
             // ReSharper disable once SuspiciousTypeConversion.Global
-            ((XStorable)component).storeToURL(ConvertToUrl(destinationFile), propertyValues);
+            ((XStorable) component).storeToURL(ConvertToUrl(destinationFile), propertyValues);
         }
         #endregion
 
         #region CloseDocument
         /// <summary>
-        /// Closes the document and frees any used resources
+        ///     Closes the document and frees any used resources
         /// </summary>
         private void CloseDocument(XComponent component)
         {
-            var closeable = (XCloseable)component;
+            var closeable = (XCloseable) component;
             closeable?.close(false);
         }
         #endregion
 
         #region GetFilterType
         /// <summary>
-        /// Returns the filter that is needed to convert the given <paramref name="fileName"/>,
-        /// <c>null</c> is returned when the file cannot be converted
+        ///     Returns the filter that is needed to convert the given <paramref name="fileName" />,
+        ///     <c>null</c> is returned when the file cannot be converted
         /// </summary>
         /// <param name="fileName">The file to check</param>
         /// <returns></returns>

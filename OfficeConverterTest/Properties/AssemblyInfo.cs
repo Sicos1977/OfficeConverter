@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("OfficeConverterTest")]
-[assembly: AssemblyCopyright("Copyright © 2014 - 2016 Kees van Spelde")]
+[assembly: AssemblyCopyright("Copyright © 2014 - 2018 Kees van Spelde")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
