@@ -367,7 +367,6 @@ namespace OfficeConverter
                 DisplayScrollBars = false,
                 AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable,
                 PrintCommunication = true, // DO NOT REMOVE THIS LINE, NO NEVER EVER ... DON'T EVEN TRY IT
-                Visible = false
             };
 
             ProcessHelpers.GetWindowThreadProcessId(_excel.Hwnd, out var processId);
@@ -386,16 +385,24 @@ namespace OfficeConverter
             if (IsExcelRunning)
             {
                 Logger.WriteToLog("Stopping Excel");
-                _excel.Quit();
+
+                try
+                {
+                    _excel.Quit();
+                }
+                catch(Exception exception)
+                {
+                    Logger.WriteToLog($"Excel did not shutdown gracefully, exception: {ExceptionHelpers.GetInnerException(exception)}");
+                }
 
                 var counter = 0;
 
                 // Give Excel 2 seconds to close
-                while (counter < 2000)
+                while (counter < 200)
                 {
                     if (!IsExcelRunning) break;
                     counter++;
-                    Thread.Sleep(1);
+                    Thread.Sleep(10);
                 }
 
                 if (IsExcelRunning)
@@ -975,7 +982,8 @@ namespace OfficeConverter
                     switch (sheetObject)
                     {
                         // Invisible sheets will not be converted... they are not visible
-                        case ExcelInterop.Worksheet sheet when sheet.Visible != ExcelInterop.XlSheetVisibility.xlSheetVisible:
+                        case ExcelInterop.Worksheet sheet
+                            when sheet.Visible != ExcelInterop.XlSheetVisibility.xlSheetVisible:
                             continue;
 
                         case ExcelInterop.Worksheet sheet:
@@ -1028,11 +1036,11 @@ namespace OfficeConverter
 
                     if (!(sheetObject is ExcelInterop.Chart chart)) continue;
                     SetChartPaperSize(chart);
-
-                    Marshal.ReleaseComObject(activeWindow);
                     Marshal.ReleaseComObject(chart);
                 }
 
+                Marshal.ReleaseComObject(activeWindow);
+                
                 // It is not possible in Excel to export an empty workbook
                 if (usedSheets != 0)
                 {

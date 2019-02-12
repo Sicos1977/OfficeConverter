@@ -173,16 +173,24 @@ namespace OfficeConverter
             if (IsPowerPointRunning)
             {
                 Logger.WriteToLog("Stopping PowerPoint");
-                _powerPoint.Quit();
+                
+                try
+                {
+                    _powerPoint.Quit();
+                }
+                catch(Exception exception)
+                {
+                    Logger.WriteToLog($"PowerPoint did not shutdown gracefully, exception: {ExceptionHelpers.GetInnerException(exception)}");
+                }
 
                 var counter = 0;
 
                 // Give PowerPoint 2 seconds to close
-                while (counter < 2000)
+                while (counter < 200)
                 {
                     if (!IsPowerPointRunning) break;
                     counter++;
-                    Thread.Sleep(1);
+                    Thread.Sleep(10);
                 }
 
                 if (IsPowerPointRunning)

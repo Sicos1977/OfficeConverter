@@ -206,16 +206,24 @@ namespace OfficeConverter
             if (IsWordRunning)
             {
                 Logger.WriteToLog("Stopping Word");
-                _word.Quit(false);
+
+                try
+                {
+                    _word.Quit(false);
+                }
+                catch(Exception exception)
+                {
+                    Logger.WriteToLog($"Word did not shutdown gracefully, exception: {ExceptionHelpers.GetInnerException(exception)}");
+                }
 
                 var counter = 0;
 
                 // Give Word 2 seconds to close
-                while (counter < 2000)
+                while (counter < 200)
                 {
                     if (!IsWordRunning) break;
                     counter++;
-                    Thread.Sleep(1);
+                    Thread.Sleep(10);
                 }
 
                 if (IsWordRunning)

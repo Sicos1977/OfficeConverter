@@ -16,6 +16,14 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OfficeConverterTestTool", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OfficeConverterService", "OfficeConverterService\OfficeConverterService.csproj", "{7285E938-C816-41A7-9E56-EAACC2FF7A05}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "OfficeAssemblies", "OfficeAssemblies", "{BDE5EEED-5D71-44DB-87C6-8A972070188B}"
+	ProjectSection(SolutionItems) = preProject
+		OfficeConverter\OfficeAssemblies\Microsoft.Office.Interop.Excel.dll = OfficeConverter\OfficeAssemblies\Microsoft.Office.Interop.Excel.dll
+		OfficeConverter\OfficeAssemblies\Microsoft.Office.Interop.PowerPoint.dll = OfficeConverter\OfficeAssemblies\Microsoft.Office.Interop.PowerPoint.dll
+		OfficeConverter\OfficeAssemblies\Microsoft.Office.Interop.Word.dll = OfficeConverter\OfficeAssemblies\Microsoft.Office.Interop.Word.dll
+		OfficeConverter\OfficeAssemblies\Office.dll = OfficeConverter\OfficeAssemblies\Office.dll
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
