@@ -208,7 +208,7 @@ namespace OfficeConverter
         /// </summary>
         /// <param name="inputFile">The Microsoft Office file</param>
         /// <param name="outputFile">The output file with full path</param>
-        /// <param name="logStream"></param>
+        /// <param name="logStream">When set then logging is written to this stream</param>
         /// <exception cref="ArgumentNullException">
         ///     Raised when the <paramref name="inputFile" /> or <paramref name="outputFile" />
         ///     is null or empty
