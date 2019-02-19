@@ -7,11 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OfficeConverter", "OfficeCo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OfficeConverterTest", "OfficeConverterTest\OfficeConverterTest.csproj", "{5F46D0CD-C9A7-497F-9211-17596D7DCAB9}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_license_", "_license_", "{3B834D06-4629-402D-98BA-AEED3AC97D59}"
-	ProjectSection(SolutionItems) = preProject
-		license.txt = license.txt
-	EndProjectSection
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OfficeConverterTestTool", "OfficeConverterTestTool\OfficeConverterTestTool.csproj", "{11801F7F-7773-404D-B143-D4B0FF4FCE48}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OfficeConverterService", "OfficeConverterService\OfficeConverterService.csproj", "{7285E938-C816-41A7-9E56-EAACC2FF7A05}"
