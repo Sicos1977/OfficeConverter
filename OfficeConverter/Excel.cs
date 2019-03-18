@@ -6,6 +6,7 @@ using System.Drawing.Printing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Microsoft.Office.Core;
@@ -42,6 +43,73 @@ using ExcelInterop = Microsoft.Office.Interop.Excel;
 
 namespace OfficeConverter
 {
+    #region Struct
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
+    // ReSharper disable once InconsistentNaming
+    internal struct INTERFACEINFO
+    {
+        [MarshalAs(UnmanagedType.IUnknown)]
+        public object punk;
+        public Guid iid;
+        public ushort wMethod;
+    }
+    #endregion
+
+    #region Interfaces
+    [ComImport, ComConversionLoss, InterfaceType(1), 
+     Guid("00000016-0000-0000-C000-000000000046")]
+    internal interface IMessageFilter
+    {
+        [PreserveSig, MethodImpl(MethodImplOptions.InternalCall, 
+             MethodCodeType = MethodCodeType.Runtime)]
+
+        int HandleInComingCall([In] uint dwCallType, [In] IntPtr htaskCaller, 
+            [In] uint dwTickCount,
+            [In, MarshalAs(UnmanagedType.LPArray)] INTERFACEINFO[] 
+                lpInterfaceInfo);
+
+        [PreserveSig, MethodImpl(MethodImplOptions.InternalCall, 
+             MethodCodeType = MethodCodeType.Runtime)]
+        int RetryRejectedCall([In] IntPtr htaskCallee, [In] uint dwTickCount, 
+            [In] uint dwRejectType);
+
+        [PreserveSig, MethodImpl(MethodImplOptions.InternalCall, 
+             MethodCodeType = MethodCodeType.Runtime)]
+        int MessagePending([In] IntPtr htaskCallee, [In] uint dwTickCount, 
+            [In] uint dwPendingType);
+    }
+    #endregion
+
+    #region MessageFilter
+    internal class MessageFilter : IMessageFilter
+    {
+        [DllImport("ole32.dll")]
+        static extern int CoRegisterMessageFilter(IMessageFilter lpMessageFilter, out IMessageFilter lplpMessageFilter);
+        private IMessageFilter _oldMessageFilter;
+
+        public void RegisterFilter()
+        {
+            CoRegisterMessageFilter(this, out _oldMessageFilter);
+            Thread.Sleep(100);
+        }
+
+        public int HandleInComingCall(uint dwCallType, IntPtr htaskCaller, uint dwTickCount, INTERFACEINFO[] lpInterfaceInfo)
+        {
+            return 1;
+        }
+
+        public int RetryRejectedCall(IntPtr htaskCallee, uint dwTickCount, uint dwRejectType)
+        {
+            return 1;
+        }
+
+        public int MessagePending(IntPtr htaskCallee, uint dwTickCount, uint dwPendingType)
+        {
+            return 1;
+        }
+    }
+    #endregion
+
     /// <summary>
     ///     This class is used as a placeholder for all Excel related methods
     /// </summary>
@@ -254,6 +322,9 @@ namespace OfficeConverter
         /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine Excel version</exception>
         internal Excel()
         {
+            var messageFilter = new MessageFilter();
+            messageFilter.RegisterFilter();
+
             Logger.WriteToLog("Checking what version of Excel is installed");
 
             try
