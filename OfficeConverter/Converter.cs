@@ -323,8 +323,7 @@ namespace OfficeConverter
                                   $".DOC, .DOT, .DOCM, .DOCX, .DOTM, .ODT, .RTF, .MHT, {Environment.NewLine}" +
                                   $".WPS, .WRI, .XLS, .XLT, .XLW, .XLSB, .XLSM, .XLSX, {Environment.NewLine}" +
                                   $".XLTM, .XLTX, .CSV, .ODS, .POT, .PPT, .PPS, .POTM, {Environment.NewLine}" +
-                                  $".POTX, .PPSM, .PPSX, .PPTM, .PPTX and .ODP {Environment.NewLine}" +
-                                   " are supported";
+                                  $".POTX, .PPSM, .PPSX, .PPTM, .PPTX and .ODP are supported";
 
                     Logger.WriteToLog(message);
                     throw new OCFileTypeNotSupported(message);
