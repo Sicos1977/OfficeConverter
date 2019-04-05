@@ -318,13 +318,13 @@ namespace OfficeConverter
 
                 default:
                 {
-                    var message = "The file '" + Path.GetFileName(inputFile) +
-                                  "' is not supported only, " + Environment.NewLine +
-                                  ".DOC, .DOT, .DOCM, .DOCX, .DOTM, .ODT, .RTF, .MHT, " + Environment.NewLine +
-                                  ".WPS, .WRI, .XLS, .XLT, .XLW, .XLSB, .XLSM, .XLSX, " + Environment.NewLine +
-                                  ".XLTM, .XLTX, .CSV, .ODS, .POT, .PPT, .PPS, .POTM, " + Environment.NewLine +
-                                  ".POTX, .PPSM, .PPSX, .PPTM, .PPTX, .ODP" + Environment.NewLine +
-                                  " are supported";
+                    var message = $"The file '{Path.GetFileName(inputFile)}' " +
+                                  $"is not supported only, {Environment.NewLine}" +
+                                  $".DOC, .DOT, .DOCM, .DOCX, .DOTM, .ODT, .RTF, .MHT, {Environment.NewLine}" +
+                                  $".WPS, .WRI, .XLS, .XLT, .XLW, .XLSB, .XLSM, .XLSX, {Environment.NewLine}" +
+                                  $".XLTM, .XLTX, .CSV, .ODS, .POT, .PPT, .PPS, .POTM, {Environment.NewLine}" +
+                                  $".POTX, .PPSM, .PPSX, .PPTM, .PPTX and .ODP {Environment.NewLine}" +
+                                   " are supported";
 
                     Logger.WriteToLog(message);
                     throw new OCFileTypeNotSupported(message);
