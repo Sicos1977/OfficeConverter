@@ -85,6 +85,7 @@ namespace OfficeConverter
     {
         [DllImport("ole32.dll")]
         static extern int CoRegisterMessageFilter(IMessageFilter lpMessageFilter, out IMessageFilter lplpMessageFilter);
+        // ReSharper disable once NotAccessedField.Local
         private IMessageFilter _oldMessageFilter;
 
         public void RegisterFilter()
