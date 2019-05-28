@@ -431,13 +431,14 @@ namespace OfficeConverter
 
             _excel = new ExcelInterop.ApplicationClass
             {
+                Interactive = false,
                 ScreenUpdating = false,
                 DisplayAlerts = false,
                 DisplayDocumentInformationPanel = false,
                 DisplayRecentFiles = false,
                 DisplayScrollBars = false,
                 AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable,
-                PrintCommunication = true, // DO NOT REMOVE THIS LINE, NO NEVER EVER ... DON'T EVEN TRY IT
+                PrintCommunication = true // DO NOT REMOVE THIS LINE, NO NEVER EVER ... DON'T EVEN TRY IT
             };
 
             ProcessHelpers.GetWindowThreadProcessId(_excel.Hwnd, out var processId);
