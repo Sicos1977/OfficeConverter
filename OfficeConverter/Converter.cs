@@ -107,7 +107,10 @@ namespace OfficeConverter
             get
             {
                 if (_excel != null)
+                {
+                    _excel.TempDirectory = TempDirectory;
                     return _excel;
+                }
 
                 _excel = new Excel();
                 if (TempDirectory != null)
