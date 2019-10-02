@@ -83,6 +83,15 @@ namespace OfficeConverter
         public string TempDirectory { get; set; }
 
         /// <summary>
+        ///     When set to <c>true</c> then the <see cref="TempDirectory"/>
+        ///     will not be deleted when the extraction is done
+        /// </summary>
+        /// <remarks>
+        ///     For debugging perpeses
+        /// </remarks>
+        public bool DoNotDeleteTempDirectory { get; set; }
+
+        /// <summary>
         /// Returns a reference to the Word class when it already exists or creates a new one
         /// when it doesn't
         /// </summary>
@@ -109,12 +118,16 @@ namespace OfficeConverter
                 if (_excel != null)
                 {
                     _excel.TempDirectory = TempDirectory;
+                    _excel.DoNotDeleteTempDirectory = DoNotDeleteTempDirectory;
                     return _excel;
                 }
 
                 _excel = new Excel();
                 if (TempDirectory != null)
+                {
                     _excel.TempDirectory = TempDirectory;
+                    _excel.DoNotDeleteTempDirectory = DoNotDeleteTempDirectory;
+                }
 
                 return _excel;
             }

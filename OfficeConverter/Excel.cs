@@ -283,6 +283,15 @@ namespace OfficeConverter
         }
 
         /// <summary>
+        ///     When set to <c>true</c> then the <see cref="TempDirectory"/>
+        ///     will not be deleted when the extraction is done
+        /// </summary>
+        /// <remarks>
+        ///     For debugging perpeses
+        /// </remarks>
+        public bool DoNotDeleteTempDirectory { get; set; }
+
+        /// <summary>
         ///     Returns a reference to the temp directory
         /// </summary>
         private DirectoryInfo GetTempDirectory
@@ -1141,7 +1150,7 @@ namespace OfficeConverter
                 if (_tempDirectory != null)
                 {
                     _tempDirectory.Refresh();
-                    if (_tempDirectory.Exists)
+                    if (_tempDirectory.Exists && !DoNotDeleteTempDirectory)
                     {
                         Logger.WriteToLog($"Deleting temporary folder '{_tempDirectory.FullName}'");
                         _tempDirectory.Delete(true);
