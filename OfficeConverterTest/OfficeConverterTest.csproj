@@ -51,8 +51,8 @@
     <Reference Include="OpenMcdf, Version=2.2.1.4, Culture=neutral, PublicKeyToken=fdbb1629d7c00800, processorArchitecture=MSIL">
       <HintPath>..\packages\OpenMcdf.2.2.1.4\lib\net40\OpenMcdf.dll</HintPath>
     </Reference>
-    <Reference Include="PasswordProtectedChecker, Version=1.3.3.0, Culture=neutral, PublicKeyToken=61be40572173cc31, processorArchitecture=MSIL">
-      <HintPath>..\packages\PasswordProtectedChecker.1.3.3\lib\PasswordProtectedChecker.dll</HintPath>
+    <Reference Include="PasswordProtectedChecker, Version=1.3.4.0, Culture=neutral, PublicKeyToken=61be40572173cc31, processorArchitecture=MSIL">
+      <HintPath>..\packages\PasswordProtectedChecker.1.3.5\lib\PasswordProtectedChecker.dll</HintPath>
     </Reference>
     <Reference Include="RtfPipe, Version=1.0.0.0, Culture=neutral, PublicKeyToken=d92851e9c6029ce4, processorArchitecture=MSIL">
       <HintPath>..\packages\MsgReader.3.7.17\lib\net45\RtfPipe.dll</HintPath>
