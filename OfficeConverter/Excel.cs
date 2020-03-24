@@ -1104,6 +1104,8 @@ namespace OfficeConverter
                                     break;
 
                                 case "":
+                                    if (sheet.Shapes.Count > 0)
+                                        usedSheets += 1;
                                     break;
 
                                 default:
@@ -1145,7 +1147,14 @@ namespace OfficeConverter
 
             finally
             {
-                CloseWorkbook(workbook);
+                try
+                {
+                    CloseWorkbook(workbook);
+                }
+                catch(Exception exception)
+                {
+                    Logger.WriteToLog("Error closing workbook, error: " + ExceptionHelpers.GetInnerException(exception));
+                }
 
                 if (_tempDirectory != null)
                 {
