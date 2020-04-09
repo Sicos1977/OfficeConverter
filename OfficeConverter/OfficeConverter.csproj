@@ -136,7 +136,6 @@
     <Compile Include="Exceptions\OCFileIsPasswordProtected.cs" />
     <Compile Include="Exceptions\OCFileTypeNotSupported.cs" />
     <Compile Include="Helpers\ExceptionHelpers.cs" />
-    <Compile Include="Helpers\FileManager.cs" />
     <Compile Include="Helpers\Logger.cs" />
     <Compile Include="Helpers\NativeMethods.cs" />
     <Compile Include="Helpers\ProcessHelpers.cs" />
