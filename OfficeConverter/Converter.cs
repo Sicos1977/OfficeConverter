@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Xml;
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
 using PasswordProtectedChecker;
@@ -332,11 +333,32 @@ namespace OfficeConverter
                     break;
                 }
 
+                case ".XML":
+                    var progId = GetProgId(inputFile);
+                    if (!string.IsNullOrWhiteSpace(progId))
+                    {
+                        switch (progId)
+                        {
+                            case "Word":
+                                Word.Convert(inputFile, outputFile);
+                                break;
+
+                            case "Excel":
+                                Excel.Convert(inputFile, outputFile);
+                                break;
+                        }
+                    }
+                    else
+                        goto default;
+
+                    break;
+
+
                 default:
                 {
                     var message = $"The file '{Path.GetFileName(inputFile)}' " +
                                   $"is not supported only, {Environment.NewLine}" +
-                                  $".DOC, .DOT, .DOCM, .DOCX, .DOTM, .ODT, .RTF, .MHT, {Environment.NewLine}" +
+                                  $".DOC, .DOT, .DOCM, .DOCX, .DOTM, .XML (Word or Excel) .ODT, .RTF, .MHT, {Environment.NewLine}" +
                                   $".WPS, .WRI, .XLS, .XLT, .XLW, .XLSB, .XLSM, .XLSX, {Environment.NewLine}" +
                                   $".XLTM, .XLTX, .CSV, .ODS, .POT, .PPT, .PPS, .POTM, {Environment.NewLine}" +
                                    ".POTX, .PPSM, .PPSX, .PPTM, .PPTX and .ODP are supported";
@@ -345,6 +367,40 @@ namespace OfficeConverter
                     throw new OCFileTypeNotSupported(message);
                 }
             }
+        }
+        #endregion
+
+        #region GetProgId
+        /// <summary>
+        /// Returns the progid that is inside the XML or <c>null</c> when not found
+        /// </summary>
+        /// <param name="fileName"></param>
+        /// <returns></returns>
+        private string GetProgId(string fileName)
+        {
+            try
+            {
+                var doc = new XmlDocument();
+                doc.Load(fileName);
+                if (doc.HasChildNodes)
+                {
+                    var processingInstructions = doc.ChildNodes[1];
+                    switch (processingInstructions.Value)
+                    {
+                        case "progid=\"Word.Document\"":
+                            return "Word";
+                        
+                        case "progid=\"Excel.Sheet\"":
+                            return "Excel";
+                    }
+                }
+            }
+            catch
+            {
+                return null;
+            }
+
+            return null;
         }
         #endregion
 
