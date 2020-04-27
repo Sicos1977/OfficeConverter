@@ -89,7 +89,7 @@ namespace OfficeConverter
         /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine PowerPoint version</exception>
         internal PowerPoint()
         {
-            Logger.WriteToLog("Checking what version of Word is installed");
+            Logger.WriteToLog("Checking what version of PowerPoint is installed");
 
             try
             {
