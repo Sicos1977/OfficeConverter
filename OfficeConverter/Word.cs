@@ -182,6 +182,9 @@ namespace OfficeConverter
             _word.Options.UpdateFieldsAtPrint = false;
             _word.Options.UpdateLinksAtOpen = false;
             _word.Options.UpdateLinksAtPrint = false;
+            _word.Options.DoNotPromptForConvert = true;
+            _word.Options.LocalNetworkFile = false;
+            _word.Options.ConfirmConversions = false;
 
             var captionGuid = Guid.NewGuid().ToString();
             _word.Caption = captionGuid;

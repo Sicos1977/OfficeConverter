@@ -4,6 +4,8 @@ using System.Xml;
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
 using PasswordProtectedChecker;
+// ReSharper disable UnusedAutoPropertyAccessor.Global
+// ReSharper disable MemberCanBePrivate.Global
 
 //
 // Converter.cs
@@ -61,6 +63,11 @@ namespace OfficeConverter
         private PowerPoint _powerPoint;
 
         /// <summary>
+        ///     <see cref="LibreOffice"/>
+        /// </summary>
+        private LibreOffice _libreOffice;
+
+        /// <summary>
         ///     Keeps track is we already disposed our resources
         /// </summary>
         private bool _disposed;
@@ -91,6 +98,27 @@ namespace OfficeConverter
         ///     For debugging perpeses
         /// </remarks>
         public bool DoNotDeleteTempDirectory { get; set; }
+
+        /// <summary>
+        ///     When set then LibreOffice is used to do the conversion instead of Microsoft Office
+        /// </summary>
+        public bool UseLibreOffice { get; set; }
+
+        /// <summary>
+        /// Returns a reference to the LibreOffice class when it already exists or creates a new one
+        /// when it doesn't
+        /// </summary>
+        private LibreOffice LibreOffice
+        {
+            get
+            {
+                if (_libreOffice != null)
+                    return _libreOffice;
+
+                _libreOffice = new LibreOffice();
+                return _libreOffice;
+            }
+        }
 
         /// <summary>
         /// Returns a reference to the Word class when it already exists or creates a new one
@@ -263,7 +291,11 @@ namespace OfficeConverter
                     if (result.Protected)
                         ThrowPasswordProtected(inputFile);
 
-                    Word.Convert(inputFile, outputFile);
+                    if (UseLibreOffice)
+                        LibreOffice.Convert(inputFile,outputFile);
+                    else
+                        Word.Convert(inputFile, outputFile);
+
                     break;
                 }
 
@@ -282,28 +314,27 @@ namespace OfficeConverter
                 case ".XLSX":
                 case ".XLTM":
                 case ".XLTX":
-                {
-                    var result = _passwordProtectedChecker.IsFileProtected(inputFile);
-                    if (result.Protected)
-                        ThrowPasswordProtected(inputFile);
-
-                    Excel.Convert(inputFile, outputFile);
-                    break;
-                }
-
-                case ".CSV":
-                    Excel.Convert(inputFile, outputFile);
-                    break;
-
                 case ".ODS":
                 {
                     var result = _passwordProtectedChecker.IsFileProtected(inputFile);
                     if (result.Protected)
                         ThrowPasswordProtected(inputFile);
 
-                    Excel.Convert(inputFile, outputFile);
+                    if (UseLibreOffice)
+                        LibreOffice.Convert(inputFile,outputFile);
+                    else
+                        Excel.Convert(inputFile, outputFile);
+
                     break;
                 }
+
+                case ".CSV":
+                    if (UseLibreOffice)
+                        LibreOffice.Convert(inputFile,outputFile);
+                    else
+                        Excel.Convert(inputFile, outputFile);
+
+                    break;
 
                 case ".POT":
                 case ".PPT":
@@ -314,22 +345,17 @@ namespace OfficeConverter
                 case ".PPSX":
                 case ".PPTM":
                 case ".PPTX":
-                {
-                    var result = _passwordProtectedChecker.IsFileProtected(inputFile);
-                    if (result.Protected)
-                        ThrowPasswordProtected(inputFile);
-
-                    PowerPoint.Convert(inputFile, outputFile);
-                    break;
-                }
-
                 case ".ODP":
                 {
                     var result = _passwordProtectedChecker.IsFileProtected(inputFile);
                     if (result.Protected)
                         ThrowPasswordProtected(inputFile);
 
-                    PowerPoint.Convert(inputFile, outputFile);
+                    if (UseLibreOffice)
+                        LibreOffice.Convert(inputFile,outputFile);
+                    else
+                        PowerPoint.Convert(inputFile, outputFile);
+
                     break;
                 }
 
@@ -429,6 +455,12 @@ namespace OfficeConverter
             {
                 Logger.WriteToLog("Disposing PowerPoint object");
                 _powerPoint.Dispose();
+            }
+
+            if (_libreOffice != null)
+            {
+                Logger.WriteToLog("Disposing LibreOffice object");
+                _libreOffice.Dispose();
             }
         }
         #endregion

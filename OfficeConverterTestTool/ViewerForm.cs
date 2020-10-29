@@ -96,6 +96,7 @@ namespace OfficeConverterTestTool
                     using (var memoryStream = new MemoryStream())
                     using (var converter = new Converter(memoryStream))
                     {
+                        converter.UseLibreOffice = LibreOfficeCheckBox.Checked;
                         converter.Convert(openFileDialog1.FileName, outputFile);
                         OutputTextBox.Text += Environment.NewLine + Encoding.Default.GetString(memoryStream.ToArray());
                         OutputTextBox.Text += Environment.NewLine + @"Converted file written to '" + outputFile + @"'";

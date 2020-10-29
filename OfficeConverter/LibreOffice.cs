@@ -1,355 +1,430 @@
-﻿//using System;
-//using System.Diagnostics;
-//using System.IO;
-//using System.Threading;
-//using Microsoft.Win32;
-//using uno;
-//using uno.util;
-//using unoidl.com.sun.star.beans;
-//using unoidl.com.sun.star.bridge;
-//using unoidl.com.sun.star.frame;
-//using unoidl.com.sun.star.lang;
-//using unoidl.com.sun.star.uno;
-//using unoidl.com.sun.star.util;
-//using Exception = System.Exception;
+﻿using System;
+using System.Diagnostics;
+using System.IO;
+using System.Threading;
+using Microsoft.Win32;
+using OfficeConverter.Helpers;
+using uno;
+using uno.util;
+using unoidl.com.sun.star.beans;
+using unoidl.com.sun.star.bridge;
+using unoidl.com.sun.star.frame;
+using unoidl.com.sun.star.lang;
+using unoidl.com.sun.star.uno;
+using unoidl.com.sun.star.util;
+using Exception = System.Exception;
 
-////
-//// LibreOffice.cs
-////
-//// Author: Kees van Spelde <sicos2002@hotmail.com>
-////
-//// Copyright (c) 2014-2020 Magic-Sessions. (www.magic-sessions.com)
-////
-//// Permission is hereby granted, free of charge, to any person obtaining a copy
-//// of this software and associated documentation files (the "Software"), to deal
-//// in the Software without restriction, including without limitation the rights
-//// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-//// copies of the Software, and to permit persons to whom the Software is
-//// furnished to do so, subject to the following conditions:
-////
-//// The above copyright notice and this permission notice shall be included in
-//// all copies or substantial portions of the Software.
-////
-//// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-//// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-//// FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
-//// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-//// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-//// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-//// THE SOFTWARE.
-////
+//
+// LibreOffice.cs
+//
+// Author: Kees van Spelde <sicos2002@hotmail.com>
+//
+// Copyright (c) 2014-2020 Magic-Sessions. (www.magic-sessions.com)
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NON INFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+//
 
-//namespace OfficeConverter
-//{
-//    /// <summary>
-//    ///     This class is used as a placeholder for all Libre office related methods
-//    /// </summary>
-//    /// <remarks>
-//    ///     - https://api.libreoffice.org/examples/examples.html
-//    ///     - https://api.libreoffice.org/docs/install.html
-//    ///     - https://www.libreoffice.org/download/download/
-//    /// </remarks>
-//    internal class LibreOffice
-//    {
-//        #region Fields
-//        private Process _libreOfficeProcess;
-//        private string _userFolder;
-//        private string _pipeName;
-//        #endregion
+namespace OfficeConverter
+{
+    /// <summary>
+    ///     This class is used as a placeholder for all Libre office related methods
+    /// </summary>
+    /// <remarks>
+    ///     - https://api.libreoffice.org/examples/examples.html
+    ///     - https://api.libreoffice.org/docs/install.html
+    ///     - https://www.libreoffice.org/download/download/
+    /// </remarks>
+    internal class LibreOffice : IDisposable
+    {
+        #region Fields
+        /// <summary>
+        ///     A <see cref="Process" /> object to LibreOffice
+        /// </summary>
+        private Process _libreOfficeProcess;
 
-//        #region Properties
-//        /// <summary>
-//        ///     Returns the full path to LibreOffice, when not found <c>null</c> is returned
-//        /// </summary>
-//        private string GetInstallPath
-//        {
-//            get
-//            {
-//                using (var regkey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\LibreOffice\UNO\InstallPath", false))
-//                {
-//                    var installPath = (string) regkey?.GetValue(string.Empty);
-//                    return installPath;
-//                }
-//            }
-//        }
-//        #endregion
+        /// <summary>
+        ///     <see cref="XComponentLoader"/>
+        /// </summary>
+        private XComponentLoader _componentLoader;
 
-//        #region Start
-//        /// <summary>
-//        ///     Checks if LibreOffice is started and if not starts it
-//        /// </summary>
-//        private void Start()
-//        {
-//            var installPath = GetInstallPath;
-//            if (string.IsNullOrEmpty(installPath))
-//                throw new InvalidProgramException("LibreOffice not installed");
+        /// <summary>
+        ///     Keeps track is we already disposed our resources
+        /// </summary>
+        private bool _disposed;
+        #endregion
 
-//            var path = installPath.Replace('\\', '/');
+        #region Properties
+        /// <summary>
+        ///     Returns the full path to LibreOffice, when not found <c>null</c> is returned
+        /// </summary>
+        private string GetInstallPath
+        {
+            get
+            {
+                using (var regkey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\LibreOffice\UNO\InstallPath", false))
+                {
+                    var installPath = (string)regkey?.GetValue(string.Empty);
+                    return installPath;
+                }
+            }
+        }
 
-//            Environment.SetEnvironmentVariable("URE_BOOTSTRAP", "vnd.sun.star.pathname:" + path + "/fundamental.ini");
-//            var environmentPath = Environment.GetEnvironmentVariable("PATH");
+        #region Properties
+        /// <summary>
+        ///     Returns <c>true</c> when LibreOffice is running
+        /// </summary>
+        /// <returns></returns>
+        private bool IsLibreOfficeRunning
+        {
+            get
+            {
+                if (_libreOfficeProcess == null)
+                    return false;
 
-//            Environment.SetEnvironmentVariable("UNO_PATH", path, EnvironmentVariableTarget.Process);
+                _libreOfficeProcess.Refresh();
+                return !_libreOfficeProcess.HasExited;
+            }
+        }
+        #endregion
+        #endregion
 
-//            if (environmentPath != null && !environmentPath.Contains(path))
-//                Environment.SetEnvironmentVariable("PATH", Environment.GetEnvironmentVariable("PATH") + @";" + path,
-//                    EnvironmentVariableTarget.Process);
+        #region StartLibreOffice
+        /// <summary>
+        ///     Checks if LibreOffice is started and if not starts it
+        /// </summary>
+        private void StartLibreOffice()
+        {
+            if (IsLibreOfficeRunning)
+            {
+                Logger.WriteToLog($"LibreOffice is already running on PID {_libreOfficeProcess.Id}... skipped");
+                return;
+            }
 
-//            var process = new Process
-//            {
-//                StartInfo =
-//                {
-//                    // -env:UserInstallation=file:///{_userFolder}
-//                    Arguments =
-//                        $"-invisible -nofirststartwizard -minimized -nologo -nolockcheck --accept=pipe,name={_pipeName};urp;StarOffice.ComponentContext",
-//                    FileName = installPath + @"\soffice.exe",
-//                    CreateNoWindow = true
-//                }
-//            };
+            var installPath = GetInstallPath;
+            if (string.IsNullOrEmpty(installPath))
+                throw new InvalidProgramException("LibreOffice is not installed");
 
-//            if (!process.Start())
-//                throw new InvalidProgramException("Could not start LibreOffice");
+            var path = installPath.Replace('\\', '/');
 
-//            _libreOfficeProcess = process;
-//        }
-//        #endregion
+            var ureBootStrap = $"vnd.sun.star.pathname:{path}/fundamental.ini";
+            Logger.WriteToLog($"Setting environment variable URE_BOOTSTRAP to '{ureBootStrap}'");
+            Environment.SetEnvironmentVariable("URE_BOOTSTRAP", $"vnd.sun.star.pathname:{path}/fundamental.ini", EnvironmentVariableTarget.Process);
+            
+            var environmentPath = Environment.GetEnvironmentVariable("PATH");
+            Logger.WriteToLog($"Setting environment variable UNO_PATH to '{path}'");
+            Environment.SetEnvironmentVariable("UNO_PATH", path, EnvironmentVariableTarget.Process);
 
-//        #region ConvertToUrl
-//        /// <summary>
-//        ///     Convert the give file path to the format LibreOffice needs
-//        /// </summary>
-//        /// <param name="file"></param>
-//        /// <returns></returns>
-//        public string ConvertToUrl(string file)
-//        {
-//            return $"file:///{file.Replace(@"\", "/")}";
-//        }
-//        #endregion
+            if (environmentPath != null && !environmentPath.Contains(path))
+            {
+                Logger.WriteToLog($"Adding '{path}' to PATH environment variable");
+                Environment.SetEnvironmentVariable("PATH", Environment.GetEnvironmentVariable("PATH") + @";" + path,
+                    EnvironmentVariableTarget.Process);
+            }
 
-//        #region ConvertToPdf
-//        /// <summary>
-//        ///     Converts the given <paramref name="inputFile" /> to PDF format and saves it as <paramref name="outputFile" />
-//        /// </summary>
-//        /// <param name="inputFile">The input file</param>
-//        /// <param name="outputFile">The output file</param>
-//        public void ConvertToPdf(string inputFile, string outputFile)
-//        {
-//            if (GetFilterType(Path.GetExtension(inputFile)) == null)
-//                throw new InvalidProgramException("Unknown file type for OpenOffice. File = " + inputFile);
+            Logger.WriteToLog("Starting LibreOffice");
+            
+            var pipeName = Guid.NewGuid().ToString().Replace("-", string.Empty);
 
-//            XComponent component = null;
+            var process = new Process
+            {
+                StartInfo =
+                {
+                    // -env:UserInstallation=file:///{_userFolder}
+                    Arguments = $"-invisible -nofirststartwizard -minimized -nologo -nolockcheck --accept=pipe,name={pipeName};urp;StarOffice.ComponentContext",
+                    FileName = installPath + @"\soffice.exe",
+                    CreateNoWindow = true
+                }
+            };
 
-//            try
-//            {
-//                var guid = Guid.NewGuid().ToString().Replace("-", string.Empty);
-//                _userFolder = $"d:/{guid}";
-//                _pipeName = guid;
-//                //_pipeName = "keeshispipe";
-//                //Directory.CreateDirectory(_userFolder);
+            if (!process.Start())
+                throw new InvalidProgramException("Could not start LibreOffice");
 
-//                Start();
+            _libreOfficeProcess = process;
 
-//                var localContext = Bootstrap.defaultBootstrap_InitialComponentContext();
-//                var localServiceManager = localContext.getServiceManager();
-//                var urlResolver =
-//                    (XUnoUrlResolver) localServiceManager.createInstanceWithContext(
-//                        "com.sun.star.bridge.UnoUrlResolver", localContext);
-//                XComponentContext remoteContext;
+            Logger.WriteToLog($"LibreOffice started with process id {process.Id}");
 
-//                var i = 0;
+            OpenLibreOfficePipe(pipeName);
+        }
+        #endregion
 
-//                while (true)
-//                    try
-//                    {
-//                        remoteContext =
-//                            (XComponentContext) urlResolver.resolve(
-//                                $"uno:pipe,name={_pipeName};urp;StarOffice.ComponentContext");
+        #region OpenLibreOfficePipe
+        /// <summary>
+        ///     Opens a pipe to LibreOffice
+        /// </summary>
+        /// <param name="pipeName"></param>
+        private void OpenLibreOfficePipe(string pipeName)
+        {
+            var localContext = Bootstrap.defaultBootstrap_InitialComponentContext();
+            var localServiceManager = localContext.getServiceManager();
+            var urlResolver = (XUnoUrlResolver)localServiceManager.createInstanceWithContext("com.sun.star.bridge.UnoUrlResolver", localContext);
+            XComponentContext remoteContext;
 
-//                        break;
-//                    }
-//                    catch (Exception exception)
-//                    {
-//                        if (i == 20 || !exception.Message.Contains("couldn't connect to pipe")) throw;
-//                        Thread.Sleep(100);
-//                        i++;
-//                    }
+            var i = 0;
 
-//                // ReSharper disable once SuspiciousTypeConversion.Global
-//                var remoteFactory = (XMultiServiceFactory) remoteContext.getServiceManager();
-//                var componentLoader = (XComponentLoader) remoteFactory.createInstance("com.sun.star.frame.Desktop");
-//                component = InitDocument(componentLoader, ConvertToUrl(inputFile), "_blank");
+            Logger.WriteToLog($"Connecting to LibreOffice with pipe '{pipeName}'");
 
-//                // Save/export the document
-//                // http://herbertniemeyerblog.blogspot.com/2011/11/have-to-start-somewhere.html
-//                // https://forum.openoffice.org/en/forum/viewtopic.php?t=73098
+            while (true)
+                try
+                {
+                    remoteContext = (XComponentContext)urlResolver.resolve($"uno:pipe,name={pipeName};urp;StarOffice.ComponentContext");
+                    Logger.WriteToLog("Connected to LibreOffice");
+                    break;
+                }
+                catch (Exception exception)
+                {
+                    if (i == 20 || !exception.Message.Contains("couldn't connect to pipe")) 
+                        throw;
 
-//                ExportToPdf(component, inputFile, outputFile);
+                    Thread.Sleep(100);
+                    i++;
+                }
 
-//                CloseDocument(component);
-//            }
-//            finally
-//            {
-//                component?.dispose();
+            // ReSharper disable once SuspiciousTypeConversion.Global
+            var remoteFactory = (XMultiServiceFactory)remoteContext.getServiceManager();
+            _componentLoader = (XComponentLoader)remoteFactory.createInstance("com.sun.star.frame.Desktop");
+        }
+        #endregion
 
-//                if (_libreOfficeProcess != null && !_libreOfficeProcess.HasExited)
-//                {
-//                    _libreOfficeProcess.Kill();
+        #region StopLibreOffice
+        /// <summary>
+        ///     Stops LibreOffice
+        /// </summary>
+        private void StopLibreOffice()
+        {
+            if (IsLibreOfficeRunning)
+            {
+                Logger.WriteToLog($"LibreOffice did not shutdown gracefully in 2 seconds ... killing it on process id {_libreOfficeProcess.Id}");
+                _libreOfficeProcess.Kill();
+                Logger.WriteToLog("Word process killed");
+            }
+            else
+                Logger.WriteToLog("LibreOffice stopped");
 
-//                    while (!_libreOfficeProcess.HasExited)
-//                        Thread.Sleep(100);
+            _libreOfficeProcess = null;
+        }
+        #endregion
 
-//                    _libreOfficeProcess = null;
-//                }
+        #region ConvertToUrl
+        /// <summary>
+        ///     Convert the give file path to the format LibreOffice needs
+        /// </summary>
+        /// <param name="file"></param>
+        /// <returns></returns>
+        private string ConvertToUrl(string file)
+        {
+            return $"file:///{file.Replace(@"\", "/")}";
+        }
+        #endregion
 
-//                try
-//                {
-//                    if (!string.IsNullOrEmpty(_userFolder))
-//                        Directory.Delete(_userFolder, true);
-//                }
-//                catch
-//                {
-//                }
-//            }
-//        }
-//        #endregion
+        #region Convert
+        /// <summary>
+        ///     Converts the given <paramref name="inputFile" /> to PDF format and saves it as <paramref name="outputFile" />
+        /// </summary>
+        /// <param name="inputFile">The input file</param>
+        /// <param name="outputFile">The output file</param>
+        public void Convert(string inputFile, string outputFile)
+        {
+            if (GetFilterType(Path.GetExtension(inputFile)) == null)
+                throw new InvalidProgramException($"Unknown file type '{Path.GetFileName(inputFile)}' for LibreOffice");
 
-//        #region InitDocument
-//        /// <summary>
-//        ///     Creates a new document in LibreOffice and opens the given <paramref name="file" />
-//        /// </summary>
-//        /// <param name="aLoader"></param>
-//        /// <param name="file"></param>
-//        /// <param name="target"></param>
-//        /// <returns></returns>
-//        private XComponent InitDocument(XComponentLoader aLoader, string file, string target)
-//        {
-//            var openProps = new PropertyValue[2];
-//            openProps[0] = new PropertyValue {Name = "Hidden", Value = new Any(true)};
-//            openProps[1] = new PropertyValue {Name = "ReadOnly", Value = new Any(true)};
+            StartLibreOffice();
 
-//            var xComponent = aLoader.loadComponentFromURL(
-//                file, target, 0,
-//                openProps);
+            var component = InitDocument(_componentLoader, ConvertToUrl(inputFile), "_blank");
 
-//            return xComponent;
-//        }
-//        #endregion
+            // Save/export the document
+            // http://herbertniemeyerblog.blogspot.com/2011/11/have-to-start-somewhere.html
+            // https://forum.openoffice.org/en/forum/viewtopic.php?t=73098
 
-//        #region SaveDocument
-//        /// <summary>
-//        ///     Exports the loaded document to PDF format
-//        /// </summary>
-//        /// <param name="component"></param>
-//        /// <param name="sourceFile"></param>
-//        /// <param name="destinationFile"></param>
-//        private void ExportToPdf(XComponent component, string sourceFile, string destinationFile)
-//        {
-//            var propertyValues = new PropertyValue[3];
-//            var filterData = new PropertyValue[5];
+            ExportToPdf(component, inputFile, outputFile);
 
-//            filterData[0] = new PropertyValue
-//            {
-//                Name = "UseLosslessCompression",
-//                Value = new Any(false)
-//            };
+            CloseDocument(component);
+        }
+        #endregion
 
-//            filterData[1] = new PropertyValue
-//            {
-//                Name = "Quality",
-//                Value = new Any(90)
-//            };
+        #region InitDocument
+        /// <summary>
+        ///     Creates a new document in LibreOffice and opens the given <paramref name="file" />
+        /// </summary>
+        /// <param name="aLoader"></param>
+        /// <param name="inputFile"></param>
+        /// <param name="target"></param>
+        /// <returns></returns>
+        private XComponent InitDocument(XComponentLoader aLoader, string inputFile, string target)
+        {
+            Logger.WriteToLog($"Loading document '{inputFile}'");
 
-//            filterData[2] = new PropertyValue
-//            {
-//                Name = "ReduceImageResolution",
-//                Value = new Any(true)
-//            };
+            var openProps = new PropertyValue[2];
+            openProps[0] = new PropertyValue { Name = "Hidden", Value = new Any(true) };
+            openProps[1] = new PropertyValue { Name = "ReadOnly", Value = new Any(true) };
 
-//            filterData[3] = new PropertyValue
-//            {
-//                Name = "MaxImageResolution",
-//                Value = new Any(300)
-//            };
+            var xComponent = aLoader.loadComponentFromURL(
+                inputFile, target, 0,
+                openProps);
 
-//            filterData[4] = new PropertyValue
-//            {
-//                Name = "ExportBookmarks",
-//                Value = new Any(false)
-//            };
+            Logger.WriteToLog("Document loaded");
 
-//            // Setting the filter name
-//            propertyValues[0] = new PropertyValue
-//            {
-//                Name = "FilterName",
-//                Value = new Any(GetFilterType(sourceFile))
-//            };
+            return xComponent;
+        }
+        #endregion
 
-//            // Setting the flag for overwriting
-//            propertyValues[1] = new PropertyValue {Name = "Overwrite", Value = new Any(true)};
+        #region ExportToPdf
+        /// <summary>
+        ///     Exports the loaded document to PDF format
+        /// </summary>
+        /// <param name="component"></param>
+        /// <param name="inputFile"></param>
+        /// <param name="outputFile"></param>
+        private void ExportToPdf(XComponent component, string inputFile, string outputFile)
+        {
+            Logger.WriteToLog($"Exporting document to PDF file '{outputFile}'");
 
-//            var polymorphicType = PolymorphicType.GetType(
-//                typeof(PropertyValue[]),
-//                "unoidl.com.sun.star.beans.PropertyValue[]");
+            var propertyValues = new PropertyValue[3];
+            var filterData = new PropertyValue[5];
 
-//            propertyValues[2] = new PropertyValue {Name = "FilterData", Value = new Any(polymorphicType, filterData)};
+            filterData[0] = new PropertyValue
+            {
+                Name = "UseLosslessCompression",
+                Value = new Any(false)
+            };
 
-//            // ReSharper disable once SuspiciousTypeConversion.Global
-//            ((XStorable) component).storeToURL(ConvertToUrl(destinationFile), propertyValues);
-//        }
-//        #endregion
+            filterData[1] = new PropertyValue
+            {
+                Name = "Quality",
+                Value = new Any(90)
+            };
 
-//        #region CloseDocument
-//        /// <summary>
-//        ///     Closes the document and frees any used resources
-//        /// </summary>
-//        private void CloseDocument(XComponent component)
-//        {
-//            var closeable = (XCloseable) component;
-//            closeable?.close(false);
-//        }
-//        #endregion
+            filterData[2] = new PropertyValue
+            {
+                Name = "ReduceImageResolution",
+                Value = new Any(true)
+            };
 
-//        #region GetFilterType
-//        /// <summary>
-//        ///     Returns the filter that is needed to convert the given <paramref name="fileName" />,
-//        ///     <c>null</c> is returned when the file cannot be converted
-//        /// </summary>
-//        /// <param name="fileName">The file to check</param>
-//        /// <returns></returns>
-//        public string GetFilterType(string fileName)
-//        {
-//            var extension = Path.GetExtension(fileName);
+            filterData[3] = new PropertyValue
+            {
+                Name = "MaxImageResolution",
+                Value = new Any(300)
+            };
 
-//            switch (extension)
-//            {
-//                case ".doc":
-//                case ".docx":
-//                case ".txt":
-//                case ".rtf":
-//                case ".html":
-//                case ".htm":
-//                case ".xml":
-//                case ".odt":
-//                case ".wps":
-//                case ".wpd":
-//                    return "writer_pdf_Export";
+            filterData[4] = new PropertyValue
+            {
+                Name = "ExportBookmarks",
+                Value = new Any(false)
+            };
 
-//                case ".xls":
-//                case ".xlsb":
-//                case ".xlsx":
-//                case ".xlsm":
-//                case ".ods":
-//                    return "calc_pdf_Export";
+            // Setting the filter name
+            propertyValues[0] = new PropertyValue
+            {
+                Name = "FilterName",
+                Value = new Any(GetFilterType(inputFile))
+            };
 
-//                case ".ppt":
-//                case ".pptx":
-//                case ".odp":
-//                    return "impress_pdf_Export";
+            // Setting the flag for overwriting
+            propertyValues[1] = new PropertyValue { Name = "Overwrite", Value = new Any(true) };
 
-//                default:
-//                    return null;
-//            }
-//        }
-//        #endregion
-//    }
-//}
+            var polymorphicType = PolymorphicType.GetType(typeof(PropertyValue[]), "unoidl.com.sun.star.beans.PropertyValue[]");
+
+            propertyValues[2] = new PropertyValue { Name = "FilterData", Value = new Any(polymorphicType, filterData) };
+
+            // ReSharper disable once SuspiciousTypeConversion.Global
+            ((XStorable)component).storeToURL(ConvertToUrl(outputFile), propertyValues);
+
+            Logger.WriteToLog("Document exported to PDF");
+        }
+        #endregion
+
+        #region CloseDocument
+        /// <summary>
+        ///     Closes the document and frees any used resources
+        /// </summary>
+        private void CloseDocument(XComponent component)
+        {
+            Logger.WriteToLog("Closing document");
+            var closeable = (XCloseable)component;
+            closeable?.close(false);
+            Logger.WriteToLog("Document closed");
+        }
+        #endregion
+
+        #region GetFilterType
+        /// <summary>
+        ///     Returns the filter that is needed to convert the given <paramref name="fileName" />,
+        ///     <c>null</c> is returned when the file cannot be converted
+        /// </summary>
+        /// <param name="fileName">The file to check</param>
+        /// <returns></returns>
+        private string GetFilterType(string fileName)
+        {
+            var extension = Path.GetExtension(fileName);
+            extension = extension?.ToUpperInvariant();
+
+            switch (extension)
+            {
+                case ".DOC":
+                case ".DOT":
+                case ".DOCM":
+                case ".DOCX":
+                case ".DOTM":
+                case ".ODT":
+                case ".RTF":
+                case ".MHT":
+                case ".WPS":
+                case ".WRI":
+                    return "writer_pdf_Export";
+
+                case ".XLS":
+                case ".XLT":
+                case ".XLW":
+                case ".XLSB":
+                case ".XLSM":
+                case ".XLSX":
+                case ".XLTM":
+                case ".XLTX":
+                    return "calc_pdf_Export";
+
+                case ".POT":
+                case ".PPT":
+                case ".PPS":
+                case ".POTM":
+                case ".POTX":
+                case ".PPSM":
+                case ".PPSX":
+                case ".PPTM":
+                case ".PPTX":
+                case ".ODP":
+                    return "impress_pdf_Export";
+
+                default:
+                    return null;
+            }
+        }
+        #endregion
+
+        #region Dispose
+        /// <summary>
+        ///     Disposes the running <see cref="_libreOfficeProcess" />
+        /// </summary>
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true;
+            StopLibreOffice();
+        }
+        #endregion
+    }
+}
