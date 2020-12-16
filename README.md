@@ -42,7 +42,7 @@ In Visual Studio's Package Manager Console, simply enter the following command:
 ```csharp
 using (var converter = new Converter())
 {
-    converter.ConvertToPdf(<inputfile>, <outputfile>);
+    converter.Convert(<inputfile>, <outputfile>);
 }
 ```
 
