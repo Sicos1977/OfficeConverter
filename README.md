@@ -9,7 +9,7 @@ Convert Microsoft Office document to PDF (Office 2007 - 2016)
 
 ## License Information
 
-OfficeConverter is Copyright (C)2014-2020 Kees van Spelde and is licensed under the MIT license:
+OfficeConverter is Copyright (C)2014-2021 Kees van Spelde and is licensed under the MIT license:
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -42,7 +42,7 @@ In Visual Studio's Package Manager Console, simply enter the following command:
 ```csharp
 using (var converter = new Converter())
 {
-    converter.ConvertToPdf(<inputfile>, <outputfile>);
+    converter.Convert(<inputfile>, <outputfile>);
 }
 ```
 
