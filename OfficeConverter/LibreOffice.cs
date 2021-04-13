@@ -19,7 +19,7 @@ using Exception = System.Exception;
 //
 // Author: Kees van Spelde <sicos2002@hotmail.com>
 //
-// Copyright (c) 2014-2020 Magic-Sessions. (www.magic-sessions.com)
+// Copyright (c) 2014-2021 Magic-Sessions. (www.magic-sessions.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -259,7 +259,7 @@ namespace OfficeConverter
 
         #region InitDocument
         /// <summary>
-        ///     Creates a new document in LibreOffice and opens the given <paramref name="file" />
+        ///     Creates a new document in LibreOffice and opens the given <paramref name="inputFile" />
         /// </summary>
         /// <param name="aLoader"></param>
         /// <param name="inputFile"></param>

@@ -14,7 +14,7 @@ using WordInterop = Microsoft.Office.Interop.Word;
 //
 // Author: Kees van Spelde <sicos2002@hotmail.com>
 //
-// Copyright (c) 2014-2020 Magic-Sessions. (www.magic-sessions.com)
+// Copyright (c) 2014-2021 Magic-Sessions. (www.magic-sessions.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -341,9 +341,7 @@ namespace OfficeConverter
                     $"ERROR: Failed to open document, exception: '{ExceptionHelpers.GetInnerException(exception)}'");
 
                 if (repairMode)
-                    throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) +
-                                              "' seems to be corrupt, error: " +
-                                              ExceptionHelpers.GetInnerException(exception));
+                    throw new OCFileIsCorrupt($"The file '{Path.GetFileName(inputFile)}' seems to be corrupt, error: {ExceptionHelpers.GetInnerException(exception)}");
 
                 return OpenDocument(inputFile, true);
             }
