@@ -77,10 +77,19 @@ namespace OfficeConverter
         {
             get
             {
-                using (var regkey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\LibreOffice\UNO\InstallPath", false))
+                using (var hklm = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64))
+                using (var regkey64 = hklm.OpenSubKey(@"SOFTWARE\LibreOffice\UNO\InstallPath", false))
                 {
-                    var installPath = (string)regkey?.GetValue(string.Empty);
-                    return installPath;
+                    var installPath = (string)regkey64?.GetValue(string.Empty);
+
+                    if (installPath != null)
+                        return installPath;
+
+                    using (var regkey = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\LibreOffice\UNO\InstallPath", false))
+                    {
+                        installPath = (string)regkey?.GetValue(string.Empty);
+                        return installPath;
+                    }
                 }
             }
         }

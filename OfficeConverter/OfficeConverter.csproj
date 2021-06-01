@@ -86,23 +86,23 @@
   <ItemGroup>
     <Reference Include="cli_basetypes, Version=1.0.20.0, Culture=neutral, PublicKeyToken=ce2cb7e279207b9e, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>CLI\cli_basetypes.dll</HintPath>
+      <HintPath>CLI\x64\cli_basetypes.dll</HintPath>
     </Reference>
-    <Reference Include="cli_cppuhelper, Version=1.0.23.0, Culture=neutral, PublicKeyToken=ce2cb7e279207b9e, processorArchitecture=AMD64">
+    <Reference Include="cli_cppuhelper, Version=1.0.23.0, Culture=neutral, PublicKeyToken=ce2cb7e279207b9e, processorArchitecture=x86">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>CLI\cli_cppuhelper.dll</HintPath>
+      <HintPath>CLI\x64\cli_cppuhelper.dll</HintPath>
     </Reference>
     <Reference Include="cli_oootypes, Version=1.0.9.0, Culture=neutral, PublicKeyToken=ce2cb7e279207b9e, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>CLI\cli_oootypes.dll</HintPath>
+      <HintPath>CLI\x64\cli_oootypes.dll</HintPath>
     </Reference>
     <Reference Include="cli_ure, Version=1.0.23.0, Culture=neutral, PublicKeyToken=ce2cb7e279207b9e, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>CLI\cli_ure.dll</HintPath>
+      <HintPath>CLI\x64\cli_ure.dll</HintPath>
     </Reference>
     <Reference Include="cli_uretypes, Version=1.0.9.0, Culture=neutral, PublicKeyToken=ce2cb7e279207b9e, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>CLI\cli_uretypes.dll</HintPath>
+      <HintPath>CLI\x64\cli_uretypes.dll</HintPath>
     </Reference>
     <Reference Include="ICSharpCode.SharpZipLib, Version=1.3.1.9, Culture=neutral, PublicKeyToken=1b03e6acf1164f73, processorArchitecture=MSIL">
       <HintPath>..\packages\SharpZipLib.1.3.1\lib\net45\ICSharpCode.SharpZipLib.dll</HintPath>
@@ -197,11 +197,16 @@
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
-    <Content Include="CLI\cli_basetypes.dll" />
-    <Content Include="CLI\cli_cppuhelper.dll" />
-    <Content Include="CLI\cli_oootypes.dll" />
-    <Content Include="CLI\cli_ure.dll" />
-    <Content Include="CLI\cli_uretypes.dll" />
+    <Content Include="CLI\x86\cli_basetypes.dll" />
+    <Content Include="CLI\x86\cli_cppuhelper.dll" />
+    <Content Include="CLI\x86\cli_oootypes.dll" />
+    <Content Include="CLI\x86\cli_ure.dll" />
+    <Content Include="CLI\x86\cli_uretypes.dll" />
+    <Content Include="CLI\x64\cli_basetypes.dll" />
+    <Content Include="CLI\x64\cli_cppuhelper.dll" />
+    <Content Include="CLI\x64\cli_oootypes.dll" />
+    <Content Include="CLI\x64\cli_ure.dll" />
+    <Content Include="CLI\x64\cli_uretypes.dll" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

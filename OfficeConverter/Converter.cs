@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Reflection;
 using System.Xml;
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
@@ -188,6 +189,7 @@ namespace OfficeConverter
         /// you want a separate log for each conversion then set the logstream on the <see cref="Convert"/> method</param>
         public Converter(Stream logStream = null)
         {
+            AppDomain.CurrentDomain.AssemblyResolve += CurrentDomainAssemblyResolve;
             Logger.LogStream = logStream;
         }
         #endregion
@@ -347,10 +349,6 @@ namespace OfficeConverter
                 case ".PPTX":
                 case ".ODP":
                 {
-                    var result = _passwordProtectedChecker.IsFileProtected(inputFile);
-                    if (result.Protected)
-                        ThrowPasswordProtected(inputFile);
-
                     if (UseLibreOffice)
                         LibreOffice.Convert(inputFile,outputFile);
                     else
@@ -430,6 +428,25 @@ namespace OfficeConverter
         }
         #endregion
 
+        #region CurrentDomainAssemblyResolve
+        /// <summary>
+        /// Event to resolve 32 or 64 bits dll
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="args"></param>
+        /// <returns></returns>
+        private Assembly CurrentDomainAssemblyResolve(object sender, ResolveEventArgs args)
+        {
+            var assemblyName = args.Name.Split(new[] {','}, 2)[0] + ".dll";
+            var path = Path.Combine(AppDomain.CurrentDomain.SetupInformation.ApplicationBase, "CLI",
+                Environment.Is64BitProcess ? "x64" : "x86", assemblyName);
+
+            return File.Exists(path)
+                ? Assembly.LoadFile(path)
+                : null;
+        }
+        #endregion
+
         #region Dispose
         /// <summary>
         ///     Disposes all created office objects
@@ -438,6 +455,8 @@ namespace OfficeConverter
         {
             if (_disposed) return;
             _disposed = true;
+
+            AppDomain.CurrentDomain.AssemblyResolve -= CurrentDomainAssemblyResolve;
 
             if (_word != null)
             {
