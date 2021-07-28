@@ -169,7 +169,7 @@ namespace OfficeConverter
                 DisplayRecentFiles = false,
                 DisplayScrollBars = false,
                 AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable,
-                Visible = false
+                Visible = true
             };
 
             _word.Options.UpdateLinksAtOpen = false;
@@ -184,7 +184,6 @@ namespace OfficeConverter
             _word.Options.UpdateLinksAtPrint = false;
             _word.Options.DoNotPromptForConvert = true;
             _word.Options.LocalNetworkFile = false;
-            _word.Options.ConfirmConversions = false;
 
             var captionGuid = Guid.NewGuid().ToString();
             _word.Caption = captionGuid;
