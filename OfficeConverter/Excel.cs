@@ -521,8 +521,7 @@ namespace OfficeConverter
         {
             if (Environment.Is64BitOperatingSystem)
             {
-                var x64DesktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows),
-                    @"SysWOW64\config\systemprofile\desktop");
+                var x64DesktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), @"SysWOW64\config\systemprofile\desktop");
 
                 Logger.WriteToLog($"Checking if system profile desktop directory exists in '{x64DesktopPath}'");
 
@@ -534,15 +533,12 @@ namespace OfficeConverter
                     }
                     catch (Exception exception)
                     {
-                        throw new OCConfiguration("Can't create folder '" + x64DesktopPath +
-                                                  "' Excel needs this folder to work on a server, error: " +
-                                                  ExceptionHelpers.GetInnerException(exception));
+                        throw new OCConfiguration($"Can't create folder '{x64DesktopPath}' Excel needs this folder to work on a server, error: {ExceptionHelpers.GetInnerException(exception)}");
                     }
             }
             else
             {
-                var x86DesktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows),
-                    @"System32\config\systemprofile\desktop");
+                var x86DesktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), @"System32\config\systemprofile\desktop");
 
                 Logger.WriteToLog($"Checking if system profile desktop directory exists in '{x86DesktopPath}'");
 
@@ -554,9 +550,7 @@ namespace OfficeConverter
                     }
                     catch (Exception exception)
                     {
-                        throw new OCConfiguration("Can't create folder '" + x86DesktopPath +
-                                                  "' Excel needs this folder to work on a server, error: " +
-                                                  ExceptionHelpers.GetInnerException(exception));
+                        throw new OCConfiguration($"Can't create folder '{x86DesktopPath}' Excel needs this folder to work on a server, error: {ExceptionHelpers.GetInnerException(exception)}");
                     }
             }
         }
