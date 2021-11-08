@@ -46,8 +46,7 @@ using (var converter = new Converter())
 }
 ```
 
-Logging
-=======
+## Logging
 
 From version 1.7.0 OfficeConverter uses the Microsoft ILogger interface (https://docs.microsoft.com/en-us/dotnet/api/microsoft.extensions.logging.ilogger?view=dotnet-plat-ext-5.0). You can use any logging library that uses this interface.
 
