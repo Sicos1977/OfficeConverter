@@ -46,6 +46,21 @@ using (var converter = new Converter())
 }
 ```
 
+Logging
+=======
+
+From version 1.7.0 OfficeConverter uses the Microsoft ILogger interface (https://docs.microsoft.com/en-us/dotnet/api/microsoft.extensions.logging.ilogger?view=dotnet-plat-ext-5.0). You can use any logging library that uses this interface.
+
+OfficeConverter has some build in loggers that can be found in the ```OfficeConverter.Logger``` namespace. 
+
+For example
+
+```csharp
+var logger = !string.IsNullOrWhiteSpace(<some logfile>)
+                ? new ChromeHtmlToPdfLib.Loggers.Stream(File.OpenWrite(<some logfile>))
+                : new ChromeHtmlToPdfLib.Loggers.Console();
+```
+
 Core Team
 =========
     Sicos1977 (Kees van Spelde)
