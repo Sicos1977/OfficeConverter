@@ -1,6 +1,5 @@
 ﻿using System;
-using System.IO;
-using System.Text;
+using Microsoft.Extensions.Logging;
 
 //
 // Logger.cs
@@ -34,10 +33,11 @@ namespace OfficeConverter.Helpers
     {
         #region Fields
         /// <summary>
-        ///     When set then logging is written to this stream
+        ///     When set then logging is written to this ILogger instance
         /// </summary>
         [ThreadStatic]
-        internal static Stream LogStream;
+        // ReSharper disable once InconsistentNaming
+        internal static ILogger _logger;
 
         /// <summary>
         ///     An unique id that can be used to identify the logging of the converter when
@@ -49,20 +49,16 @@ namespace OfficeConverter.Helpers
 
         #region WriteToLog
         /// <summary>
-        ///     Writes a line and linefeed to the <see cref="LogStream" />
+        ///     Writes a line to the <see cref="_logger" />
         /// </summary>
         /// <param name="message">The message to write</param>
-        internal static void WriteToLog(string message)
+        public static void WriteToLog(string message)
         {
             try
             {
-                if (LogStream == null || !LogStream.CanWrite) return;
-                var line = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss.fff") +
-                           (InstanceId != null ? " - " + InstanceId : string.Empty) + " - " +
-                           message + Environment.NewLine;
-                var bytes = Encoding.UTF8.GetBytes(line);
-                LogStream.Write(bytes, 0, bytes.Length);
-                LogStream.Flush();
+                if (_logger == null) return;
+                using (_logger.BeginScope(InstanceId))
+                    _logger.LogInformation(message);
             }
             catch (ObjectDisposedException)
             {

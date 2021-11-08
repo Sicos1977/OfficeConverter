@@ -169,7 +169,7 @@ namespace OfficeConverter
                 DisplayRecentFiles = false,
                 DisplayScrollBars = false,
                 AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable,
-                Visible = true
+                Visible = false
             };
 
             _word.Options.UpdateLinksAtOpen = false;

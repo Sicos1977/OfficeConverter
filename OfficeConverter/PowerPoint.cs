@@ -195,14 +195,15 @@ namespace OfficeConverter
 
                 if (IsPowerPointRunning)
                 {
-                    Logger.WriteToLog(
-                        $"PowerPoint did not shutdown gracefully in 2 seconds ... killing it on process id {_powerPointProcess.Id}");
+                    Logger.WriteToLog($"PowerPoint did not shutdown gracefully in 2 seconds ... killing it on process id {_powerPointProcess.Id}");
                     _powerPointProcess.Kill();
                     Logger.WriteToLog("PowerPoint process killed");
                 }
                 else
                     Logger.WriteToLog("PowerPoint stopped");
             }
+            else
+                Logger.WriteToLog($"PowerPoint with process id {_powerPointProcess.Id} already exited");
 
             if (_powerPoint != null)
             {
@@ -273,9 +274,7 @@ namespace OfficeConverter
             catch (Exception exception)
             {
                 if (repairMode)
-                    throw new OCFileIsCorrupt("The file '" + Path.GetFileName(inputFile) +
-                                              "' seems to be corrupt, error: " +
-                                              ExceptionHelpers.GetInnerException(exception));
+                    throw new OCFileIsCorrupt($"The file '{Path.GetFileName(inputFile)}' seems to be corrupt, error: {ExceptionHelpers.GetInnerException(exception)}");
 
                 return OpenPresentation(inputFile, true);
             }
@@ -286,7 +285,7 @@ namespace OfficeConverter
         /// <summary>
         ///     Closes the opened presentation and releases any allocated resources
         /// </summary>
-        private void ClosePresentation(PowerPointInterop.Presentation presentation)
+        private void ClosePresentation(PowerPointInterop._Presentation presentation)
         {
             if (presentation == null) return;
             Logger.WriteToLog("Closing presentation");

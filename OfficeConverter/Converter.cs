@@ -2,6 +2,7 @@
 using System.IO;
 using System.Reflection;
 using System.Xml;
+using Microsoft.Extensions.Logging;
 using OfficeConverter.Exceptions;
 using OfficeConverter.Helpers;
 using PasswordProtectedChecker;
@@ -185,12 +186,12 @@ namespace OfficeConverter
         /// <summary>
         ///     Creates this object and sets it's needed properties
         /// </summary>
-        /// <param name="logStream">When set then logging is written to this stream for all conversions. If
-        /// you want a separate log for each conversion then set the logstream on the <see cref="Convert"/> method</param>
-        public Converter(Stream logStream = null)
+        /// <param name="logger">When set then logging is written to this ILogger instance for all conversions at the Information log level. If
+        /// you want a separate log for each conversion then set the <see cref="ILogger"/> on the <see cref="Convert"/> method</param>
+        public Converter(ILogger logger = null)
         {
             AppDomain.CurrentDomain.AssemblyResolve += CurrentDomainAssemblyResolve;
-            Logger.LogStream = logStream;
+            Logger._logger = logger;
         }
         #endregion
 
@@ -255,7 +256,7 @@ namespace OfficeConverter
         /// </summary>
         /// <param name="inputFile">The Microsoft Office file</param>
         /// <param name="outputFile">The output file with full path</param>
-        /// <param name="logStream">When set then logging is written to this stream</param>
+        /// <param name="logger">>When set then logging is written to this ILogger instance at the Information log level</param>
         /// <exception cref="ArgumentNullException">
         ///     Raised when the <paramref name="inputFile" /> or <paramref name="outputFile" />
         ///     is null or empty
@@ -270,10 +271,10 @@ namespace OfficeConverter
         /// <exception cref="OCFileIsPasswordProtected">Raised when the <paramref name="inputFile" /> is password protected</exception>
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile" /> has to many rows</exception>
         /// <exception cref="OCFileContainsNoData">Raised when the Microsoft Office file contains no actual data</exception>
-        public void Convert(string inputFile, string outputFile, Stream logStream = null)
+        public void Convert(string inputFile, string outputFile, ILogger logger = null)
         {
-            if (logStream != null)
-                Logger.LogStream = logStream;
+            if (logger != null)
+                Logger._logger = logger;
 
             CheckFileNameAndOutputFolder(inputFile, outputFile);
 
@@ -396,7 +397,7 @@ namespace OfficeConverter
 
         #region GetProgId
         /// <summary>
-        /// Returns the progid that is inside the XML or <c>null</c> when not found
+        /// Returns the progId that is inside the XML or <c>null</c> when not found
         /// </summary>
         /// <param name="fileName"></param>
         /// <returns></returns>
