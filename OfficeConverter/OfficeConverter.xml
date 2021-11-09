@@ -666,6 +666,11 @@
             <param name="exception"></param>
             <param name="formatter"></param>
         </member>
+        <member name="M:OfficeConverter.Loggers.Stream.Dispose">
+            <summary>
+            Disposes the Stream
+            </summary>
+        </member>
         <member name="T:OfficeConverter.PowerPoint">
             <summary>
                 This class is used as a placeholder for all PowerPoint related methods
