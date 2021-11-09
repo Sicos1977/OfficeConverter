@@ -1,0 +1,835 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>OfficeConverter</name>
+    </assembly>
+    <members>
+        <member name="T:OfficeConverter.Converter">
+            <summary>
+                With this class an Microsoft Office document can be converted to PDF format. Microsoft Office 2007
+                (with PDF export plugin) or higher is needed.
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Converter._passwordProtectedChecker">
+            <summary>
+                <see cref="T:PasswordProtectedChecker.Checker"/>
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Converter._word">
+            <summary>
+                <see cref="P:OfficeConverter.Converter.Word"/>
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Converter._excel">
+            <summary>
+                <see cref="P:OfficeConverter.Converter.Excel"/>
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Converter._powerPoint">
+            <summary>
+                <see cref="P:OfficeConverter.Converter.PowerPoint"/>
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Converter._libreOffice">
+            <summary>
+                <see cref="P:OfficeConverter.Converter.LibreOffice"/>
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Converter._disposed">
+            <summary>
+                Keeps track is we already disposed our resources
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.Converter.InstanceId">
+            <summary>
+                An unique id that can be used to identify the logging of the converter when
+                calling the code from multiple threads and writing all the logging to the same file
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.Converter.TempDirectory">
+            <summary>
+                When set then this directory is used to store temporary files
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.Converter.DoNotDeleteTempDirectory">
+            <summary>
+                When set to <c>true</c> then the <see cref="P:OfficeConverter.Converter.TempDirectory"/>
+                will not be deleted when the extraction is done
+            </summary>
+            <remarks>
+                For debugging per poses
+            </remarks>
+        </member>
+        <member name="P:OfficeConverter.Converter.UseLibreOffice">
+            <summary>
+                When set then LibreOffice is used to do the conversion instead of Microsoft Office
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.Converter.LibreOffice">
+            <summary>
+            Returns a reference to the LibreOffice class when it already exists or creates a new one
+            when it doesn't
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.Converter.Word">
+            <summary>
+            Returns a reference to the Word class when it already exists or creates a new one
+            when it doesn't
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.Converter.Excel">
+            <summary>
+            Returns a reference to the Excel class when it already exists or creates a new one
+            when it doesn't
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.Converter.PowerPoint">
+            <summary>
+            Returns a reference to the PowerPoint class when it already exists or creates a new one
+            when it doesn't
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.Converter.#ctor(Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+                Creates this object and sets it's needed properties
+            </summary>
+            <param name="logger">When set then logging is written to this ILogger instance for all conversions at the Information log level. If
+            you want a separate log for each conversion then set the <see cref="T:Microsoft.Extensions.Logging.ILogger"/> on the <see cref="M:OfficeConverter.Converter.Convert(System.String,System.String,Microsoft.Extensions.Logging.ILogger)"/> method</param>
+        </member>
+        <member name="M:OfficeConverter.Converter.CheckFileNameAndOutputFolder(System.String,System.String)">
+            <summary>
+                Checks if the <paramref name="inputFile" /> and the folder where the <paramref name="outputFile" /> is written
+                exists
+            </summary>
+            <param name="inputFile"></param>
+            <param name="outputFile"></param>
+            <exception cref="T:System.ArgumentNullException">
+                Raised when the <paramref name="inputFile" /> or <paramref name="outputFile" />
+                is null or empty
+            </exception>
+            <exception cref="T:System.IO.FileNotFoundException">Raised when the <paramref name="inputFile" /> does not exists</exception>
+            <exception cref="T:System.IO.DirectoryNotFoundException">
+                Raised when the folder where the <paramref name="outputFile" /> is written
+                does not exists
+            </exception>
+        </member>
+        <member name="M:OfficeConverter.Converter.Convert(System.String,System.String,Microsoft.Extensions.Logging.ILogger)">
+            <summary>
+                Converts the <paramref name="inputFile" /> to PDF and saves it as the <paramref name="outputFile" />
+            </summary>
+            <param name="inputFile">The Microsoft Office file</param>
+            <param name="outputFile">The output file with full path</param>
+            <param name="logger">>When set then logging is written to this ILogger instance at the Information log level</param>
+            <exception cref="T:System.ArgumentNullException">
+                Raised when the <paramref name="inputFile" /> or <paramref name="outputFile" />
+                is null or empty
+            </exception>
+            <exception cref="T:System.IO.FileNotFoundException">Raised when the <paramref name="inputFile" /> does not exist</exception>
+            <exception cref="T:System.IO.DirectoryNotFoundException">
+                Raised when the folder where the <paramref name="outputFile" /> is written
+                does not exists
+            </exception>
+            <exception cref="T:OfficeConverter.Exceptions.OCFileIsCorrupt">Raised when the <paramref name="inputFile" /> is corrupt</exception>
+            <exception cref="T:OfficeConverter.Exceptions.OCFileTypeNotSupported">Raised when the <paramref name="inputFile" /> is not supported</exception>
+            <exception cref="T:OfficeConverter.Exceptions.OCFileIsPasswordProtected">Raised when the <paramref name="inputFile" /> is password protected</exception>
+            <exception cref="T:OfficeConverter.Exceptions.OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile" /> has to many rows</exception>
+            <exception cref="T:OfficeConverter.Exceptions.OCFileContainsNoData">Raised when the Microsoft Office file contains no actual data</exception>
+        </member>
+        <member name="M:OfficeConverter.Converter.GetProgId(System.String)">
+            <summary>
+            Returns the progId that is inside the XML or <c>null</c> when not found
+            </summary>
+            <param name="fileName"></param>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.Converter.CurrentDomainAssemblyResolve(System.Object,System.ResolveEventArgs)">
+            <summary>
+            Event to resolve 32 or 64 bits dll
+            </summary>
+            <param name="sender"></param>
+            <param name="args"></param>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.Converter.Dispose">
+            <summary>
+                Disposes all created office objects
+            </summary>
+        </member>
+        <member name="T:OfficeConverter.Excel">
+            <summary>
+                This class is used as a placeholder for all Excel related methods
+            </summary>
+        </member>
+        <member name="T:OfficeConverter.Excel.ShapePosition">
+            <summary>
+                Placeholder for shape information
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.Excel.ShapePosition.TopLeftColumn">
+            <summary>
+                Returns the top left column
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.Excel.ShapePosition.TopLeftRow">
+            <summary>
+                Returns the top left row
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.Excel.ShapePosition.BottomRightColumn">
+            <summary>
+                Returns the bottom right column
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.Excel.ShapePosition.BottomRightRow">
+            <summary>
+                Returns the bottom right row
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.Excel.ShapePosition.#ctor(Microsoft.Office.Interop.Excel.Shape)">
+            <summary>
+                Creates this object and sets it's needed properties
+            </summary>
+            <param name="shape">The shape object</param>
+        </member>
+        <member name="T:OfficeConverter.Excel.ExcelPaperSize">
+            <summary>
+                Placeholder for paper size and orientation information
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.Excel.ExcelPaperSize.PaperSize">
+            <summary>
+                Returns the paper size
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.Excel.ExcelPaperSize.Orientation">
+            <summary>
+                Returns the orientation
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.Excel.ExcelPaperSize.#ctor(Microsoft.Office.Interop.Excel.XlPaperSize,Microsoft.Office.Interop.Excel.XlPageOrientation)">
+            <summary>
+                Creates this object and sets it's needed properties
+            </summary>
+            <param name="paperSize">The paper size</param>
+            <param name="orientation">The orientation</param>
+        </member>
+        <member name="T:OfficeConverter.Excel.MergedCellSearchOrder">
+            <summary>
+                Direction to search in merged cells
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Excel.MergedCellSearchOrder.FirstRow">
+            <summary>
+                Search for first row in the merge area
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Excel.MergedCellSearchOrder.FirstColumn">
+            <summary>
+                Search for first column in the merge area
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Excel.MergedCellSearchOrder.LastRow">
+            <summary>
+                Search for last row in the merge area
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Excel.MergedCellSearchOrder.LastColumn">
+            <summary>
+                Search for last column in the merge area
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Excel._versionNumber">
+            <summary>
+                Excel version number
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Excel._maxRows">
+            <summary>
+                Excel maximum rows
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Excel._paperSizes">
+            <summary>
+                Paper sizes to use when detecting optimal page size with the <see cref="M:OfficeConverter.Excel.SetWorkSheetPaperSize(Microsoft.Office.Interop.Excel._Worksheet,System.String)" /> method
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Excel._zoomRatios">
+            <summary>
+                Zoom ration to use when detecting optimal page size with the <see cref="M:OfficeConverter.Excel.SetWorkSheetPaperSize(Microsoft.Office.Interop.Excel._Worksheet,System.String)" /> method
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Excel._excel">
+            <summary>
+                <see cref="T:Microsoft.Office.Interop.Excel.ApplicationClass"/>
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Excel._excelProcess">
+            <summary>
+                A <see cref="T:System.Diagnostics.Process" /> object to Excel
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Excel._tempDirectory">
+            <summary>
+                When set then this folder is used for temporary files
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Excel._disposed">
+            <summary>
+                Keeps track is we already disposed our resources
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.Excel.TempDirectory">
+            <summary>
+                When set then this directory is used to store temporary files
+            </summary>
+            <exception cref="T:System.IO.DirectoryNotFoundException">Raised when the given directory does not exists</exception>
+        </member>
+        <member name="P:OfficeConverter.Excel.DoNotDeleteTempDirectory">
+            <summary>
+                When set to <c>true</c> then the <see cref="P:OfficeConverter.Excel.TempDirectory"/>
+                will not be deleted when the extraction is done
+            </summary>
+            <remarks>
+                For debugging per poses
+            </remarks>
+        </member>
+        <member name="P:OfficeConverter.Excel.GetTempDirectory">
+            <summary>
+                Returns a reference to the temp directory
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.Excel.IsExcelRunning">
+            <summary>
+                Returns <c>true</c> when Excel is running
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.Excel.#ctor">
+            <summary>
+                This constructor checks to see if all requirements for a successful conversion are here.
+            </summary>
+            <exception cref="T:OfficeConverter.Exceptions.OCConfiguration">Raised when the registry could not be read to determine Excel version</exception>
+        </member>
+        <member name="M:OfficeConverter.Excel.StartExcel">
+            <summary>
+                Starts Excel
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.Excel.StopExcel">
+            <summary>
+                Stops Excel
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.Excel.CheckIfSystemProfileDesktopDirectoryExists">
+            <summary>
+                If you want to run this code on a server then the following folders must exist, if they don't
+                then you can't use Excel to convert files to PDF
+            </summary>
+            <exception cref="T:OfficeConverter.Exceptions.OCConfiguration">Raised when the needed directory could not be created</exception>
+        </member>
+        <member name="M:OfficeConverter.Excel.CheckIfPrinterIsInstalled">
+            <summary>
+                Excel needs a default printer to export to PDF, this method will check if there is one
+            </summary>
+            <exception cref="T:OfficeConverter.Exceptions.OCConfiguration">Raised when an default printer does not exists</exception>
+        </member>
+        <member name="M:OfficeConverter.Excel.GetColumnAddress(System.Int32)">
+            <summary>
+                Returns the column address for the given <paramref name="column" />
+            </summary>
+            <param name="column"></param>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.Excel.GetColumnNumber(System.String)">
+            <summary>
+                Returns the column number for the given <paramref name="columnAddress" />
+            </summary>
+            <param name="columnAddress"></param>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.Excel.CheckForMergedCell(Microsoft.Office.Interop.Excel.Range,OfficeConverter.Excel.MergedCellSearchOrder)">
+            <summary>
+                Checks if the given cell is merged and if so returns the last column or row from this merge.
+                When the cell is not merged it just returns the cell
+            </summary>
+            <param name="range">The cell</param>
+            <param name="searchOrder">
+                <see cref="T:OfficeConverter.Excel.MergedCellSearchOrder" />
+            </param>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.Excel.GetWorksheetPrintArea(Microsoft.Office.Interop.Excel._Worksheet)">
+            <summary>
+                Figures out the used cell range. This are the cell's that contain any form of text and
+                returns this range. An empty range will be returned when there are shapes used on a worksheet
+            </summary>
+            <param name="worksheet"></param>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.Excel.CountVerticalPageBreaks(Microsoft.Office.Interop.Excel.VPageBreaks)">
+            <summary>
+                Returns the total number of vertical page breaks in the print area
+            </summary>
+            <param name="pageBreaks"></param>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.Excel.SetWorkSheetPaperSize(Microsoft.Office.Interop.Excel._Worksheet,System.String)">
+            <summary>
+                This method wil figure out the optimal paper size to use and sets it
+            </summary>
+            <param name="worksheet"></param>
+            <param name="printArea"></param>
+        </member>
+        <member name="M:OfficeConverter.Excel.SetChartPaperSize(Microsoft.Office.Interop.Excel._Chart)">
+            <summary>
+                This method wil set the paper size for a chart
+            </summary>
+            <param name="chart"></param>
+        </member>
+        <member name="M:OfficeConverter.Excel.Convert(System.String,System.String)">
+            <summary>
+                Converts an Excel sheet to PDF
+            </summary>
+            <param name="inputFile">The Excel input file</param>
+            <param name="outputFile">The PDF output file</param>
+            <returns></returns>
+            <exception cref="T:OfficeConverter.Exceptions.OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile" /> has to many rows</exception>
+        </member>
+        <member name="M:OfficeConverter.Excel.GetCsvSeparator(System.String,System.String@,Microsoft.Office.Interop.Excel.XlTextQualifier@)">
+            <summary>
+                Returns the separator and text qualifier that is used in the CSV file
+            </summary>
+            <param name="inputFile">The input file</param>
+            <param name="separator">The separator that is used</param>
+            <param name="textQualifier">The text qualifier</param>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.Excel.OpenWorkbook(System.String,System.String,System.Boolean)">
+            <summary>
+                Opens the <paramref name="inputFile" /> and returns it as an <see cref="T:Microsoft.Office.Interop.Excel.Workbook" /> object
+            </summary>
+            <param name="inputFile">The file to open</param>
+            <param name="extension">The file extension</param>
+            <param name="repairMode">When true the <paramref name="inputFile" /> is opened in repair mode</param>
+            <returns></returns>
+            <exception cref="T:OfficeConverter.Exceptions.OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile" /> has to many rows</exception>
+        </member>
+        <member name="M:OfficeConverter.Excel.CloseWorkbook(Microsoft.Office.Interop.Excel.Workbook)">
+            <summary>
+                Closes the opened workbook and releases any allocated resources
+            </summary>
+            <param name="workbook">The Excel workbook</param>
+        </member>
+        <member name="M:OfficeConverter.Excel.DeleteResiliencyKeys">
+            <summary>
+                This method will delete the automatic created Resiliency key. Excel uses this registry key
+                to make entries to corrupted workbooks. If there are to many entries under this key Excel will
+                get slower and slower to start. To prevent this we just delete this key when it exists
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.Excel.Dispose">
+            <summary>
+                Disposes the running <see cref="F:OfficeConverter.Excel._excel" />
+            </summary>
+        </member>
+        <member name="T:OfficeConverter.Exceptions.OCConfiguration">
+            <summary>
+                Raised when there is an Office configuration problem
+            </summary>
+        </member>
+        <member name="T:OfficeConverter.Exceptions.OCCsvFileLimitExceeded">
+            <summary>
+                Raised when a CSV file has to many rows
+            </summary>
+        </member>
+        <member name="T:OfficeConverter.Exceptions.OCFileContainsNoData">
+            <summary>
+                Raised when the Microsoft Office file contains no actual data
+            </summary>
+        </member>
+        <member name="T:OfficeConverter.Exceptions.OCFileIsCorrupt">
+            <summary>
+                Raised when the Microsoft Office file is corrupt
+            </summary>
+        </member>
+        <member name="T:OfficeConverter.Exceptions.OCFileIsPasswordProtected">
+            <summary>
+                Raised when the Microsoft Office file is password protected
+            </summary>
+        </member>
+        <member name="T:OfficeConverter.Exceptions.OCFileTypeNotSupported">
+            <summary>
+                Raised when the Microsoft Office file type is not supported
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.Helpers.ExceptionHelpers.GetInnerException(System.Exception)">
+            <summary>
+            Get the complete inner exception tree
+            </summary>
+            <param name="e">The exception object</param>
+            <returns></returns>
+        </member>
+        <member name="F:OfficeConverter.Helpers.Logger._logger">
+            <summary>
+                When set then logging is written to this ILogger instance
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Helpers.Logger.InstanceId">
+            <summary>
+                An unique id that can be used to identify the logging of the converter when
+                calling the code from multiple threads and writing all the logging to the same file
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.Helpers.Logger.WriteToLog(System.String)">
+            <summary>
+                Writes a line to the <see cref="F:OfficeConverter.Helpers.Logger._logger" />
+            </summary>
+            <param name="message">The message to write</param>
+        </member>
+        <member name="M:OfficeConverter.Helpers.NativeMethods.IsWindowsServer">
+            <summary>
+            Returns true when running on a server system
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.Helpers.ProcessHelpers.GetWindowThreadProcessId(System.Int32,System.Int32@)">
+            <summary>
+            Returns the process id for the given <paramref name="hWnd"/>
+            </summary>
+            <param name="hWnd"></param>
+            <param name="lpdwProcessId"></param>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.Helpers.ProcessHelpers.GetProcessIdByWindowTitle(System.String)">
+            <summary>
+            Returns the process id for the Windows with the given <paramref name="title"/>
+            </summary>
+            <param name="title"></param>
+            <returns></returns>
+        </member>
+        <member name="T:OfficeConverter.LibreOffice">
+            <summary>
+                This class is used as a placeholder for all Libre office related methods
+            </summary>
+            <remarks>
+                - https://api.libreoffice.org/examples/examples.html
+                - https://api.libreoffice.org/docs/install.html
+                - https://www.libreoffice.org/download/download/
+            </remarks>
+        </member>
+        <member name="F:OfficeConverter.LibreOffice._libreOfficeProcess">
+            <summary>
+                A <see cref="T:System.Diagnostics.Process" /> object to LibreOffice
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.LibreOffice._componentLoader">
+            <summary>
+                <see cref="T:unoidl.com.sun.star.frame.XComponentLoader"/>
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.LibreOffice._disposed">
+            <summary>
+                Keeps track is we already disposed our resources
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.LibreOffice.GetInstallPath">
+            <summary>
+                Returns the full path to LibreOffice, when not found <c>null</c> is returned
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.LibreOffice.IsLibreOfficeRunning">
+            <summary>
+                Returns <c>true</c> when LibreOffice is running
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.LibreOffice.StartLibreOffice">
+            <summary>
+                Checks if LibreOffice is started and if not starts it
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.LibreOffice.OpenLibreOfficePipe(System.String)">
+            <summary>
+                Opens a pipe to LibreOffice
+            </summary>
+            <param name="pipeName"></param>
+        </member>
+        <member name="M:OfficeConverter.LibreOffice.StopLibreOffice">
+            <summary>
+                Stops LibreOffice
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.LibreOffice.ConvertToUrl(System.String)">
+            <summary>
+                Convert the give file path to the format LibreOffice needs
+            </summary>
+            <param name="file"></param>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.LibreOffice.Convert(System.String,System.String)">
+            <summary>
+                Converts the given <paramref name="inputFile" /> to PDF format and saves it as <paramref name="outputFile" />
+            </summary>
+            <param name="inputFile">The input file</param>
+            <param name="outputFile">The output file</param>
+        </member>
+        <member name="M:OfficeConverter.LibreOffice.InitDocument(unoidl.com.sun.star.frame.XComponentLoader,System.String,System.String)">
+            <summary>
+                Creates a new document in LibreOffice and opens the given <paramref name="inputFile" />
+            </summary>
+            <param name="aLoader"></param>
+            <param name="inputFile"></param>
+            <param name="target"></param>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.LibreOffice.ExportToPdf(unoidl.com.sun.star.lang.XComponent,System.String,System.String)">
+            <summary>
+                Exports the loaded document to PDF format
+            </summary>
+            <param name="component"></param>
+            <param name="inputFile"></param>
+            <param name="outputFile"></param>
+        </member>
+        <member name="M:OfficeConverter.LibreOffice.CloseDocument(unoidl.com.sun.star.lang.XComponent)">
+            <summary>
+                Closes the document and frees any used resources
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.LibreOffice.GetFilterType(System.String)">
+            <summary>
+                Returns the filter that is needed to convert the given <paramref name="fileName" />,
+                <c>null</c> is returned when the file cannot be converted
+            </summary>
+            <param name="fileName">The file to check</param>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.LibreOffice.Dispose">
+            <summary>
+                Disposes the running <see cref="F:OfficeConverter.LibreOffice._libreOfficeProcess" />
+            </summary>
+        </member>
+        <member name="T:OfficeConverter.Loggers.Console">
+            <summary>
+                Writes log information to the console
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.Loggers.Console.#ctor">
+            <summary>
+            Writes logging to the console
+            </summary>
+        </member>
+        <member name="T:OfficeConverter.Loggers.File">
+            <summary>
+                Writes log information to a file
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.Loggers.File.#ctor(System.String)">
+            <summary>
+                Logs information to the given <paramref name="fileName"/>
+            </summary>
+            <param name="fileName"></param>
+        </member>
+        <member name="T:OfficeConverter.Loggers.Stream">
+            <summary>
+                Writes log information to a stream
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.Loggers.Stream.#ctor(System.IO.Stream)">
+            <summary>
+                Logs information to the given <paramref name="stream"/>
+            </summary>
+            <param name="stream"></param>
+        </member>
+        <member name="M:OfficeConverter.Loggers.Stream.BeginScope``1(``0)">
+            <summary>
+            Begins the ILogger scope
+            </summary>
+            <typeparam name="TState"></typeparam>
+            <param name="state"></param>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.Loggers.Stream.IsEnabled(Microsoft.Extensions.Logging.LogLevel)">
+            <summary>
+                Will always return <c>true</c>
+            </summary>
+            <param name="logLevel"></param>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.Loggers.Stream.Log``1(Microsoft.Extensions.Logging.LogLevel,Microsoft.Extensions.Logging.EventId,``0,System.Exception,System.Func{``0,System.Exception,System.String})">
+            <summary>
+            Writes logging to the ILogger interface
+            </summary>
+            <typeparam name="TState"></typeparam>
+            <param name="logLevel"></param>
+            <param name="eventId"></param>
+            <param name="state"></param>
+            <param name="exception"></param>
+            <param name="formatter"></param>
+        </member>
+        <member name="T:OfficeConverter.PowerPoint">
+            <summary>
+                This class is used as a placeholder for all PowerPoint related methods
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.PowerPoint._versionNumber">
+            <summary>
+                PowerPoint version number
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.PowerPoint._powerPoint">
+            <summary>
+                <see cref="T:Microsoft.Office.Interop.PowerPoint.ApplicationClass" />
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.PowerPoint._powerPointProcess">
+            <summary>
+                A <see cref="T:System.Diagnostics.Process" /> object to PowerPoint
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.PowerPoint._disposed">
+            <summary>
+                Keeps track is we already disposed our resources
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.PowerPoint.IsPowerPointRunning">
+            <summary>
+                Returns <c>true</c> when PowerPoint is running
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.PowerPoint.#ctor">
+            <summary>
+                This constructor checks to see if all requirements for a successful conversion are here.
+            </summary>
+            <exception cref="T:OfficeConverter.Exceptions.OCConfiguration">Raised when the registry could not be read to determine PowerPoint version</exception>
+        </member>
+        <member name="M:OfficeConverter.PowerPoint.StartPowerPoint">
+            <summary>
+                Starts PowerPoint
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.PowerPoint.StopPowerPoint">
+            <summary>
+                Stops PowerPoint
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.PowerPoint.Convert(System.String,System.String)">
+            <summary>
+                Converts a PowerPoint document to PDF
+            </summary>
+            <param name="inputFile">The PowerPoint input file</param>
+            <param name="outputFile">The PDF output file</param>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.PowerPoint.OpenPresentation(System.String,System.Boolean)">
+            <summary>
+                Opens the <paramref name="inputFile" /> and returns it as an <see cref="T:Microsoft.Office.Interop.PowerPoint.Presentation" /> object
+            </summary>
+            <param name="inputFile">The file to open</param>
+            <param name="repairMode">When true the <paramref name="inputFile" /> is opened in repair mode</param>
+            <returns></returns>
+            <exception cref="T:OfficeConverter.Exceptions.OCFileIsCorrupt">
+                Raised when the <paramref name="inputFile" /> is corrupt and can't be opened in
+                repair mode
+            </exception>
+        </member>
+        <member name="M:OfficeConverter.PowerPoint.ClosePresentation(Microsoft.Office.Interop.PowerPoint._Presentation)">
+            <summary>
+                Closes the opened presentation and releases any allocated resources
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.PowerPoint.DeleteResiliencyKeys">
+            <summary>
+                This method will delete the automatic created Resiliency key. PowerPoint uses this registry key
+                to make entries to corrupted presentations. If there are to many entries under this key PowerPoint will
+                get slower and slower to start. To prevent this we just delete this key when it exists
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.PowerPoint.Dispose">
+            <summary>
+                Disposes the running <see cref="F:OfficeConverter.PowerPoint._powerPoint" />
+            </summary>
+        </member>
+        <member name="T:OfficeConverter.Word">
+            <summary>
+                This class is used as a placeholder for all Word related methods
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Word._versionNumber">
+            <summary>
+                Word version number
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Word._word">
+            <summary>
+                <see cref="T:Microsoft.Office.Interop.Word.ApplicationClass" />
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Word._wordProcess">
+            <summary>
+                A <see cref="T:System.Diagnostics.Process" /> object to Word
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.Word._disposed">
+            <summary>
+                Keeps track is we already disposed our resources
+            </summary>
+        </member>
+        <member name="P:OfficeConverter.Word.IsWordRunning">
+            <summary>
+                Returns <c>true</c> when Word is running
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.Word.#ctor">
+            <summary>
+                This constructor checks to see if all requirements for a successful conversion are here.
+            </summary>
+            <exception cref="T:OfficeConverter.Exceptions.OCConfiguration">Raised when the registry could not be read to determine Word version</exception>
+        </member>
+        <member name="M:OfficeConverter.Word.StartWord">
+            <summary>
+                Starts Word
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.Word.StopWord">
+            <summary>
+                Stops Word
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.Word.Convert(System.String,System.String)">
+            <summary>
+                Converts a Word document to PDF
+            </summary>
+            <param name="inputFile">The Word input file</param>
+            <param name="outputFile">The PDF output file</param>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.Word.OpenDocument(System.String,System.Boolean)">
+            <summary>
+                Opens the <paramref name="inputFile" /> and returns it as an <see cref="T:Microsoft.Office.Interop.Word.Document" /> object
+            </summary>
+            <param name="inputFile">The file to open</param>
+            <param name="repairMode">When true the <paramref name="inputFile" /> is opened in repair mode</param>
+            <returns></returns>
+        </member>
+        <member name="M:OfficeConverter.Word.CloseDocument(Microsoft.Office.Interop.Word.Document)">
+            <summary>
+                Closes the opened document and releases any allocated resources
+            </summary>
+            <param name="document">The Word document</param>
+        </member>
+        <member name="M:OfficeConverter.Word.DeleteResiliencyKeys">
+            <summary>
+                This method will delete the automatic created Resiliency key. Word uses this registry key
+                to make entries to corrupted documents. If there are to many entries under this key Word will
+                get slower and slower to start. To prevent this we just delete this key when it exists
+            </summary>
+        </member>
+        <member name="M:OfficeConverter.Word.Dispose">
+            <summary>
+                Disposes the running <see cref="F:OfficeConverter.Word._word" />
+            </summary>
+        </member>
+    </members>
+</doc>

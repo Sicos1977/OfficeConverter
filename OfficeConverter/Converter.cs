@@ -439,7 +439,7 @@ namespace OfficeConverter
         private Assembly CurrentDomainAssemblyResolve(object sender, ResolveEventArgs args)
         {
             var assemblyName = args.Name.Split(new[] {','}, 2)[0] + ".dll";
-            var path = Path.Combine(AppDomain.CurrentDomain.SetupInformation.ApplicationBase, "CLI",
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CLI",
                 Environment.Is64BitProcess ? "x64" : "x86", assemblyName);
 
             return File.Exists(path)
