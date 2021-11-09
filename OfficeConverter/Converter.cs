@@ -97,7 +97,7 @@ namespace OfficeConverter
         ///     will not be deleted when the extraction is done
         /// </summary>
         /// <remarks>
-        ///     For debugging perpeses
+        ///     For debugging per poses
         /// </remarks>
         public bool DoNotDeleteTempDirectory { get; set; }
 

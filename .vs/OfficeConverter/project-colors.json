@@ -1,0 +1,16 @@
+{
+  "Version": 1,
+  "ProjectMap": {
+    "41d58d18-0218-42c1-b362-1b40417d6d03": {
+      "ProjectGuid": "41d58d18-0218-42c1-b362-1b40417d6d03",
+      "DisplayName": "OfficeConverter",
+      "ColorIndex": 0
+    },
+    "11801f7f-7773-404d-b143-d4b0ff4fce48": {
+      "ProjectGuid": "11801f7f-7773-404d-b143-d4b0ff4fce48",
+      "DisplayName": "OfficeConverterTestTool",
+      "ColorIndex": 1
+    }
+  },
+  "NextColorIndex": 2
+}
