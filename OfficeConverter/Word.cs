@@ -169,21 +169,22 @@ namespace OfficeConverter
                 DisplayRecentFiles = false,
                 DisplayScrollBars = false,
                 AutomationSecurity = MsoAutomationSecurity.msoAutomationSecurityForceDisable,
-                Visible = false
+                Visible = false,
+                Options =
+                {
+                    UpdateLinksAtOpen = false,
+                    ConfirmConversions = false,
+                    UpdateLinksAtPrint = false,
+                    DoNotPromptForConvert = true,
+                    SaveInterval = 0,
+                    SaveNormalPrompt = false,
+                    SavePropertiesPrompt = false,
+                    AllowReadingMode = false,
+                    WarnBeforeSavingPrintingSendingMarkup = false,
+                    UpdateFieldsAtPrint = false,
+                    LocalNetworkFile = false
+                }
             };
-
-            _word.Options.UpdateLinksAtOpen = false;
-            _word.Options.ConfirmConversions = false;
-            _word.Options.SaveInterval = 0;
-            _word.Options.SaveNormalPrompt = false;
-            _word.Options.SavePropertiesPrompt = false;
-            _word.Options.AllowReadingMode = false;
-            _word.Options.WarnBeforeSavingPrintingSendingMarkup = false;
-            _word.Options.UpdateFieldsAtPrint = false;
-            _word.Options.UpdateLinksAtOpen = false;
-            _word.Options.UpdateLinksAtPrint = false;
-            _word.Options.DoNotPromptForConvert = true;
-            _word.Options.LocalNetworkFile = false;
 
             var captionGuid = Guid.NewGuid().ToString();
             _word.Caption = captionGuid;
@@ -232,11 +233,14 @@ namespace OfficeConverter
                 {
                     Logger.WriteToLog($"Word did not shutdown gracefully in 2 seconds ... killing it on process id {_wordProcess.Id}");
                     _wordProcess.Kill();
+                    _wordProcess = null;
                     Logger.WriteToLog("Word process killed");
                 }
                 else
                     Logger.WriteToLog("Word stopped");
             }
+            else
+                Logger.WriteToLog($"Word {(_wordProcess != null ? $"with process id {_wordProcess.Id} " : string.Empty)}already exited");
 
             if (_word != null)
             {

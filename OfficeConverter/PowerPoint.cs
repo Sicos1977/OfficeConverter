@@ -197,13 +197,14 @@ namespace OfficeConverter
                 {
                     Logger.WriteToLog($"PowerPoint did not shutdown gracefully in 2 seconds ... killing it on process id {_powerPointProcess.Id}");
                     _powerPointProcess.Kill();
+                    _powerPointProcess = null;
                     Logger.WriteToLog("PowerPoint process killed");
                 }
                 else
                     Logger.WriteToLog("PowerPoint stopped");
             }
             else
-                Logger.WriteToLog($"PowerPoint with process id {_powerPointProcess.Id} already exited");
+                Logger.WriteToLog($"PowerPoint {(_powerPointProcess != null ? $"with process id {_powerPointProcess.Id} " : string.Empty)}already exited");
 
             if (_powerPoint != null)
             {

@@ -162,12 +162,12 @@ namespace OfficeConverter
 
         #region Private class ExcelPaperSize
         /// <summary>
-        ///     Placeholder for papersize and orientation information
+        ///     Placeholder for paper size and orientation information
         /// </summary>
         private class ExcelPaperSize
         {
             /// <summary>
-            ///     Returns the papersize
+            ///     Returns the paper size
             /// </summary>
             public ExcelInterop.XlPaperSize PaperSize { get; }
 
@@ -179,7 +179,7 @@ namespace OfficeConverter
             /// <summary>
             ///     Creates this object and sets it's needed properties
             /// </summary>
-            /// <param name="paperSize">The papersize</param>
+            /// <param name="paperSize">The paper size</param>
             /// <param name="orientation">The orientation</param>
             public ExcelPaperSize(ExcelInterop.XlPaperSize paperSize, ExcelInterop.XlPageOrientation orientation)
             {
@@ -287,7 +287,7 @@ namespace OfficeConverter
         ///     will not be deleted when the extraction is done
         /// </summary>
         /// <remarks>
-        ///     For debugging perpeses
+        ///     For debugging per poses
         /// </remarks>
         public bool DoNotDeleteTempDirectory { get; set; }
 
@@ -497,6 +497,8 @@ namespace OfficeConverter
                 else
                     Logger.WriteToLog("Excel stopped");
             }
+            else
+                Logger.WriteToLog($"Word {(_excelProcess != null ? $"with process id {_excelProcess.Id} " : string.Empty)}already exited");
 
             if (_excel != null)
             {
@@ -880,7 +882,7 @@ namespace OfficeConverter
 
         #region CountVerticalPageBreaks
         /// <summary>
-        ///     Returns the total number of vertical pagebreaks in the print area
+        ///     Returns the total number of vertical page breaks in the print area
         /// </summary>
         /// <param name="pageBreaks"></param>
         /// <returns></returns>
@@ -934,7 +936,7 @@ namespace OfficeConverter
 
                 foreach (var paperSize in _paperSizes)
                 {
-                    var exitfor = false;
+                    var exitFor = false;
                     pageSetup.PaperSize = paperSize.PaperSize;
                     pageSetup.Orientation = paperSize.Orientation;
                     worksheet.ResetAllPageBreaks();
@@ -950,12 +952,12 @@ namespace OfficeConverter
 
                         if (CountVerticalPageBreaks(worksheet.VPageBreaks) == 0)
                         {
-                            exitfor = true;
+                            exitFor = true;
                             break;
                         }
                     }
 
-                    if (exitfor)
+                    if (exitFor)
                         break;
                 }
 
@@ -971,7 +973,7 @@ namespace OfficeConverter
 
         #region SetChartPaperSize
         /// <summary>
-        ///     This method wil set the papersize for a chart
+        ///     This method wil set the paper size for a chart
         /// </summary>
         /// <param name="chart"></param>
         private void SetChartPaperSize(ExcelInterop._Chart chart)
@@ -1022,7 +1024,7 @@ namespace OfficeConverter
                     var tempFileName = Path.Combine(GetTempDirectory.FullName, Guid.NewGuid() + ".txt");
 
                     // Yes this look somewhat weird but we have to change the extension if we want to handle
-                    // CSV files with different kind of separators. Otherwhise Excel will always overrule whatever
+                    // CSV files with different kind of separators. Otherwise Excel will always overrule whatever
                     // setting we make to open a file
                     Logger.WriteToLog($"Copying CSV file '{inputFile}' to temporary file '{tempFileName}' and setting that one as the input file");
                     File.Copy(inputFile, tempFileName);
@@ -1043,7 +1045,6 @@ namespace OfficeConverter
                 }
 
                 var usedSheets = 0;
-
                 var activeWindow = _excel.ActiveWindow;
 
                 if (activeWindow == null)
@@ -1068,19 +1069,20 @@ namespace OfficeConverter
                             try
                             {
                                 // ReSharper disable once RedundantCast
+                                // ReSharper disable once TryCastAlwaysSucceeds
                                 (sheet as ExcelInterop._Worksheet).Activate();
                                 if (!sheet.ProtectContents || protection.AllowFormattingColumns)
                                 {
                                     if (activeWindow.View != ExcelInterop.XlWindowView.xlPageLayoutView)
                                     {
-                                        Logger.WriteToLog($"Auto fitting colums on sheet '{sheet.Name}'");
+                                        Logger.WriteToLog($"Auto fitting columns on sheet '{sheet.Name}'");
                                         sheet.Columns.AutoFit();
                                     }
                                 }
                             }
                             catch (COMException)
                             {
-                                // Do nothing, this sometimes failes and there is nothing we can do about it
+                                // Do nothing, this sometimes fails and there is nothing we can do about it
                             }
                             finally
                             {
@@ -1147,7 +1149,7 @@ namespace OfficeConverter
                 }
                 catch(Exception exception)
                 {
-                    Logger.WriteToLog("Error closing workbook, error: " + ExceptionHelpers.GetInnerException(exception));
+                    Logger.WriteToLog($"Error closing workbook, error: {ExceptionHelpers.GetInnerException(exception)}");
                 }
 
                 if (_tempDirectory != null)
