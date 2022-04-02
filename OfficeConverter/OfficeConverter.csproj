@@ -4,11 +4,11 @@
     <TargetFrameworks>net462</TargetFrameworks>
     <RootNamespace>OfficeConverter</RootNamespace>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>1.7.2</Version>
-    <AssemblyVersion>1.7.2</AssemblyVersion>
+    <Version>1.7.3</Version>
+    <AssemblyVersion>1.7.3</AssemblyVersion>
     <Authors>Kees van Spelde</Authors>
     <Company>Magic-Sessions</Company>
-    <Copyright>(c)2014-2021 - Kees van Spelde</Copyright>
+    <Copyright>(c)2014-2022 - Kees van Spelde</Copyright>
     <PackageProjectUrl>https://github.com/Sicos1977/OfficeConverter</PackageProjectUrl>
     <PackageLicenseUrl></PackageLicenseUrl>
     <PackageIconUrl></PackageIconUrl>
@@ -19,7 +19,7 @@
     <PackageReleaseNotes>- Update nuget packages</PackageReleaseNotes>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>OfficeConverter.snk</AssemblyOriginatorKeyFile>
-    <FileVersion>1.7.2</FileVersion>
+    <FileVersion>1.7.3</FileVersion>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageIcon>Word-2-icon.png</PackageIcon>
   </PropertyGroup>
