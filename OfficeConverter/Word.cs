@@ -404,8 +404,8 @@ namespace OfficeConverter
         public void Dispose()
         {
             if (_disposed) return;
-            _disposed = true;
             StopWord();
+            _disposed = true;
         }
         #endregion
     }
