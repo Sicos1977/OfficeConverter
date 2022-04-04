@@ -1364,8 +1364,8 @@ namespace OfficeConverter
         public void Dispose()
         {
             if (_disposed) return;
-            _disposed = true;
             StopExcel();
+            _disposed = true;
         }
         #endregion
     }

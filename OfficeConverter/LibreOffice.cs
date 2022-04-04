@@ -431,8 +431,8 @@ namespace OfficeConverter
         public void Dispose()
         {
             if (_disposed) return;
-            _disposed = true;
             StopLibreOffice();
+            _disposed = true;
         }
         #endregion
     }

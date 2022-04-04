@@ -455,7 +455,6 @@ namespace OfficeConverter
         public void Dispose()
         {
             if (_disposed) return;
-            _disposed = true;
 
             AppDomain.CurrentDomain.AssemblyResolve -= CurrentDomainAssemblyResolve;
 
@@ -463,25 +462,31 @@ namespace OfficeConverter
             {
                 Logger.WriteToLog("Disposing Word object");
                 _word.Dispose();
+                _word = null;
             }
 
             if (_excel != null)
             {
                 Logger.WriteToLog("Disposing Excel object");
                 _excel.Dispose();
+                _excel = null;
             }
 
             if (_powerPoint != null)
             {
                 Logger.WriteToLog("Disposing PowerPoint object");
                 _powerPoint.Dispose();
+                _powerPoint = null;
             }
 
             if (_libreOffice != null)
             {
                 Logger.WriteToLog("Disposing LibreOffice object");
                 _libreOffice.Dispose();
+                _libreOffice = null;
             }
+
+            _disposed = true;
         }
         #endregion
     }

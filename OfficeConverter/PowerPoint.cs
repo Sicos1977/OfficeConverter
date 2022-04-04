@@ -334,8 +334,8 @@ namespace OfficeConverter
         public void Dispose()
         {
             if (_disposed) return;
-            _disposed = true;
             StopPowerPoint();
+            _disposed = true;
         }
         #endregion
     }
