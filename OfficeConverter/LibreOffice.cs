@@ -62,6 +62,11 @@ namespace OfficeConverter
         ///     <see cref="XComponentLoader"/>
         /// </summary>
         private XComponentLoader _componentLoader;
+        
+        /// <summary>
+        ///     <see cref="Logger"/>
+        /// </summary>
+        private readonly Logger _logger;
 
         /// <summary>
         ///     Keeps track is we already disposed our resources
@@ -113,6 +118,13 @@ namespace OfficeConverter
         #endregion
         #endregion
 
+        #region Constructor
+        internal LibreOffice(Logger logger)
+        {
+            _logger = logger;
+        }
+        #endregion
+
         #region StartLibreOffice
         /// <summary>
         ///     Checks if LibreOffice is started and if not starts it
@@ -121,7 +133,7 @@ namespace OfficeConverter
         {
             if (IsLibreOfficeRunning)
             {
-                Logger.WriteToLog($"LibreOffice is already running on PID {_libreOfficeProcess.Id}... skipped");
+                _logger?.WriteToLog($"LibreOffice is already running on PID {_libreOfficeProcess.Id}... skipped");
                 return;
             }
 
@@ -132,21 +144,21 @@ namespace OfficeConverter
             var path = installPath.Replace('\\', '/');
 
             var ureBootStrap = $"vnd.sun.star.pathname:{path}/fundamental.ini";
-            Logger.WriteToLog($"Setting environment variable URE_BOOTSTRAP to '{ureBootStrap}'");
+            _logger?.WriteToLog($"Setting environment variable URE_BOOTSTRAP to '{ureBootStrap}'");
             Environment.SetEnvironmentVariable("URE_BOOTSTRAP", $"vnd.sun.star.pathname:{path}/fundamental.ini", EnvironmentVariableTarget.Process);
             
             var environmentPath = Environment.GetEnvironmentVariable("PATH");
-            Logger.WriteToLog($"Setting environment variable UNO_PATH to '{path}'");
+            _logger?.WriteToLog($"Setting environment variable UNO_PATH to '{path}'");
             Environment.SetEnvironmentVariable("UNO_PATH", path, EnvironmentVariableTarget.Process);
 
             if (environmentPath != null && !environmentPath.Contains(path))
             {
-                Logger.WriteToLog($"Adding '{path}' to PATH environment variable");
+                _logger?.WriteToLog($"Adding '{path}' to PATH environment variable");
                 Environment.SetEnvironmentVariable("PATH", Environment.GetEnvironmentVariable("PATH") + @";" + path,
                     EnvironmentVariableTarget.Process);
             }
 
-            Logger.WriteToLog("Starting LibreOffice");
+            _logger?.WriteToLog("Starting LibreOffice");
             
             var pipeName = Guid.NewGuid().ToString().Replace("-", string.Empty);
 
@@ -166,7 +178,7 @@ namespace OfficeConverter
 
             _libreOfficeProcess = process;
 
-            Logger.WriteToLog($"LibreOffice started with process id {process.Id}");
+            _logger?.WriteToLog($"LibreOffice started with process id {process.Id}");
 
             OpenLibreOfficePipe(pipeName);
         }
@@ -186,13 +198,13 @@ namespace OfficeConverter
 
             var i = 0;
 
-            Logger.WriteToLog($"Connecting to LibreOffice with pipe '{pipeName}'");
+            _logger?.WriteToLog($"Connecting to LibreOffice with pipe '{pipeName}'");
 
             while (true)
                 try
                 {
                     remoteContext = (XComponentContext)urlResolver.resolve($"uno:pipe,name={pipeName};urp;StarOffice.ComponentContext");
-                    Logger.WriteToLog("Connected to LibreOffice");
+                    _logger?.WriteToLog("Connected to LibreOffice");
                     break;
                 }
                 catch (Exception exception)
@@ -218,12 +230,13 @@ namespace OfficeConverter
         {
             if (IsLibreOfficeRunning)
             {
-                Logger.WriteToLog($"LibreOffice did not shutdown gracefully in 2 seconds ... killing it on process id {_libreOfficeProcess.Id}");
+                _logger?.WriteToLog($"LibreOffice did not close gracefully, closing it by killing it's process on id {_libreOfficeProcess.Id}");
                 _libreOfficeProcess.Kill();
-                Logger.WriteToLog("Word process killed");
+                _libreOfficeProcess = null;
+                _logger?.WriteToLog("LibreOffice process killed");
             }
             else
-                Logger.WriteToLog("LibreOffice stopped");
+                _logger?.WriteToLog($"LibreOffice {(_libreOfficeProcess != null ? $"with process id {_libreOfficeProcess.Id} " : string.Empty)}already exited");
 
             _libreOfficeProcess = null;
         }
@@ -276,7 +289,7 @@ namespace OfficeConverter
         /// <returns></returns>
         private XComponent InitDocument(XComponentLoader aLoader, string inputFile, string target)
         {
-            Logger.WriteToLog($"Loading document '{inputFile}'");
+            _logger?.WriteToLog($"Loading document '{inputFile}'");
 
             var openProps = new PropertyValue[2];
             openProps[0] = new PropertyValue { Name = "Hidden", Value = new Any(true) };
@@ -286,7 +299,7 @@ namespace OfficeConverter
                 inputFile, target, 0,
                 openProps);
 
-            Logger.WriteToLog("Document loaded");
+            _logger?.WriteToLog("Document loaded");
 
             return xComponent;
         }
@@ -301,7 +314,7 @@ namespace OfficeConverter
         /// <param name="outputFile"></param>
         private void ExportToPdf(XComponent component, string inputFile, string outputFile)
         {
-            Logger.WriteToLog($"Exporting document to PDF file '{outputFile}'");
+            _logger?.WriteToLog($"Exporting document to PDF file '{outputFile}'");
 
             var propertyValues = new PropertyValue[3];
             var filterData = new PropertyValue[5];
@@ -353,7 +366,7 @@ namespace OfficeConverter
             // ReSharper disable once SuspiciousTypeConversion.Global
             ((XStorable)component).storeToURL(ConvertToUrl(outputFile), propertyValues);
 
-            Logger.WriteToLog("Document exported to PDF");
+            _logger?.WriteToLog("Document exported to PDF");
         }
         #endregion
 
@@ -363,10 +376,10 @@ namespace OfficeConverter
         /// </summary>
         private void CloseDocument(XComponent component)
         {
-            Logger.WriteToLog("Closing document");
+            _logger?.WriteToLog("Closing document");
             var closeable = (XCloseable)component;
             closeable?.close(false);
-            Logger.WriteToLog("Document closed");
+            _logger?.WriteToLog("Document closed");
         }
         #endregion
 

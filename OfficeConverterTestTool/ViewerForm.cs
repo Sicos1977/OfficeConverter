@@ -93,14 +93,23 @@ namespace OfficeConverterTestTool
                     OutputTextBox.Clear();
                     OutputTextBox.Text = @"Converting...";
 
-                    using (var memoryStream = new MemoryStream())
-                    using (var converter = new Converter(new OfficeConverter.Loggers.Stream(memoryStream)))
+                    var memoryStream = new MemoryStream();
+
+                    try
                     {
-                        converter.UseLibreOffice = LibreOfficeCheckBox.Checked;
-                        converter.Convert(openFileDialog1.FileName, outputFile);
+                        using (var converter = new Converter(new OfficeConverter.Loggers.Stream(memoryStream)))
+                        {
+                            converter.UseLibreOffice = LibreOfficeCheckBox.Checked;
+                            converter.Convert(openFileDialog1.FileName, outputFile);
+                        }
+                    }
+                    finally
+                    {
                         OutputTextBox.Text += Environment.NewLine + Encoding.Default.GetString(memoryStream.ToArray());
                         OutputTextBox.Text += $@"{Environment.NewLine}Converted file written to '{outputFile}'";
+                        memoryStream.Dispose();
                     }
+
                 }
                 catch (Exception ex)
                 {

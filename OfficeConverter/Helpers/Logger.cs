@@ -29,35 +29,45 @@ using Microsoft.Extensions.Logging;
 
 namespace OfficeConverter.Helpers
 {
-    internal static class Logger
+    internal class Logger
     {
         #region Fields
         /// <summary>
         ///     When set then logging is written to this ILogger instance
         /// </summary>
-        [ThreadStatic]
-        // ReSharper disable once InconsistentNaming
-        internal static ILogger _logger;
+        private readonly ILogger _logger;
 
         /// <summary>
         ///     An unique id that can be used to identify the logging of the converter when
         ///     calling the code from multiple threads and writing all the logging to the same file
         /// </summary>
-        [ThreadStatic] 
-        internal static string InstanceId;
+        private string _instanceId;
+        #endregion
+
+        #region Constructor
+        /// <summary>
+        ///     Makes this object and sets all it's needed properties
+        /// </summary>
+        /// <param name="logger"><see cref="ILogger"/></param>
+        /// <param name="instanceId"></param>
+        internal Logger(ILogger logger, string instanceId)
+        {
+            _logger = logger;
+            _instanceId = instanceId;
+        }
         #endregion
 
         #region WriteToLog
         /// <summary>
-        ///     Writes a line to the <see cref="_logger" />
+        ///     Writes a line to the <see cref="_log" />
         /// </summary>
         /// <param name="message">The message to write</param>
-        public static void WriteToLog(string message)
+        internal void WriteToLog(string message)
         {
             try
             {
                 if (_logger == null) return;
-                using (_logger.BeginScope(InstanceId))
+                using (_logger.BeginScope(_instanceId))
                     _logger.LogInformation(message);
             }
             catch (ObjectDisposedException)

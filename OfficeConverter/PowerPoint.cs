@@ -57,6 +57,11 @@ namespace OfficeConverter
         ///     A <see cref="Process" /> object to PowerPoint
         /// </summary>
         private Process _powerPointProcess;
+        
+        /// <summary>
+        ///     <see cref="Logger"/>
+        /// </summary>
+        private readonly Logger _logger;
 
         /// <summary>
         ///     Keeps track is we already disposed our resources
@@ -87,9 +92,11 @@ namespace OfficeConverter
         ///     This constructor checks to see if all requirements for a successful conversion are here.
         /// </summary>
         /// <exception cref="OCConfiguration">Raised when the registry could not be read to determine PowerPoint version</exception>
-        internal PowerPoint()
+        internal PowerPoint(Logger logger)
         {
-            Logger.WriteToLog("Checking what version of PowerPoint is installed");
+            _logger = logger;
+            
+            _logger?.WriteToLog("Checking what version of PowerPoint is installed");
 
             try
             {
@@ -144,11 +151,11 @@ namespace OfficeConverter
         {
             if (IsPowerPointRunning)
             {
-                Logger.WriteToLog($"Powerpoint is already running on PID {_powerPointProcess.Id}... skipped");
+                _logger?.WriteToLog($"Powerpoint is already running on PID {_powerPointProcess.Id}... skipped");
                 return;
             }
 
-            Logger.WriteToLog("Starting PowerPoint");
+            _logger?.WriteToLog("Starting PowerPoint");
 
             _powerPoint = new PowerPointInterop.ApplicationClass
             {
@@ -160,7 +167,7 @@ namespace OfficeConverter
             ProcessHelpers.GetWindowThreadProcessId(_powerPoint.HWND, out var processId);
             _powerPointProcess = Process.GetProcessById(processId);
         
-            Logger.WriteToLog($"PowerPoint started with process id {_powerPointProcess.Id}");
+            _logger?.WriteToLog($"PowerPoint started with process id {_powerPointProcess.Id}");
         }
         #endregion
 
@@ -172,7 +179,7 @@ namespace OfficeConverter
         {
             if (IsPowerPointRunning)
             {
-                Logger.WriteToLog("Stopping PowerPoint");
+                _logger?.WriteToLog("Closing PowerPoint gracefully");
                 
                 try
                 {
@@ -180,7 +187,7 @@ namespace OfficeConverter
                 }
                 catch(Exception exception)
                 {
-                    Logger.WriteToLog($"PowerPoint did not shutdown gracefully, exception: {ExceptionHelpers.GetInnerException(exception)}");
+                    _logger?.WriteToLog($"An error occurred while trying to close PowerPoint gracefully, error '{ExceptionHelpers.GetInnerException(exception)}'");
                 }
 
                 var counter = 0;
@@ -188,23 +195,26 @@ namespace OfficeConverter
                 // Give PowerPoint 2 seconds to close
                 while (counter < 200)
                 {
-                    if (!IsPowerPointRunning) break;
+                    if (!IsPowerPointRunning)
+                    {
+                        _logger?.WriteToLog("Word closed gracefully");
+                        break;
+                    }
+
                     counter++;
                     Thread.Sleep(10);
                 }
 
                 if (IsPowerPointRunning)
                 {
-                    Logger.WriteToLog($"PowerPoint did not shutdown gracefully in 2 seconds ... killing it on process id {_powerPointProcess.Id}");
+                    _logger?.WriteToLog($"Word did not close gracefully, closing it by killing it's process on id {_powerPointProcess.Id}");
                     _powerPointProcess.Kill();
                     _powerPointProcess = null;
-                    Logger.WriteToLog("PowerPoint process killed");
+                    _logger?.WriteToLog("PowerPoint process killed");
                 }
-                else
-                    Logger.WriteToLog("PowerPoint stopped");
             }
             else
-                Logger.WriteToLog($"PowerPoint {(_powerPointProcess != null ? $"with process id {_powerPointProcess.Id} " : string.Empty)}already exited");
+                _logger?.WriteToLog($"PowerPoint {(_powerPointProcess != null ? $"with process id {_powerPointProcess.Id} " : string.Empty)}already exited");
 
             if (_powerPoint != null)
             {
@@ -238,9 +248,9 @@ namespace OfficeConverter
 
                 presentation = OpenPresentation(inputFile, false);
 
-                Logger.WriteToLog($"Exporting presentation to PDF file '{outputFile}'");
+                _logger?.WriteToLog($"Exporting presentation to PDF file '{outputFile}'");
                 presentation.ExportAsFixedFormat(outputFile, PowerPointInterop.PpFixedFormatType.ppFixedFormatTypePDF);
-                Logger.WriteToLog("Presentation exported to PDF");
+                _logger?.WriteToLog("Presentation exported to PDF");
             }
             catch (Exception)
             {
@@ -289,11 +299,11 @@ namespace OfficeConverter
         private void ClosePresentation(PowerPointInterop._Presentation presentation)
         {
             if (presentation == null) return;
-            Logger.WriteToLog("Closing presentation");
+            _logger?.WriteToLog("Closing presentation");
             presentation.Saved = MsoTriState.msoFalse;
             presentation.Close();
             Marshal.ReleaseComObject(presentation);
-            Logger.WriteToLog("Presentation closed");
+            _logger?.WriteToLog("Presentation closed");
         }
         #endregion
 
@@ -305,7 +315,7 @@ namespace OfficeConverter
         /// </summary>
         private void DeleteResiliencyKeys()
         {
-            Logger.WriteToLog("Deleting PowerPoint resiliency keys from the registry");
+            _logger?.WriteToLog("Deleting PowerPoint resiliency keys from the registry");
 
             try
             {
@@ -315,14 +325,14 @@ namespace OfficeConverter
                 if (Registry.CurrentUser.OpenSubKey(key, false) != null)
                 {
                     Registry.CurrentUser.DeleteSubKeyTree(key);
-                    Logger.WriteToLog("Resiliency keys deleted");
+                    _logger?.WriteToLog("Resiliency keys deleted");
                 }
                 else
-                    Logger.WriteToLog("There are no keys to delete");
+                    _logger?. WriteToLog("There are no keys to delete");
             }
             catch (Exception exception)
             {
-                Logger.WriteToLog($"Failed to delete resiliency keys, error: {ExceptionHelpers.GetInnerException(exception)}");
+                _logger?.WriteToLog($"Failed to delete resiliency keys, error: {ExceptionHelpers.GetInnerException(exception)}");
             }
         }
         #endregion

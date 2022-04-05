@@ -50,6 +50,11 @@ namespace OfficeConverter
         private readonly Checker _passwordProtectedChecker = new Checker();
 
         /// <summary>
+        ///     <see cref="Helpers.Logger"/>
+        /// </summary>
+        private Logger _logger;
+
+        /// <summary>
         ///     <see cref="Word"/>
         /// </summary>
         private Word _word;
@@ -77,17 +82,6 @@ namespace OfficeConverter
 
         #region Properties
         /// <summary>
-        ///     An unique id that can be used to identify the logging of the converter when
-        ///     calling the code from multiple threads and writing all the logging to the same file
-        /// </summary>
-        // ReSharper disable once UnusedMember.Global
-        public string InstanceId
-        {
-            get => Logger.InstanceId;
-            set => Logger.InstanceId = value;
-        }
-
-        /// <summary>
         ///     When set then this directory is used to store temporary files
         /// </summary>
         public string TempDirectory { get; set; }
@@ -97,7 +91,7 @@ namespace OfficeConverter
         ///     will not be deleted when the extraction is done
         /// </summary>
         /// <remarks>
-        ///     For debugging per poses
+        ///     For debugging
         /// </remarks>
         public bool DoNotDeleteTempDirectory { get; set; }
 
@@ -117,7 +111,7 @@ namespace OfficeConverter
                 if (_libreOffice != null)
                     return _libreOffice;
 
-                _libreOffice = new LibreOffice();
+                _libreOffice = new LibreOffice(_logger);
                 return _libreOffice;
             }
         }
@@ -133,7 +127,7 @@ namespace OfficeConverter
                 if (_word != null)
                     return _word;
 
-                _word = new Word();
+                _word = new Word(_logger);
                 return _word;
             }
         }
@@ -153,7 +147,7 @@ namespace OfficeConverter
                     return _excel;
                 }
 
-                _excel = new Excel();
+                _excel = new Excel(_logger);
                 if (TempDirectory != null)
                 {
                     _excel.TempDirectory = TempDirectory;
@@ -163,8 +157,7 @@ namespace OfficeConverter
                 return _excel;
             }
         }
-
-
+        
         /// <summary>
         /// Returns a reference to the PowerPoint class when it already exists or creates a new one
         /// when it doesn't
@@ -176,7 +169,7 @@ namespace OfficeConverter
                 if (_powerPoint != null)
                     return _powerPoint;
 
-                _powerPoint = new PowerPoint();
+                _powerPoint = new PowerPoint(_logger);
                 return _powerPoint;
             }
         }
@@ -187,11 +180,13 @@ namespace OfficeConverter
         ///     Creates this object and sets it's needed properties
         /// </summary>
         /// <param name="logger">When set then logging is written to this ILogger instance for all conversions at the Information log level. If
-        /// you want a separate log for each conversion then set the <see cref="ILogger"/> on the <see cref="Convert"/> method</param>
-        public Converter(ILogger logger = null)
+        ///     you want a separate log for each conversion then set the <see cref="ILogger"/> on the <see cref="Convert"/> method</param>
+        /// <param name="instanceId">An unique id that can be used to identify the logging of the converter when
+        ///     calling the code from multiple threads and writing all the logging to the same file</param>
+        public Converter(ILogger logger = null, string instanceId = null)
         {
             AppDomain.CurrentDomain.AssemblyResolve += CurrentDomainAssemblyResolve;
-            Logger._logger = logger;
+            _logger = new Logger(logger, instanceId);
         }
         #endregion
 
@@ -211,7 +206,7 @@ namespace OfficeConverter
         ///     Raised when the folder where the <paramref name="outputFile" /> is written
         ///     does not exists
         /// </exception>
-        private static void CheckFileNameAndOutputFolder(string inputFile, string outputFile)
+        private void CheckFileNameAndOutputFolder(string inputFile, string outputFile)
         {
             if (string.IsNullOrEmpty(inputFile))
                 throw new ArgumentNullException(inputFile);
@@ -222,7 +217,7 @@ namespace OfficeConverter
             if (!File.Exists(inputFile))
             {
                 var message = $"Could not find the input file '{inputFile}'";
-                Logger.WriteToLog(message);
+                _logger?.WriteToLog(message);
                 throw new FileNotFoundException(message);
             }
 
@@ -234,7 +229,7 @@ namespace OfficeConverter
             if (!Directory.Exists(outputFolder))
             {
                 var message = $"The output folder '{outputFolder}' does not exist";
-                Logger.WriteToLog(message);
+                _logger?.WriteToLog(message);
                 throw new DirectoryNotFoundException(message);
             }
         }
@@ -243,9 +238,8 @@ namespace OfficeConverter
         #region ThrowPasswordProtected
         private void ThrowPasswordProtected(string inputFile)
         {
-            var message = "The file '" + Path.GetFileName(inputFile) +
-                          "' is password protected";
-            Logger.WriteToLog(message);
+            var message = $"The file '{Path.GetFileName(inputFile)}' is password protected";
+            _logger?.WriteToLog(message);
             throw new OCFileIsPasswordProtected(message);
         }
         #endregion
@@ -257,6 +251,7 @@ namespace OfficeConverter
         /// <param name="inputFile">The Microsoft Office file</param>
         /// <param name="outputFile">The output file with full path</param>
         /// <param name="logger">>When set then logging is written to this ILogger instance at the Information log level</param>
+        /// <param name="instanceId"></param>
         /// <exception cref="ArgumentNullException">
         ///     Raised when the <paramref name="inputFile" /> or <paramref name="outputFile" />
         ///     is null or empty
@@ -271,10 +266,10 @@ namespace OfficeConverter
         /// <exception cref="OCFileIsPasswordProtected">Raised when the <paramref name="inputFile" /> is password protected</exception>
         /// <exception cref="OCCsvFileLimitExceeded">Raised when a CSV <paramref name="inputFile" /> has to many rows</exception>
         /// <exception cref="OCFileContainsNoData">Raised when the Microsoft Office file contains no actual data</exception>
-        public void Convert(string inputFile, string outputFile, ILogger logger = null)
+        public void Convert(string inputFile, string outputFile, ILogger logger = null, string instanceId = null)
         {
             if (logger != null)
-                Logger._logger = logger;
+                _logger = new Logger(logger, instanceId);
 
             CheckFileNameAndOutputFolder(inputFile, outputFile);
 
@@ -388,7 +383,7 @@ namespace OfficeConverter
                                   $".XLTM, .XLTX, .CSV, .ODS, .POT, .PPT, .PPS, .POTM, {Environment.NewLine}" +
                                    ".POTX, .PPSM, .PPSX, .PPTM, .PPTX and .ODP are supported";
 
-                    Logger.WriteToLog(message);
+                    _logger?.WriteToLog(message);
                     throw new OCFileTypeNotSupported(message);
                 }
             }
@@ -401,7 +396,7 @@ namespace OfficeConverter
         /// </summary>
         /// <param name="fileName"></param>
         /// <returns></returns>
-        private string GetProgId(string fileName)
+        private static string GetProgId(string fileName)
         {
             try
             {
@@ -460,28 +455,28 @@ namespace OfficeConverter
 
             if (_word != null)
             {
-                Logger.WriteToLog("Disposing Word object");
+                _logger?.WriteToLog("Disposing Word object");
                 _word.Dispose();
                 _word = null;
             }
 
             if (_excel != null)
             {
-                Logger.WriteToLog("Disposing Excel object");
+                _logger?.WriteToLog("Disposing Excel object");
                 _excel.Dispose();
                 _excel = null;
             }
 
             if (_powerPoint != null)
             {
-                Logger.WriteToLog("Disposing PowerPoint object");
+                _logger?.WriteToLog("Disposing PowerPoint object");
                 _powerPoint.Dispose();
                 _powerPoint = null;
             }
 
             if (_libreOffice != null)
             {
-                Logger.WriteToLog("Disposing LibreOffice object");
+                _logger?.WriteToLog("Disposing LibreOffice object");
                 _libreOffice.Dispose();
                 _libreOffice = null;
             }

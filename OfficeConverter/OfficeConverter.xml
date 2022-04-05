@@ -15,6 +15,11 @@
                 <see cref="T:PasswordProtectedChecker.Checker"/>
             </summary>
         </member>
+        <member name="F:OfficeConverter.Converter._logger">
+            <summary>
+                <see cref="T:OfficeConverter.Helpers.Logger"/>
+            </summary>
+        </member>
         <member name="F:OfficeConverter.Converter._word">
             <summary>
                 <see cref="P:OfficeConverter.Converter.Word"/>
@@ -40,12 +45,6 @@
                 Keeps track is we already disposed our resources
             </summary>
         </member>
-        <member name="P:OfficeConverter.Converter.InstanceId">
-            <summary>
-                An unique id that can be used to identify the logging of the converter when
-                calling the code from multiple threads and writing all the logging to the same file
-            </summary>
-        </member>
         <member name="P:OfficeConverter.Converter.TempDirectory">
             <summary>
                 When set then this directory is used to store temporary files
@@ -57,7 +56,7 @@
                 will not be deleted when the extraction is done
             </summary>
             <remarks>
-                For debugging per poses
+                For debugging
             </remarks>
         </member>
         <member name="P:OfficeConverter.Converter.UseLibreOffice">
@@ -89,12 +88,14 @@
             when it doesn't
             </summary>
         </member>
-        <member name="M:OfficeConverter.Converter.#ctor(Microsoft.Extensions.Logging.ILogger)">
+        <member name="M:OfficeConverter.Converter.#ctor(Microsoft.Extensions.Logging.ILogger,System.String)">
             <summary>
                 Creates this object and sets it's needed properties
             </summary>
             <param name="logger">When set then logging is written to this ILogger instance for all conversions at the Information log level. If
-            you want a separate log for each conversion then set the <see cref="T:Microsoft.Extensions.Logging.ILogger"/> on the <see cref="M:OfficeConverter.Converter.Convert(System.String,System.String,Microsoft.Extensions.Logging.ILogger)"/> method</param>
+                you want a separate log for each conversion then set the <see cref="T:Microsoft.Extensions.Logging.ILogger"/> on the <see cref="M:OfficeConverter.Converter.Convert(System.String,System.String,Microsoft.Extensions.Logging.ILogger,System.String)"/> method</param>
+            <param name="instanceId">An unique id that can be used to identify the logging of the converter when
+                calling the code from multiple threads and writing all the logging to the same file</param>
         </member>
         <member name="M:OfficeConverter.Converter.CheckFileNameAndOutputFolder(System.String,System.String)">
             <summary>
@@ -113,13 +114,14 @@
                 does not exists
             </exception>
         </member>
-        <member name="M:OfficeConverter.Converter.Convert(System.String,System.String,Microsoft.Extensions.Logging.ILogger)">
+        <member name="M:OfficeConverter.Converter.Convert(System.String,System.String,Microsoft.Extensions.Logging.ILogger,System.String)">
             <summary>
                 Converts the <paramref name="inputFile" /> to PDF and saves it as the <paramref name="outputFile" />
             </summary>
             <param name="inputFile">The Microsoft Office file</param>
             <param name="outputFile">The output file with full path</param>
             <param name="logger">>When set then logging is written to this ILogger instance at the Information log level</param>
+            <param name="instanceId"></param>
             <exception cref="T:System.ArgumentNullException">
                 Raised when the <paramref name="inputFile" /> or <paramref name="outputFile" />
                 is null or empty
@@ -273,6 +275,11 @@
                 When set then this folder is used for temporary files
             </summary>
         </member>
+        <member name="F:OfficeConverter.Excel._logger">
+            <summary>
+                <see cref="T:OfficeConverter.Helpers.Logger"/>
+            </summary>
+        </member>
         <member name="F:OfficeConverter.Excel._disposed">
             <summary>
                 Keeps track is we already disposed our resources
@@ -304,7 +311,7 @@
             </summary>
             <returns></returns>
         </member>
-        <member name="M:OfficeConverter.Excel.#ctor">
+        <member name="M:OfficeConverter.Excel.#ctor(OfficeConverter.Helpers.Logger)">
             <summary>
                 This constructor checks to see if all requirements for a successful conversion are here.
             </summary>
@@ -474,15 +481,22 @@
                 When set then logging is written to this ILogger instance
             </summary>
         </member>
-        <member name="F:OfficeConverter.Helpers.Logger.InstanceId">
+        <member name="F:OfficeConverter.Helpers.Logger._instanceId">
             <summary>
                 An unique id that can be used to identify the logging of the converter when
                 calling the code from multiple threads and writing all the logging to the same file
             </summary>
         </member>
+        <member name="M:OfficeConverter.Helpers.Logger.#ctor(Microsoft.Extensions.Logging.ILogger,System.String)">
+            <summary>
+                Makes this object and sets all it's needed properties
+            </summary>
+            <param name="logger"><see cref="T:Microsoft.Extensions.Logging.ILogger"/></param>
+            <param name="instanceId"></param>
+        </member>
         <member name="M:OfficeConverter.Helpers.Logger.WriteToLog(System.String)">
             <summary>
-                Writes a line to the <see cref="F:OfficeConverter.Helpers.Logger._logger" />
+                Writes a line to the <see cref="!:_log" />
             </summary>
             <param name="message">The message to write</param>
         </member>
@@ -525,6 +539,11 @@
         <member name="F:OfficeConverter.LibreOffice._componentLoader">
             <summary>
                 <see cref="T:unoidl.com.sun.star.frame.XComponentLoader"/>
+            </summary>
+        </member>
+        <member name="F:OfficeConverter.LibreOffice._logger">
+            <summary>
+                <see cref="T:OfficeConverter.Helpers.Logger"/>
             </summary>
         </member>
         <member name="F:OfficeConverter.LibreOffice._disposed">
@@ -691,6 +710,11 @@
                 A <see cref="T:System.Diagnostics.Process" /> object to PowerPoint
             </summary>
         </member>
+        <member name="F:OfficeConverter.PowerPoint._logger">
+            <summary>
+                <see cref="T:OfficeConverter.Helpers.Logger"/>
+            </summary>
+        </member>
         <member name="F:OfficeConverter.PowerPoint._disposed">
             <summary>
                 Keeps track is we already disposed our resources
@@ -702,7 +726,7 @@
             </summary>
             <returns></returns>
         </member>
-        <member name="M:OfficeConverter.PowerPoint.#ctor">
+        <member name="M:OfficeConverter.PowerPoint.#ctor(OfficeConverter.Helpers.Logger)">
             <summary>
                 This constructor checks to see if all requirements for a successful conversion are here.
             </summary>
@@ -775,6 +799,11 @@
                 A <see cref="T:System.Diagnostics.Process" /> object to Word
             </summary>
         </member>
+        <member name="F:OfficeConverter.Word._logger">
+            <summary>
+                <see cref="T:OfficeConverter.Helpers.Logger"/>
+            </summary>
+        </member>
         <member name="F:OfficeConverter.Word._disposed">
             <summary>
                 Keeps track is we already disposed our resources
@@ -786,11 +815,12 @@
             </summary>
             <returns></returns>
         </member>
-        <member name="M:OfficeConverter.Word.#ctor">
+        <member name="M:OfficeConverter.Word.#ctor(OfficeConverter.Helpers.Logger)">
             <summary>
                 This constructor checks to see if all requirements for a successful conversion are here.
             </summary>
             <exception cref="T:OfficeConverter.Exceptions.OCConfiguration">Raised when the registry could not be read to determine Word version</exception>
+            <exception cref="T:OfficeConverter.Exceptions.OCConfiguration"></exception>
         </member>
         <member name="M:OfficeConverter.Word.StartWord">
             <summary>
