@@ -41,7 +41,7 @@ namespace OfficeConverter.Helpers
         ///     An unique id that can be used to identify the logging of the converter when
         ///     calling the code from multiple threads and writing all the logging to the same file
         /// </summary>
-        private string _instanceId;
+        private readonly string _instanceId;
         #endregion
 
         #region Constructor
@@ -59,7 +59,7 @@ namespace OfficeConverter.Helpers
 
         #region WriteToLog
         /// <summary>
-        ///     Writes a line to the <see cref="_log" />
+        ///     Writes a line to the <see cref="_logger" />
         /// </summary>
         /// <param name="message">The message to write</param>
         internal void WriteToLog(string message)
