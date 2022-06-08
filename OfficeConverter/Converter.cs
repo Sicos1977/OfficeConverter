@@ -282,6 +282,7 @@ namespace OfficeConverter
                 case ".DOT":
                 case ".DOCM":
                 case ".DOCX":
+                case ".DOTX":
                 case ".DOTM":
                 case ".ODT":
                 {
