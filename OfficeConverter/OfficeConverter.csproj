@@ -16,7 +16,8 @@
     <RepositoryType>git</RepositoryType>
     <PackageTags>Microsoft Office LibreOffice Convert PDF</PackageTags>
     <Description>A very simple library that is wrapped around Microsoft Office (or LibreOffice) that can be used to convert Office documents to PDF. This library takes into account all the strange behaviors that you will get when running this on a server.</Description>
-    <PackageReleaseNotes>- Update nuget packages</PackageReleaseNotes>
+    <PackageReleaseNotes>- Update nuget packages
+- Added .dotx extension</PackageReleaseNotes>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>OfficeConverter.snk</AssemblyOriginatorKeyFile>
     <FileVersion>1.7.5</FileVersion>
