@@ -4,7 +4,7 @@
     <TargetFrameworks>net462</TargetFrameworks>
     <RootNamespace>OfficeConverter</RootNamespace>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>1.7.4</Version>
+    <Version>1.7.5</Version>
     <AssemblyVersion>1.7.4</AssemblyVersion>
     <Authors>Kees van Spelde</Authors>
     <Company>Magic-Sessions</Company>
