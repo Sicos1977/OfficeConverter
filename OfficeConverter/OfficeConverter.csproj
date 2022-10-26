@@ -4,8 +4,8 @@
     <TargetFrameworks>net462</TargetFrameworks>
     <RootNamespace>OfficeConverter</RootNamespace>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>1.7.5</Version>
-    <AssemblyVersion>1.7.5</AssemblyVersion>
+    <Version>1.7.6</Version>
+    <AssemblyVersion>1.7.6</AssemblyVersion>
     <Authors>Kees van Spelde</Authors>
     <Company>Magic-Sessions</Company>
     <Copyright>(c)2014-2022 - Kees van Spelde</Copyright>
@@ -16,11 +16,10 @@
     <RepositoryType>git</RepositoryType>
     <PackageTags>Microsoft Office LibreOffice Convert PDF</PackageTags>
     <Description>A very simple library that is wrapped around Microsoft Office (or LibreOffice) that can be used to convert Office documents to PDF. This library takes into account all the strange behaviors that you will get when running this on a server.</Description>
-    <PackageReleaseNotes>- Update nuget packages
-- Added .dotx extension</PackageReleaseNotes>
+    <PackageReleaseNotes>- Update nuget packages to fix CVE-2021-26701</PackageReleaseNotes>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>OfficeConverter.snk</AssemblyOriginatorKeyFile>
-    <FileVersion>1.7.5</FileVersion>
+    <FileVersion>1.7.6</FileVersion>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageIcon>Word-2-icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
