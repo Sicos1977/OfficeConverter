@@ -496,7 +496,7 @@
         </member>
         <member name="M:OfficeConverter.Helpers.Logger.WriteToLog(System.String)">
             <summary>
-                Writes a line to the <see cref="!:_log" />
+                Writes a line to the <see cref="F:OfficeConverter.Helpers.Logger._logger" />
             </summary>
             <param name="message">The message to write</param>
         </member>
