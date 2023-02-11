@@ -20,7 +20,7 @@ using ExcelInterop = Microsoft.Office.Interop.Excel;
 //
 // Author: Kees van Spelde <sicos2002@hotmail.com>
 //
-// Copyright (c) 2014-2022 Magic-Sessions. (www.magic-sessions.com)
+// Copyright (c) 2014-2023 Magic-Sessions. (www.magic-sessions.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -531,40 +531,39 @@ namespace OfficeConverter
         /// <exception cref="OCConfiguration">Raised when the needed directory could not be created</exception>
         private void CheckIfSystemProfileDesktopDirectoryExists()
         {
-            if (Environment.Is64BitOperatingSystem)
+            if (!NativeMethods.IsWindowsServer()) return;
+
+            NativeMethods.DisableWow64FSRedirection(IntPtr.Zero); // to really test system32 folder !
+            var x86DesktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), @"System32\config\systemprofile\desktop");
+            try
             {
-                var x64DesktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), @"SysWOW64\config\systemprofile\desktop");
-
-                _logger?.WriteToLog($"Checking if system profile desktop directory exists in '{x64DesktopPath}'");
-
-                if (!Directory.Exists(x64DesktopPath))
-                    try
-                    {
-                        Directory.CreateDirectory(x64DesktopPath);
-                        _logger?.WriteToLog("Directory did not exist ... created it");
-                    }
-                    catch (Exception exception)
-                    {
-                        throw new OCConfiguration($"Can't create folder '{x64DesktopPath}' Excel needs this folder to work on a server, error: {ExceptionHelpers.GetInnerException(exception)}");
-                    }
+                _logger?.WriteToLog("Prerequisites action: About to create x86 desktop path" + x86DesktopPath);
+                Directory.CreateDirectory(x86DesktopPath);
+                _logger?.WriteToLog(x86DesktopPath + " created successfully");
             }
-            else
+            catch (Exception exception)
             {
-                var x86DesktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), @"System32\config\systemprofile\desktop");
-
-                _logger?.WriteToLog($"Checking if system profile desktop directory exists in '{x86DesktopPath}'");
-
-                if (!Directory.Exists(x86DesktopPath))
-                    try
-                    {
-                        Directory.CreateDirectory(x86DesktopPath);
-                        _logger?.WriteToLog("Directory did not exist ... created it");
-                    }
-                    catch (Exception exception)
-                    {
-                        throw new OCConfiguration($"Can't create folder '{x86DesktopPath}' Excel needs this folder to work on a server, error: {ExceptionHelpers.GetInnerException(exception)}");
-                    }
+                throw new OCConfiguration(
+                    $"Prerequisites error: Can't create folder '{x86DesktopPath}' folder to perform PDF rendition",
+                    exception);
             }
+
+            NativeMethods.Wow64RevertWow64FsRedirection(IntPtr.Zero);
+            var x64DesktopPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), @"SysWOW64\config\systemprofile\desktop");
+
+            try
+            {
+                _logger?.WriteToLog("Prerequisites action: About to create X64 desktop path" + x64DesktopPath);
+                Directory.CreateDirectory(x64DesktopPath);
+                _logger?.WriteToLog(x64DesktopPath + " created successfully");
+            }
+            catch (Exception exception)
+            {
+                throw new OCConfiguration(
+                    $"Prerequisites error: Can't create folder '{x64DesktopPath}', folder is needed to perform PDF rendition",
+                    exception);
+            }
+
         }
         #endregion
 

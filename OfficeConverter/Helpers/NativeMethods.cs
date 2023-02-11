@@ -1,11 +1,12 @@
-﻿using System.Runtime.InteropServices;
+﻿using System;
+using System.Runtime.InteropServices;
 
 //
 // NativeMethods.cs
 //
 // Author: Kees van Spelde <sicos2002@hotmail.com>
 //
-// Copyright (c) 2014-2022 Magic-Sessions. (www.magic-sessions.com)
+// Copyright (c) 2014-2023 Magic-Sessions. (www.magic-sessions.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -43,5 +44,13 @@ namespace OfficeConverter.Helpers
 
         [DllImport("shlwapi.dll", SetLastError = true, EntryPoint = "#437")]
         private static extern bool IsOS(int os);
+
+        private const string Kernel32dll = "Kernel32.Dll";
+
+        [DllImport(Kernel32dll, EntryPoint = "Wow64DisableWow64FsRedirection")]
+        public static extern bool DisableWow64FSRedirection(IntPtr ptr);
+
+        [DllImport(Kernel32dll, EntryPoint = "Wow64RevertWow64FsRedirection")]
+        public static extern bool Wow64RevertWow64FsRedirection(IntPtr ptr);
     }
 }
