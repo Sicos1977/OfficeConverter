@@ -302,7 +302,10 @@ namespace OfficeConverter
                 case ".MHT":
                 case ".WPS":
                 case ".WRI":
-                    Word.Convert(inputFile, outputFile);
+                    if (UseLibreOffice)
+                        LibreOffice.Convert(inputFile, outputFile);
+                    else
+                        Word.Convert(inputFile, outputFile);
                     break;
 
                 case ".XLS":
