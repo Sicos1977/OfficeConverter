@@ -19,7 +19,7 @@ using Exception = System.Exception;
 //
 // Author: Kees van Spelde <sicos2002@hotmail.com>
 //
-// Copyright (c) 2014-2023 Magic-Sessions. (www.magic-sessions.com)
+// Copyright (c) 2014-2024 Magic-Sessions. (www.magic-sessions.com)
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -154,7 +154,7 @@ namespace OfficeConverter
             if (environmentPath != null && !environmentPath.Contains(path))
             {
                 _logger?.WriteToLog($"Adding '{path}' to PATH environment variable");
-                Environment.SetEnvironmentVariable("PATH", Environment.GetEnvironmentVariable("PATH") + @";" + path,
+                Environment.SetEnvironmentVariable("PATH", Environment.GetEnvironmentVariable("PATH") + ";" + path,
                     EnvironmentVariableTarget.Process);
             }
 
