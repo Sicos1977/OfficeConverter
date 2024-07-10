@@ -1144,8 +1144,9 @@ namespace OfficeConverter
                     throw new OCFileContainsNoData(message);
                 }
             }
-            catch (Exception)
+            catch (Exception exception)
             {
+                _logger?.WriteToLog($"An error occurred, error '{ExceptionHelpers.GetInnerException(exception)}'");
                 StopExcel();
                 throw;
             }

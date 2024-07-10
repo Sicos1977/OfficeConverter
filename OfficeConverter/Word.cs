@@ -298,8 +298,9 @@ namespace OfficeConverter
                 document.ExportAsFixedFormat(outputFile, WordInterop.WdExportFormat.wdExportFormatPDF);
                 _logger?.WriteToLog("Document exported to PDF");
             }
-            catch (Exception)
+            catch (Exception exception)
             {
+                _logger?.WriteToLog($"An error occurred, error '{ExceptionHelpers.GetInnerException(exception)}'");
                 StopWord();
                 throw;
             }

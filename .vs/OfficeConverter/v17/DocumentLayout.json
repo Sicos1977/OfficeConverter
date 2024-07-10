@@ -3,8 +3,8 @@
   "WorkspaceRootPath": "C:\\Kees\\OfficeConverter\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{41D58D18-0218-42C1-B362-1B40417D6D03}|OfficeConverter\\OfficeConverter.csproj|c:\\kees\\officeconverter\\officeconverter\\officeconverter.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|",
-      "RelativeMoniker": "D:0:0:{41D58D18-0218-42C1-B362-1B40417D6D03}|OfficeConverter\\OfficeConverter.csproj|solutionrelative:officeconverter\\officeconverter.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|"
+      "AbsoluteMoniker": "D:0:0:{41D58D18-0218-42C1-B362-1B40417D6D03}|OfficeConverter\\OfficeConverter.csproj|c:\\kees\\officeconverter\\officeconverter\\word.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{41D58D18-0218-42C1-B362-1B40417D6D03}|OfficeConverter\\OfficeConverter.csproj|solutionrelative:officeconverter\\word.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{41D58D18-0218-42C1-B362-1B40417D6D03}|OfficeConverter\\OfficeConverter.csproj|c:\\kees\\officeconverter\\officeconverter\\libreoffice.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -18,7 +18,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 13,
+          "SelectedChildIndex": 19,
           "Children": [
             {
               "$type": "Bookmark",
@@ -73,15 +73,40 @@
               "Name": "ST:129:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
             },
             {
+              "$type": "Bookmark",
+              "Name": "ST:132:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{d84ee353-0bef-5a41-a649-8f89aca5d84d}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:134:0:{1fc202d4-d401-403c-9834-5b218574bb67}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:136:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:137:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "OfficeConverter",
-              "DocumentMoniker": "C:\\Kees\\OfficeConverter\\OfficeConverter\\OfficeConverter.csproj",
-              "RelativeDocumentMoniker": "OfficeConverter\\OfficeConverter.csproj",
-              "ToolTip": "C:\\Kees\\OfficeConverter\\OfficeConverter\\OfficeConverter.csproj",
-              "RelativeToolTip": "OfficeConverter\\OfficeConverter.csproj",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2024-03-04T09:18:35.637Z",
+              "Title": "Word.cs",
+              "DocumentMoniker": "C:\\Kees\\OfficeConverter\\OfficeConverter\\Word.cs",
+              "RelativeDocumentMoniker": "OfficeConverter\\Word.cs",
+              "ToolTip": "C:\\Kees\\OfficeConverter\\OfficeConverter\\Word.cs*",
+              "RelativeToolTip": "OfficeConverter\\Word.cs*",
+              "ViewState": "AQIAAMAAAAAAAAAAAAAAwCoBAAA7AAAA",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2024-07-10T13:54:36.714Z",
               "EditorCaption": ""
             },
             {
@@ -92,7 +117,7 @@
               "RelativeDocumentMoniker": "OfficeConverter\\LibreOffice.cs",
               "ToolTip": "C:\\Kees\\OfficeConverter\\OfficeConverter\\LibreOffice.cs",
               "RelativeToolTip": "OfficeConverter\\LibreOffice.cs",
-              "ViewState": "AQIAACEAAAAAAAAAAAAEwIUAAAAMAAAA",
+              "ViewState": "AQIAAA8AAAAAAAAAAAAAACoAAAAZAAAA",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2024-03-04T09:13:21.729Z",
               "EditorCaption": ""
@@ -120,6 +145,16 @@
             {
               "$type": "Bookmark",
               "Name": "ST:132:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            }
+          ]
+        },
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": -1,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:135:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
             }
           ]
         }

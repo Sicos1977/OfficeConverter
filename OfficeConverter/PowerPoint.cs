@@ -252,8 +252,9 @@ namespace OfficeConverter
                 presentation.ExportAsFixedFormat(outputFile, PowerPointInterop.PpFixedFormatType.ppFixedFormatTypePDF);
                 _logger?.WriteToLog("Presentation exported to PDF");
             }
-            catch (Exception)
+            catch (Exception exception)
             {
+                _logger?.WriteToLog($"An error occurred, error '{ExceptionHelpers.GetInnerException(exception)}'");
                 StopPowerPoint();
                 throw;
             }
