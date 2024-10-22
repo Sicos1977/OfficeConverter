@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <TargetFrameworks>net462</TargetFrameworks>
     <RootNamespace>OfficeConverter</RootNamespace>
@@ -10,8 +9,10 @@
     <Company>Magic-Sessions</Company>
     <Copyright>(c)2014-2024 - Kees van Spelde</Copyright>
     <PackageProjectUrl>https://github.com/Sicos1977/OfficeConverter</PackageProjectUrl>
-    <PackageLicenseUrl></PackageLicenseUrl>
-    <PackageIconUrl></PackageIconUrl>
+    <PackageLicenseUrl>
+    </PackageLicenseUrl>
+    <PackageIconUrl>
+    </PackageIconUrl>
     <RepositoryUrl>https://github.com/Sicos1977/OfficeConverter</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageTags>Microsoft Office LibreOffice Convert PDF</PackageTags>
@@ -24,25 +25,21 @@
     <PackageIcon>Word-2-icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
-
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DocumentationFile>OfficeConverter.xml</DocumentationFile>
   </PropertyGroup>
-
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="OpenMcdf" Version="2.2.1.6" />
     <PackageReference Include="System.Drawing.Common" Version="4.7.2" />
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="4.5.1" />
   </ItemGroup>
-
   <ItemGroup Condition=" '$(TargetFramework)' == 'net462' ">
-	  <Reference Include="System" />
-	  <Reference Include="System.Core" />
-	  <Reference Include="Microsoft.CSharp" />
-	  <Reference Include="System.Web" />
-	  <Reference Include="System.Security" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Security" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
     <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
@@ -51,20 +48,17 @@
     <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.1" />
   </ItemGroup>
-
   <ItemGroup>
     <Content Include="CLI/**/*.*" copyToOutput="true">
       <Pack>true</Pack>
     </Content>
   </ItemGroup>
-
   <ItemGroup>
     <Content Include="OfficeAssemblies/*.*" copyToOutput="true">
       <Pack>true</Pack>
       <PackagePath>lib;lib</PackagePath>
     </Content>
   </ItemGroup>
-
   <ItemGroup>
     <Reference Include="cli_basetypes">
       <HintPath>CLI\x64\cli_basetypes.dll</HintPath>
@@ -93,8 +87,11 @@
     <Reference Include="office">
       <HintPath>OfficeAssemblies\Office.dll</HintPath>
     </Reference>
+    <Reference Include="System.Security.Cryptography.Pkcs, Version=6.0.0.3, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <HintPath>..\packages\System.Security.Cryptography.Pkcs.6.0.3\lib\net461\System.Security.Cryptography.Pkcs.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
   </ItemGroup>
-
   <ItemGroup>
     <None Include="..\README.md">
       <Pack>True</Pack>
@@ -102,5 +99,4 @@
     </None>
     <None Include="Word-2-icon.png" Pack="true" PackagePath="" />
   </ItemGroup>
-
 </Project>
