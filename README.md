@@ -3,13 +3,12 @@ OfficeConverter
 
 Convert Microsoft Office document to PDF (Office 2007 - 2016)
 
-- 2014-09-21 Version 1.0
   - Converts .DOC, .DOCM, .DOCX, .DOT, .DOTM, .ODT, .XLS, .XLSB, .XLSM, .XLSX, .XLT, .XLTM, .XLTX, .XLW, .ODS, .POT, .PPT, .POTM, .POTX, .PPS, .PPSM, .PPSX, .PPTM, .PPTX and .ODP files to PDF with the use of Microsoft Office
   - Checks if the files are password protected without using Microsoft Office to speed up conversion
 
 ## License Information
 
-OfficeConverter is Copyright (C)2014-2024 Kees van Spelde and is licensed under the MIT license:
+OfficeConverter is Copyright (C)2014-2025 Kees van Spelde and is licensed under the MIT license:
 
     Permission is hereby granted, free of charge, to any person obtaining a copy
     of this software and associated documentation files (the "Software"), to deal
@@ -56,8 +55,8 @@ For example
 
 ```csharp
 var logger = !string.IsNullOrWhiteSpace(<some logfile>)
-                ? new ChromeHtmlToPdfLib.Loggers.Stream(File.OpenWrite(<some logfile>))
-                : new ChromeHtmlToPdfLib.Loggers.Console();
+                ? new OfficeConverter.Loggers.Stream(File.OpenWrite(<some logfile>))
+                : new OfficeConverter.Loggers.Console();
 ```
 
 Core Team
@@ -67,8 +66,6 @@ Core Team
 Support
 =======
 If you like my work then please consider a donation as a thank you.
-
-<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=NS92EXB2RDPYA" target="_blank"><img src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif" /></a>
 
 ## Reporting Bugs
 
