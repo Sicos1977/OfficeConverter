@@ -45,7 +45,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.8" />
     <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
     <PackageReference Include="OpenMcdf" Version="3.0.1" />
-    <PackageReference Include="PasswordProtectedChecker" Version="2.0.0" />
+    <PackageReference Include="PasswordProtectedChecker" Version="2.1.0" />
     <PackageReference Include="System.Drawing.Common" Version="9.0.8" />
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="9.0.8" />
   </ItemGroup>
