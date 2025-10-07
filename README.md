@@ -3,8 +3,9 @@ OfficeConverter
 
 Convert Microsoft Office document to PDF (Office 2007 - 2016)
 
-  - Converts .DOC, .DOCM, .DOCX, .DOT, .DOTM, .ODT, .XLS, .XLSB, .XLSM, .XLSX, .XLT, .XLTM, .XLTX, .XLW, .ODS, .POT, .PPT, .POTM, .POTX, .PPS, .PPSM, .PPSX, .PPTM, .PPTX and .ODP files to PDF with the use of Microsoft Office
+  - Converts .DOC, .DOCM, .DOCX, .DOT, .DOTM, .ODT, .XLS, .XLSB, .XLSM, .XLSX, .XLT, .XLTM, .XLTX, .XLW, .ODS, .POT, .PPT, .POTM, .POTX, .PPS, .PPSM, .PPSX, .PPTM, .PPTX, .ODP and .VSD, .VSDX, .VDX, .VSS, .VSSX, .VST, .VSTX, .VDW files to PDF with the use of Microsoft Office
   - Checks if the files are password protected without using Microsoft Office to speed up conversion
+  - **Note:** Visio support requires additional setup - see [VISIO_README.md](OfficeConverter/VISIO_README.md) for details
 
 ## License Information
 
