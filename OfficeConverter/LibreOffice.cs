@@ -432,6 +432,16 @@ namespace OfficeConverter
                 case ".ODP":
                     return "impress_pdf_Export";
 
+                case ".VSD":
+                case ".VSDX":
+                case ".VDX":
+                case ".VSS":
+                case ".VSSX":
+                case ".VST":
+                case ".VSTX":
+                case ".VDW":
+                    return "draw_pdf_Export";
+
                 default:
                     return null;
             }

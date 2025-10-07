@@ -69,6 +69,13 @@ namespace OfficeConverter
         /// </summary>
         private PowerPoint _powerPoint;
 
+#if VISIO_INTEROP
+        /// <summary>
+        ///     <see cref="Visio"/>
+        /// </summary>
+        private Visio _visio;
+#endif
+
         /// <summary>
         ///     <see cref="LibreOffice"/>
         /// </summary>
@@ -173,6 +180,24 @@ namespace OfficeConverter
                 return _powerPoint;
             }
         }
+
+#if VISIO_INTEROP
+        /// <summary>
+        /// Returns a reference to the Visio class when it already exists or creates a new one
+        /// when it doesn't
+        /// </summary>
+        private Visio Visio
+        {
+            get
+            {
+                if (_visio != null)
+                    return _visio;
+
+                _visio = new Visio(_logger);
+                return _visio;
+            }
+        }
+#endif
         #endregion
 
         #region Constructor
@@ -357,6 +382,25 @@ namespace OfficeConverter
                     break;
                 }
 
+#if VISIO_INTEROP
+                case ".VSD":
+                case ".VSDX":
+                case ".VDX":
+                case ".VSS":
+                case ".VSSX":
+                case ".VST":
+                case ".VSTX":
+                case ".VDW":
+                {
+                    if (UseLibreOffice)
+                        LibreOffice.Convert(inputFile,outputFile);
+                    else
+                        Visio.Convert(inputFile, outputFile);
+
+                    break;
+                }
+#endif
+
                 case ".XML":
                     var progId = GetProgId(inputFile);
                     if (!string.IsNullOrWhiteSpace(progId))
@@ -385,7 +429,8 @@ namespace OfficeConverter
                                   $".DOC, .DOT, .DOCM, .DOCX, .DOTM, .XML (Word or Excel) .ODT, .RTF, .MHT, {Environment.NewLine}" +
                                   $".WPS, .WRI, .XLS, .XLT, .XLW, .XLSB, .XLSM, .XLSX, {Environment.NewLine}" +
                                   $".XLTM, .XLTX, .CSV, .ODS, .POT, .PPT, .PPS, .POTM, {Environment.NewLine}" +
-                                   ".POTX, .PPSM, .PPSX, .PPTM, .PPTX and .ODP are supported";
+                                  $".POTX, .PPSM, .PPSX, .PPTM, .PPTX, .ODP, .VSD, .VSDX, {Environment.NewLine}" +
+                                   ".VDX, .VSS, .VSSX, .VST, .VSTX and .VDW are supported";
 
                     _logger?.WriteToLog(message);
                     throw new OCFileTypeNotSupported(message);
@@ -477,6 +522,15 @@ namespace OfficeConverter
                 _powerPoint.Dispose();
                 _powerPoint = null;
             }
+
+#if VISIO_INTEROP
+            if (_visio != null)
+            {
+                _logger?.WriteToLog("Disposing Visio object");
+                _visio.Dispose();
+                _visio = null;
+            }
+#endif
 
             if (_libreOffice != null)
             {
