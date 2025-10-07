@@ -82,6 +82,12 @@
     <Reference Include="Microsoft.Office.Interop.PowerPoint">
       <HintPath>OfficeAssemblies\Microsoft.Office.Interop.PowerPoint.dll</HintPath>
     </Reference>
+    <!-- Visio Interop Assembly - To enable Visio support, add Microsoft.Office.Interop.Visio.dll to the OfficeAssemblies folder -->
+    <!-- Uncomment the following lines after adding the DLL:
+    <Reference Include="Microsoft.Office.Interop.Visio">
+      <HintPath>OfficeAssemblies\Microsoft.Office.Interop.Visio.dll</HintPath>
+    </Reference>
+    -->
     <Reference Include="Microsoft.Office.Interop.Word">
       <HintPath>OfficeAssemblies\Microsoft.Office.Interop.Word.dll</HintPath>
     </Reference>
