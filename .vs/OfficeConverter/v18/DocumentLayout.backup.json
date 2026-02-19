@@ -3,6 +3,14 @@
   "WorkspaceRootPath": "C:\\Kees\\OfficeConverter\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{41D58D18-0218-42C1-B362-1B40417D6D03}|OfficeConverter\\OfficeConverter.csproj|c:\\kees\\officeconverter\\officeconverter\\powerpoint.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{41D58D18-0218-42C1-B362-1B40417D6D03}|OfficeConverter\\OfficeConverter.csproj|solutionrelative:officeconverter\\powerpoint.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{41D58D18-0218-42C1-B362-1B40417D6D03}|OfficeConverter\\OfficeConverter.csproj|c:\\kees\\officeconverter\\officeconverter\\converter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{41D58D18-0218-42C1-B362-1B40417D6D03}|OfficeConverter\\OfficeConverter.csproj|solutionrelative:officeconverter\\converter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{41D58D18-0218-42C1-B362-1B40417D6D03}|OfficeConverter\\OfficeConverter.csproj|c:\\kees\\officeconverter\\officeconverter\\officeconverter.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|",
       "RelativeMoniker": "D:0:0:{41D58D18-0218-42C1-B362-1B40417D6D03}|OfficeConverter\\OfficeConverter.csproj|solutionrelative:officeconverter\\officeconverter.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|"
     },
@@ -62,11 +70,41 @@
             },
             {
               "$type": "Bookmark",
-              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+              "Name": "ST:129:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
+              "Title": "Converter.cs",
+              "DocumentMoniker": "C:\\Kees\\OfficeConverter\\OfficeConverter\\Converter.cs",
+              "RelativeDocumentMoniker": "OfficeConverter\\Converter.cs",
+              "ToolTip": "C:\\Kees\\OfficeConverter\\OfficeConverter\\Converter.cs",
+              "RelativeToolTip": "OfficeConverter\\Converter.cs",
+              "ViewState": "AgIAACwAAAAAAAAAAAAQwOsBAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-19T13:47:24.118Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "PowerPoint.cs",
+              "DocumentMoniker": "C:\\Kees\\OfficeConverter\\OfficeConverter\\PowerPoint.cs",
+              "RelativeDocumentMoniker": "OfficeConverter\\PowerPoint.cs",
+              "ToolTip": "C:\\Kees\\OfficeConverter\\OfficeConverter\\PowerPoint.cs",
+              "RelativeToolTip": "OfficeConverter\\PowerPoint.cs",
+              "ViewState": "AgIAAAkAAAAAAAAAAAAIwK0AAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2026-02-19T13:46:21.289Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
               "Title": "LibreOffice.cs",
               "DocumentMoniker": "C:\\Kees\\OfficeConverter\\OfficeConverter\\LibreOffice.cs",
               "RelativeDocumentMoniker": "OfficeConverter\\LibreOffice.cs",
@@ -74,12 +112,11 @@
               "RelativeToolTip": "OfficeConverter\\LibreOffice.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAABEAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-08-08T06:16:19.916Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-08-08T06:16:19.916Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 4,
               "Title": "README.md",
               "DocumentMoniker": "C:\\Kees\\OfficeConverter\\README.md",
               "RelativeDocumentMoniker": "README.md",
@@ -87,12 +124,11 @@
               "RelativeToolTip": "README.md",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001818|",
-              "WhenOpened": "2025-08-08T06:14:51.276Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-08-08T06:14:51.276Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 2,
               "Title": "OfficeConverter",
               "DocumentMoniker": "C:\\Kees\\OfficeConverter\\OfficeConverter\\OfficeConverter.csproj",
               "RelativeDocumentMoniker": "OfficeConverter\\OfficeConverter.csproj",
@@ -115,13 +151,11 @@
             {
               "$type": "Bookmark",
               "Name": "ST:13:0:{2456bd12-ecf7-4988-a4a6-67d49173f565}"
-            }
-          ]
-        },
-        {
-          "DockedWidth": 200,
-          "SelectedChildIndex": -1,
-          "Children": [
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
             {
               "$type": "Bookmark",
               "Name": "ST:133:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
@@ -137,7 +171,7 @@
           ]
         },
         {
-          "DockedWidth": 138,
+          "DockedWidth": 200,
           "SelectedChildIndex": -1,
           "Children": [
             {
@@ -151,7 +185,7 @@
           ]
         },
         {
-          "DockedWidth": 200,
+          "DockedWidth": 138,
           "SelectedChildIndex": -1,
           "Children": [
             {

@@ -3,7 +3,7 @@
     <TargetFrameworks>net462</TargetFrameworks>
     <RootNamespace>OfficeConverter</RootNamespace>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <Version>1.8.3</Version>
+    <Version>1.8.4</Version>
     <Authors>Kees van Spelde</Authors>
     <Company>Magic-Sessions</Company>
     <Copyright>(c)2014-2026 - Kees van Spelde</Copyright>
@@ -22,8 +22,8 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageIcon>Word-2-icon.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <AssemblyVersion>1.8.3</AssemblyVersion>
-    <FileVersion>1.8.3</FileVersion>
+    <AssemblyVersion>1.8.4</AssemblyVersion>
+    <FileVersion>1.8.4</FileVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <DocumentationFile>OfficeConverter.xml</DocumentationFile>
@@ -86,10 +86,6 @@
     </Reference>
     <Reference Include="office">
       <HintPath>OfficeAssemblies\Office.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Security.Cryptography.Pkcs, Version=6.0.0.3, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-      <HintPath>..\packages\System.Security.Cryptography.Pkcs.6.0.3\lib\net461\System.Security.Cryptography.Pkcs.dll</HintPath>
-      <Private>True</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>
