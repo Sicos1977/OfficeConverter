@@ -207,7 +207,7 @@ namespace OfficeConverter
 
                 if (IsPowerPointRunning)
                 {
-                    _logger?.WriteToLog($"Word did not close gracefully, closing it by killing it's process on id {_powerPointProcess.Id}");
+                    _logger?.WriteToLog($"PowerPoint did not close gracefully, closing it by killing it's process on id {_powerPointProcess.Id}");
                     _powerPointProcess.Kill();
                     _powerPointProcess = null;
                     _logger?.WriteToLog("PowerPoint process killed");
@@ -285,10 +285,9 @@ namespace OfficeConverter
             }
             catch (Exception exception)
             {
-                if (repairMode)
-                    throw new OCFileIsCorrupt($"The file '{Path.GetFileName(inputFile)}' seems to be corrupt, error: {ExceptionHelpers.GetInnerException(exception)}");
-
-                return OpenPresentation(inputFile, true);
+                return repairMode
+                    ? throw new OCFileIsCorrupt($"The file '{Path.GetFileName(inputFile)}' seems to be corrupt, error: {ExceptionHelpers.GetInnerException(exception)}")
+                    : OpenPresentation(inputFile, true);
             }
         }
         #endregion
