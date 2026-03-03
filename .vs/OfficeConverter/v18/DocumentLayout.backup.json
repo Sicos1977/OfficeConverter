@@ -3,10 +3,6 @@
   "WorkspaceRootPath": "C:\\Kees\\OfficeConverter\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{41D58D18-0218-42C1-B362-1B40417D6D03}|OfficeConverter\\OfficeConverter.csproj|c:\\kees\\officeconverter\\officeconverter\\officeconverter.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|",
-      "RelativeMoniker": "D:0:0:{41D58D18-0218-42C1-B362-1B40417D6D03}|OfficeConverter\\OfficeConverter.csproj|solutionrelative:officeconverter\\officeconverter.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}|"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{41D58D18-0218-42C1-B362-1B40417D6D03}|OfficeConverter\\OfficeConverter.csproj|c:\\kees\\officeconverter\\officeconverter\\converter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{41D58D18-0218-42C1-B362-1B40417D6D03}|OfficeConverter\\OfficeConverter.csproj|solutionrelative:officeconverter\\converter.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -63,19 +59,6 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "OfficeConverter",
-              "DocumentMoniker": "C:\\Kees\\OfficeConverter\\OfficeConverter\\OfficeConverter.csproj",
-              "RelativeDocumentMoniker": "OfficeConverter\\OfficeConverter.csproj",
-              "ToolTip": "C:\\Kees\\OfficeConverter\\OfficeConverter\\OfficeConverter.csproj",
-              "RelativeToolTip": "OfficeConverter\\OfficeConverter.csproj",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAACAAAABIAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2026-03-03T13:31:38.943Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
               "Title": "Converter.cs",
               "DocumentMoniker": "C:\\Kees\\OfficeConverter\\OfficeConverter\\Converter.cs",
               "RelativeDocumentMoniker": "OfficeConverter\\Converter.cs",
@@ -88,7 +71,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 1,
               "Title": "Excel.cs",
               "DocumentMoniker": "C:\\Kees\\OfficeConverter\\OfficeConverter\\Excel.cs",
               "RelativeDocumentMoniker": "OfficeConverter\\Excel.cs",
