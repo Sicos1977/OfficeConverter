@@ -349,7 +349,7 @@ namespace OfficeConverter
                 var baseKey = Registry.ClassesRoot;
                 var subKey = baseKey.OpenSubKey(@"Excel.Application\CurVer");
                 if (subKey != null)
-                    switch (subKey.GetValue(string.Empty).ToString().ToUpperInvariant())
+                    switch (subKey.GetValue(string.Empty)?.ToString().ToUpperInvariant())
                     {
                         // Excel 2003
                         case "EXCEL.APPLICATION.11":

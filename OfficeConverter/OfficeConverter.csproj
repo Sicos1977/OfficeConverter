@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net462</TargetFrameworks>
+    <TargetFrameworks>netstandard2.0</TargetFrameworks>
     <RootNamespace>OfficeConverter</RootNamespace>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <Version>1.8.4</Version>
@@ -29,22 +29,14 @@
     <DocumentationFile>OfficeConverter.xml</DocumentationFile>
   </PropertyGroup>
   <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="OpenMcdf" Version="2.2.1.6" />
+    <PackageReference Include="OpenMcdf" Version="3.1.0" />
     <PackageReference Include="System.Drawing.Common" Version="4.7.2" />
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="4.5.1" />
-  </ItemGroup>
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net462' ">
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="Microsoft.CSharp" />
-    <Reference Include="System.Web" />
-    <Reference Include="System.Security" />
+    <PackageReference Include="Microsoft.AspNetCore.SystemWebAdapters" Version="2.3.0" />
+    <PackageReference Include="PasswordProtectedChecker" Version="2.1.4" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.3" />
     <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
-    <PackageReference Include="OpenMcdf" Version="3.1.0" />
-    <PackageReference Include="PasswordProtectedChecker" Version="2.1.3" />
     <PackageReference Include="System.Drawing.Common" Version="10.0.3" />
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.3" />
   </ItemGroup>
@@ -60,6 +52,25 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+    <None Include="Word-2-icon.png" Pack="true" PackagePath="" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Microsoft.Office.Interop.Excel">
+      <HintPath>OfficeAssemblies\Microsoft.Office.Interop.Excel.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Office.Interop.PowerPoint">
+      <HintPath>OfficeAssemblies\Microsoft.Office.Interop.PowerPoint.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Office.Interop.Word">
+      <HintPath>OfficeAssemblies\Microsoft.Office.Interop.Word.dll</HintPath>
+    </Reference>
+    <Reference Include="office">
+      <HintPath>OfficeAssemblies\Office.dll</HintPath>
+    </Reference>
     <Reference Include="cli_basetypes">
       <HintPath>CLI\x64\cli_basetypes.dll</HintPath>
     </Reference>
@@ -75,24 +86,5 @@
     <Reference Include="cli_uretypes">
       <HintPath>CLI\x64\cli_uretypes.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.Office.Interop.Excel">
-      <HintPath>OfficeAssemblies\Microsoft.Office.Interop.Excel.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Office.Interop.PowerPoint">
-      <HintPath>OfficeAssemblies\Microsoft.Office.Interop.PowerPoint.dll</HintPath>
-    </Reference>
-    <Reference Include="Microsoft.Office.Interop.Word">
-      <HintPath>OfficeAssemblies\Microsoft.Office.Interop.Word.dll</HintPath>
-    </Reference>
-    <Reference Include="office">
-      <HintPath>OfficeAssemblies\Office.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="..\README.md">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
-    <None Include="Word-2-icon.png" Pack="true" PackagePath="" />
   </ItemGroup>
 </Project>
